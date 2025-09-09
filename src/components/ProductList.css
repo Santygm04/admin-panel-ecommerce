@@ -1,0 +1,730 @@
+.stock-container {
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.stock-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stock-header select,
+.btn-reset {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.stock-header .btn-reset {
+  background-color: #ffdddd;
+  color: #b10000;
+  border: none;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stock-table th,
+.stock-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.stock-table th {
+  background-color: #f8f8f8;
+  color: #333;
+}
+
+.stock-table .thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.btn-edit {
+  margin-right: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.btn-delete {
+  padding: 0.4rem 0.8rem;
+  background-color: #e53935;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.stock-table th, .stock-table td {
+  vertical-align: middle;
+}
+.stock-table th:nth-child(6), .stock-table td:nth-child(6) {
+  text-align: center;
+}
+
+.stock-inline{ display:flex; align-items:center; gap:.4rem; }
+.btn-stock{
+  padding:.25rem .5rem;
+  border:1px solid #efc9df;
+  background:#fff0f7;
+  color:#d63384;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:700;
+}
+.btn-stock:disabled{ opacity:.45; cursor:not-allowed; }
+.stock-chip{
+  min-width:42px; text-align:center; font-weight:800; color:#d63384;
+  background:#fff; border:1px solid #efc9df; border-radius:8px; padding:.25rem .6rem;
+}
+
+/* Controles de stock */
+.stock-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stk-btn {
+  padding: .25rem .5rem;
+  border: 1px solid #efc9df;
+  background: #fff0f7;
+  color: #d63384;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  min-width: 44px;
+}
+.stk-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.stock-chip {
+  min-width: 36px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #efc9df;
+  color: #333;
+  border-radius: 10px;
+  padding: .25rem .4rem;
+  font-weight: 800;
+}
+
+.stock-search{
+  padding:.5rem .75rem;
+  border:1px solid #ccc;
+  border-radius:8px;
+  min-width:220px;
+}
+.stock-search:focus{
+  outline:none;
+  border-color:#d63384;
+  box-shadow:0 6px 18px rgba(214,51,132,.08);
+}
+
+/* ...tus estilos existentes... */
+
+.stock-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* 🔎 nuevo: input de búsqueda en la cabecera */
+.stock-search{
+  padding: .5rem .75rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  min-width: 240px;
+  outline: none;
+}
+.stock-search:focus{
+  border-color: #d63384;
+  box-shadow: 0 6px 18px rgba(214,51,132,.12);
+}
+
+/* --- Promo admin --- */
+.promo-wrap{ display:flex; flex-direction:column; gap:.35rem; min-width:160px; }
+.promo-row{ display:flex; align-items:center; gap:.4rem; font-size:.9rem; color:#444; }
+.promo-input{
+  width: 110px; padding:.3rem .45rem; border:1px solid #efc9df; border-radius:8px;
+  background:#fff; outline:none;
+}
+.promo-input:focus{ border-color:#d63384; box-shadow:0 0 0 3px rgba(214,51,132,.10); }
+.promo-save{
+  align-self:flex-start; padding:.3rem .6rem; border:none; border-radius:8px; background:#d63384; color:#fff; cursor:pointer; font-weight:700;
+}
+.promo-warn{ font-size:.8rem; color:#b10000; }
+
+/* ------------ PROMO UI (columna estable) ------------ */
+.th-promo { min-width: 180px; }
+.promo-td { min-width: 180px; }
+
+.promo-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:.35rem;
+  align-items:flex-start;
+}
+
+.promo-row{
+  display:flex;
+  align-items:center;
+  gap:.4rem;
+  font-size:.9rem;
+  color:#444;
+}
+
+.promo-input{
+  width:110px;
+  padding:.35rem .45rem;
+  border:1px solid #efc9df;
+  border-radius:8px;
+  background:#fff;
+  outline:none;
+}
+.promo-input:focus{
+  border-color:#d63384;
+  box-shadow:0 0 0 3px rgba(214,51,132,.10);
+}
+
+.promo-save{
+  align-self:flex-start;
+  padding:.3rem .65rem;
+  border:none;
+  background:#d63384;
+  color:#fff;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:800;
+}
+.promo-save:disabled{ opacity:.55; cursor:not-allowed; }
+
+.promo-warn{ font-size:.8rem; color:#b10000; }
+
+/* ------------ Responsivo suave para no "romper" ------------ */
+@media (max-width: 1100px){
+  .th-hide-sm, .td-hide-sm{ display:none; }
+}
+
+.stock-container {
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.stock-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stock-header select,
+.btn-reset {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #f1f1f1;
+  cursor: pointer;
+}
+.stock-header .btn-reset {
+  background-color: #ffdddd;
+  color: #b10000;
+  border: none;
+}
+
+.stock-search{
+  padding:.5rem .75rem;
+  border:1px solid #ccc;
+  border-radius:8px;
+  min-width:240px;
+  outline:none;
+}
+.stock-search:focus{
+  border-color:#d63384;
+  box-shadow:0 6px 18px rgba(214,51,132,.12);
+}
+
+/* ================== Tabla ================== */
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;              /* 👈 clave para respetar colgroup y evitar “romperse” */
+}
+
+.stock-table th,
+.stock-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+  overflow: hidden;                 /* truncado suave */
+  text-overflow: ellipsis;
+}
+
+.stock-table th {
+  background-color: #f8f8f8;
+  color: #333;
+}
+
+.stock-table .thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.td-ellipsis{ white-space: nowrap; }
+.td-actions{ white-space: nowrap; }
+
+/* ========= Stock buttons ========= */
+.stock-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stk-btn {
+  padding: .25rem .5rem;
+  border: 1px solid #efc9df;
+  background: #fff0f7;
+  color: #d63384;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  min-width: 44px;
+}
+.stk-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.stock-chip {
+  min-width: 36px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #efc9df;
+  color: #333;
+  border-radius: 10px;
+  padding: .25rem .4rem;
+  font-weight: 800;
+}
+
+/* ========= Acciones ========= */
+.btn-edit {
+  margin-right: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.btn-delete {
+  padding: 0.4rem 0.8rem;
+  background-color: #e53935;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ========= Promo (columna estable) ========= */
+.th-promo { min-width: 180px; }
+.promo-td { min-width: 180px; }
+
+.promo-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:.35rem;
+  align-items:flex-start;
+  white-space: normal;
+}
+.promo-row{
+  display:flex;
+  align-items:center;
+  gap:.4rem;
+  font-size:.9rem;
+  color:#444;
+}
+.promo-input{
+  width:110px;
+  padding:.35rem .45rem;
+  border:1px solid #efc9df;
+  border-radius:8px;
+  background:#fff;
+  outline:none;
+}
+.promo-input:focus{
+  border-color:#d63384;
+  box-shadow:0 0 0 3px rgba(214,51,132,.10);
+}
+.promo-save{
+  align-self:flex-start;
+  padding:.3rem .65rem;
+  border:none;
+  background:#d63384;
+  color:#fff;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:800;
+}
+.promo-save:disabled{ opacity:.55; cursor:not-allowed; }
+.promo-warn{ font-size:.8rem; color:#b10000; }
+
+/* ========= Responsivo: ocultar columnas no críticas ========= */
+@media (max-width: 1100px){
+  .th-hide-sm, .td-hide-sm{ display:none; }
+  /* el colgroup tiene la misma proporción así que no se deforma */
+}
+
+/* Toast elegante */
+.toast{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  padding: .8rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.15);
+  color:#1f1f1f;
+  background:#fff;
+  z-index: 2000;
+  animation: toastIn .18s ease-out;
+  border: 1px solid #eee;
+}
+.toast.success{ border-color:#c7f3d6; background:#f3fff7; }
+.toast.error{ border-color:#ffd4db; background:#fff6f7; }
+
+@keyframes toastIn {
+  from{ transform: translateY(10px); opacity: 0; }
+  to{ transform: translateY(0); opacity: 1; }
+}
+
+/* Indicador de estado actual de promo (del back) */
+.promo-state{
+  margin-left: .5rem;
+  font-size: .75rem;
+  background:#f2f2f2;
+  color:#555;
+  padding:.2rem .45rem;
+  border-radius: 999px;
+}
+.promo-state.ok{
+  background:#e8fff0;
+  color:#0e8c46;
+  border:1px solid #bfeacd;
+}
+
+.toast{
+  position: fixed; right: 18px; top: 18px;
+  background: #fff; border: 1px solid #f3c9e2; padding: .6rem .8rem;
+  border-radius: 10px; box-shadow: 0 10px 28px rgba(214,51,132,.15);
+  font-weight: 700; color:#444; z-index: 2000; animation: toastIn .18s ease-out;
+}
+.toast.ok{ color:#1b7f36; border-color:#bfe6c9; }
+.toast.warn{ color:#b36b00; border-color:#ffd9a8; }
+.toast.error{ color:#b10000; border-color:#ffb3b3; }
+@keyframes toastIn { from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:translateY(0)} }
+
+/* Toast liviano */
+.toast{
+  position: fixed;
+  top: 22px; right: 22px;
+  padding: .6rem .9rem;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.10);
+  z-index: 2000;
+  font-weight: 800;
+}
+.toast.ok{
+  background:#e9fbf1;
+  color:#0f7b42;
+  border:1px solid #b8f0d0;
+}
+.toast.err{
+  background:#ffe9ea;
+  color:#b10000;
+  border:1px solid #ffc8cc;
+}
+
+/* Input editable de stock */
+.stock-input{
+  width: 64px;
+  text-align: center;
+  padding: .25rem .4rem;
+  border: 1px solid #efc9df;
+  border-radius: 10px;
+  background: #fff;
+  color: #333;
+  font-weight: 800;
+  outline: none;
+}
+.stock-input:focus{
+  border-color: #d63384;
+  box-shadow: 0 0 0 3px rgba(214,51,132,.10);
+}
+
+/* Botones +/- ya existentes: mantenemos estilos y sumamos estado "guardando" */
+.stk-btn:disabled,
+.stock-input:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* --- Ajustes para evitar scroll horizontal --- */
+.stock-container{
+  overflow-x: hidden;   /* previene la barra horizontal del contenedor */
+}
+
+/* la tabla ya tenía table-layout: fixed; mantenelo */
+.stock-table{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;     /* IMPORTANTE para respetar colgroup */
+}
+
+/* columnas menos críticas ocultas en anchos medianos */
+.table-admin {
+  table-layout: auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-admin td, 
+.table-admin th {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+/* Ocultar columnas menos críticas en pantallas medianas */
+@media (max-width: 1200px) {
+  .th-hide-md,
+  .td-hide-md,
+  .col-subcat,
+  .col-dest {
+    display: none;
+  }
+}
+
+/* Ocultar aún más en móviles */
+@media (max-width: 768px) {
+  .th-hide-sm,
+  .td-hide-sm,
+  .col-promo {
+    display: none;
+  }
+  .table-admin td, 
+  .table-admin th {
+    font-size: 0.8rem;
+    padding: 4px 6px;
+  }
+}
+
+/* imagen más compacta */
+.stock-table .thumb{
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* --- Stock compacto --- */
+.stock-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;           /* permite salto en dos líneas si hace falta */
+}
+.stk-btn{
+  padding: .2rem .45rem;
+  border: 1px solid #efc9df;
+  background: #fff0f7;
+  color: #d63384;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  min-width: 36px;           /* más chico que antes */
+}
+.stock-input{
+  width: 56px;               /* más angosto */
+  text-align: center;
+  padding: .2rem .35rem;
+  border: 1px solid #efc9df;
+  border-radius: 10px;
+  background: #fff;
+  color: #333;
+  font-weight: 800;
+  outline: none;
+}
+
+/* en anchos más chicos, reforzar wrap de stock */
+@media (max-width: 1050px){
+  .stock-actions{ gap: 4px; }
+  .stock-input{ width: 52px; }
+  .stk-btn{ min-width: 32px; padding:.18rem .38rem; }
+}
+
+/* --- Promo: NO forzar min-width fijo (era la causa del overflow) --- */
+.th-promo, .promo-td{ min-width: auto; }
+@media (min-width: 1280px){
+  .th-promo, .promo-td{ min-width: 164px; } /* sólo si sobra espacio */
+}
+
+.promo-wrap{ display:flex; flex-direction:column; gap:.3rem; align-items:flex-start; }
+.promo-input{ width: 100px; padding:.3rem .45rem; border:1px solid #efc9df; border-radius:8px; }
+.promo-save{ padding:.28rem .55rem; font-size:.9rem; }
+
+/* acciones no rompen */
+.td-actions{ white-space: nowrap; }
+.btn-edit, .btn-delete{ white-space: nowrap; }
+
+/* La tabla se adapta y no fuerza ancho extra */
+.stock-table{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+/* Asegura que el contenido no rompa el ancho */
+.stock-table th,
+.stock-table td{
+  padding: 12px;
+  vertical-align: middle;
+  word-break: break-word;
+  text-overflow: ellipsis;
+}
+
+/* Acciones siempre visibles y con wrap si falta ancho */
+.col-actions { width: 160px; }
+.actions-wrap{
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;        /* si no entra en línea, baja */
+}
+.actions-wrap .btn-edit,
+.actions-wrap .btn-delete{
+  padding: .35rem .65rem;
+}
+
+/* Ajustes de controles de stock (más compactos en pantallas chicas) */
+.stock-actions{ display: inline-flex; align-items: center; gap: 6px; }
+.stk-btn{ min-width: 40px; padding: .25rem .45rem; }
+.stock-input{ width: 64px; }
+
+/* ---------- Ocultamos columnas menos críticas en anchos medianos --------- */
+@media (max-width: 1200px){
+  .col-subcat,
+  .col-dest,
+  .col-promo{
+    display: none;
+  }
+}
+
+/* ---------- Más compacto en <= 1024px (sin perder Acciones) --------- */
+@media (max-width: 1024px){
+  .col-categoria,
+  .col-img{
+    display: none;
+  }
+  .stock-table th, .stock-table td{ padding: 10px; }
+  .stk-btn{ min-width: 36px; padding: .22rem .4rem; }
+  .stock-input{ width: 56px; }
+  .col-actions{ width: 140px; }
+}
+
+/* ---------- Afinado en móviles --------- */
+@media (max-width: 768px){
+  .stock-table th, .stock-table td{ padding: 8px; }
+  .stk-btn{ min-width: 32px; padding: .2rem .35rem; }
+  .stock-input{ width: 52px; }
+  .actions-wrap .btn-edit,
+  .actions-wrap .btn-delete{
+    padding: .3rem .5rem;
+  }
+}
+
+/* badge de estado oculto */
+.badge-hidden{
+  margin-left: .5rem;
+  font-size: .72rem;
+  background:#ffe9ea;
+  color:#b10000;
+  border:1px solid #ffc8cc;
+  padding:.1rem .4rem;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+/* botones de visibilidad */
+.btn-hide{
+  padding: .35rem .7rem;
+  background: #ffe9ea;
+  color: #b10000;
+  border: 1px solid #ffc8cc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+}
+.btn-hide:disabled{
+  opacity:.5; cursor:not-allowed;
+}
+
+.btn-show{
+  padding: .35rem .7rem;
+  background: #e9fbf1;
+  color: #0f7b42;
+  border: 1px solid #b8f0d0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.btn-del{
+  background:#e74c3c;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:.45rem .7rem;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-del:disabled{opacity:.6; cursor:not-allowed;}
+
+/* --- Promo: input $ o % y preview --- */
+.promo-input{
+  text-align: right;                 /* se ve mejor al escribir números o % */
+  font-variant-numeric: tabular-nums;
+}
+.promo-input::placeholder{ color:#999; }
+
+/* línea de ayuda / preview que mostramos debajo */
+.promo-preview{ font-size:12px; font-weight:700; }
+.promo-preview.ok{ color:#16a34a; }   /* válido: muestra $ final y % OFF */
+.promo-preview.err{ color:#b91c1c; }  /* inválido: mensaje de error */

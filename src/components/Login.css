@@ -1,0 +1,168 @@
+/* ======== Login dark elegante (inspirado en el ejemplo) ======== */
+
+.login-page{
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:#222;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* Tarjeta */
+.auth-card{
+  width: 320px;
+  padding: 1.9rem 1.2rem;
+  text-align: center;
+  background: #2a2b38;
+  border-radius: 14px;
+  box-shadow: 0 16px 50px rgba(0,0,0,.35);
+}
+
+/* Título */
+.title{
+  margin-bottom: 1rem;
+  font-size: 1.5em;
+  font-weight: 900;
+  color: #f5f5f5;
+}
+
+/* Campos */
+.field{
+  margin-top: .6rem;
+  display: flex;
+  align-items: center;
+  gap: .5em;
+  background-color: #1f2029;
+  border-radius: 10px;
+  padding: .55em 1em;
+  border: 1px solid rgba(255,255,255,.06);
+}
+.input-icon{
+  width: 1.05em;
+  height: 1.05em;
+  fill: #ffeba7;
+}
+.input-field{
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e4e4e4;
+  font-weight: 700;
+}
+.field input::placeholder{ color:#9aa0a6; }
+.field input:focus::placeholder{ opacity: .35; transition: opacity .25s; }
+
+/* Botón principal */
+.btn{
+  cursor: pointer;
+  margin: 1rem 0 .5rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: .9em;
+  letter-spacing:.02em;
+  text-transform: uppercase;
+  padding: .75em 1.2em;
+  background-color: #ffeba7;
+  color: #2a2b38;
+  box-shadow: 0 12px 32px 0 rgb(255 235 167 / 22%);
+  transition: transform .12s ease, box-shadow .22s ease, background .22s ease, color .22s ease;
+  width: 100%;
+}
+.btn:disabled{ opacity:.7; cursor:not-allowed; }
+.btn:hover{
+  background-color: #5e6681;
+  color: #ffeba7;
+  box-shadow: 0 12px 32px 0 rgb(16 39 112 / 20%);
+  transform: translateY(-1px);
+}
+
+/* Link secundario */
+.btn-link{
+  color: #f5f5f5;
+  display: inline-block;
+  font-size: .8em;
+  text-decoration: underline;
+  transition: color .2s ease-out;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.btn-link:hover{ color: #ffeba7; }
+.link-strong{ font-weight: 900; margin-top: 6px; }
+
+/* Banner de error */
+.login-banner{
+  margin: .2rem 0 .8rem;
+  padding: .55rem .7rem;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: .9rem;
+}
+.login-banner.error{
+  background:#ffe9ea;
+  color:#b10000;
+  border:1px solid #ffc8cc;
+}
+
+/* ===== Cambiar contraseña ===== */
+.cp-card{
+  margin-top: 10px;
+  background: #1f2029;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 10px;
+}
+.cp-input{
+  width: 100%;
+  margin: 6px 0;
+  padding: .55rem .7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.06);
+  background:#2a2b38;
+  color:#e4e4e4;
+  outline: none;
+}
+.btn.btn-secondary{
+  background:#5e6681;
+  color:#ffeba7;
+  margin-top: 6px;
+}
+.btn.btn-secondary:hover{
+  background:#6b7391;
+  color:#fff8cf;
+}
+
+/* ===== Cartel modal centrado ===== */
+.toast-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: grid;
+  place-items: center;
+  z-index: 3000;
+  animation: fadeIn .15s ease-out;
+}
+.toast-modal{
+  min-width: 260px;
+  max-width: 88vw;
+  background: #ffffff;
+  color: #0f7b42;
+  border: 2px solid #b8f0d0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: center;
+  font-weight: 900;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  animation: popIn .18s ease-out;
+}
+.toast-modal h3{ margin: 0; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes popIn { from{ transform: scale(.92); } to{ transform: scale(1); } }
+
+/* Responsive peque */
+@media (max-width: 380px){
+  .auth-card{ width: 92vw; }
+}

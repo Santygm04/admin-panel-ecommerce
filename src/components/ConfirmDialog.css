@@ -1,0 +1,21 @@
+.cd-backdrop{
+  position: fixed; inset:0; background: rgba(0,0,0,.25);
+  display:grid; place-items:center; z-index: 3000;
+}
+.cd-modal{
+  width: min(520px, 92vw);
+  background:#fff; border:1px solid #f3c9e2; border-radius:14px;
+  box-shadow:0 20px 60px rgba(214,51,132,.18);
+  padding:1rem 1.1rem;
+  animation: cdIn .18s ease-out;
+}
+@keyframes cdIn{ from{opacity:0; transform: translateY(8px);} to{opacity:1; transform:translateY(0);} }
+.cd-title{ margin: .2rem 0 .4rem; color:#d63384; }
+.cd-message{ color:#444; margin: 0 0 .9rem; }
+.cd-actions{ display:flex; justify-content:flex-end; gap:.6rem; }
+.cd-btn{
+  border:none; border-radius:10px; padding:.5rem .8rem; font-weight:800; cursor:pointer;
+}
+.cd-cancel{ background:#f7f7f7; color:#333; }
+.cd-confirm{ background:#e53935; color:#fff; }
+.cd-btn:disabled{ opacity:.6; cursor:not-allowed; }

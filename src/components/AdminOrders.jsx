@@ -1,0 +1,492 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import "./AdminOrders.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const FRONT_URL = import.meta.env.VITE_FRONT_URL || ""; // opcional
+const ADMIN_WA = (import.meta.env.VITE_ADMIN_PHONE || "").replace(/\D/g, ""); // fallback si el back no manda whatsappLink
+
+export default function AdminOrders() {
+  const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET") || "");
+  const [inputSecret, setInputSecret] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [loading, setLoading] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [message, setMessage] = useState("");
+
+  const [detail, setDetail] = useState(null);
+  const [actionModal, setActionModal] = useState({
+    open: false,
+    type: null, // "confirm" | "reject"
+    order: null,
+    loading: false,
+  });
+
+  // helpers
+  const niceMoney = (n) => (typeof n === "number" ? n.toLocaleString("es-AR") : String(n || ""));
+  const buildAddress = (a = {}) =>
+    [
+      [a.calle, a.numero].filter(Boolean).join(" "),
+      a.piso,
+      a.ciudad,
+      a.provincia,
+      a.cp,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  const normalizePhone = (raw) => (raw ? String(raw).replace(/\D/g, "") : "");
+  const shortId = (id) => (id ? String(id).slice(-6).toUpperCase() : "—");
+
+  // 👇 preferimos el número simple si existe
+  const prettyOrder = (o) =>
+    o?.orderNumber ? `#${o.orderNumber}` : (o?.shippingTicket || `AE-${shortId(o?._id)}`);
+
+  // 👉 mensaje para WhatsApp (fallback si el backend no da whatsappLink)
+  const orderTextForWhatsApp = (o) => {
+    const envio = o?.shipping?.method === "envio";
+    const addr = envio ? buildAddress(o?.shipping?.address || {}) : "—";
+    const code = prettyOrder(o);
+    const itemsLines = (o.items || [])
+      .map((it) => {
+        const varPart = it?.variant?.size || it?.variant?.color
+          ? ` (${[it?.variant?.size, it?.variant?.color].filter(Boolean).join(" / ")})`
+          : "";
+        return `• ${it.nombre}${varPart} x${it.cantidad} — $${niceMoney(it.subtotal)}`;
+      })
+      .join("\n");
+
+    return [
+      "✅ *Pedido confirmado*",
+      "",
+      `*Pedido:* ${code}`,
+      `*Estado:* ${o.status}`,
+      `*Pago:* ${o.paymentMethod}`,
+      "",
+      `*Cliente:* ${o?.buyer?.nombre || "-"}`,
+      `*Tel:* ${o?.buyer?.telefono || "-"}`,
+      `*Email:* ${o?.buyer?.email || "-"}`,
+      "",
+      `*Entrega:* ${envio ? "Envío a domicilio" : "Retiro en local"}`,
+      `*Dirección:* ${envio ? addr : "—"}`,
+      "",
+      `*Productos:*`,
+      itemsLines || "—",
+      "",
+      `*Total:* $${niceMoney(o.total)}`,
+    ].join("\n");
+  };
+
+  const fetchOrders = async () => {
+    if (!secret) return;
+    setLoading(true);
+    try {
+      const url = new URL(`${API_URL}/api/payments/orders`);
+      if (statusFilter) url.searchParams.set("status", statusFilter);
+      const res = await fetch(url, { headers: { "x-admin-secret": secret } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No autorizado o error de servidor");
+      setOrders(data.orders || []);
+      setMessage("");
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error cargando órdenes"));
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    if (!secret || !autoRefresh) return;
+    const id = setInterval(fetchOrders, 10000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secret, statusFilter, autoRefresh]);
+
+  const login = (e) => {
+    e.preventDefault();
+    if (!inputSecret.trim()) return;
+    sessionStorage.setItem("ADMIN_SECRET", inputSecret.trim());
+    setSecret(inputSecret.trim());
+    setInputSecret("");
+    setTimeout(fetchOrders, 200);
+  };
+  const logout = () => {
+    sessionStorage.removeItem("ADMIN_SECRET");
+    setSecret("");
+    setOrders([]);
+  };
+
+  // --- modal acciones
+  const openActionModal = (type, order) =>
+    setActionModal({ open: true, type, order, loading: false });
+  const closeActionModal = () =>
+    setActionModal({ open: false, type: null, order: null, loading: false });
+
+  const handleActionConfirm = async () => {
+    if (!secret || !actionModal.order) return;
+    const { type, order } = actionModal;
+    try {
+      setActionModal((m) => ({ ...m, loading: true }));
+      const endpoint =
+        type === "confirm"
+          ? `${API_URL}/api/payments/order/${order._id}/confirm`
+          : `${API_URL}/api/payments/order/${order._id}/reject`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-secret": secret,
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No se pudo completar la acción");
+
+      if (type === "confirm") {
+        setMessage("✅ Orden confirmada");
+        setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, status: "paid" } : o)));
+        if (detail && detail._id === order._id) setDetail({ ...detail, status: "paid" });
+
+        // === ABRIR WHATSAPP ===
+        if (data?.whatsappLink) {
+          window.open(data.whatsappLink, "_blank", "noopener,noreferrer");
+        } else if (ADMIN_WA) {
+          const txt = orderTextForWhatsApp({ ...order, status: "paid" });
+          const url = `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(txt)}`;
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      } else {
+        setMessage("🚫 Orden rechazada");
+        setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, status: "cancelled" } : o)));
+        if (detail && detail._id === order._id) setDetail({ ...detail, status: "cancelled" });
+      }
+      closeActionModal();
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error al ejecutar la acción"));
+      setActionModal((m) => ({ ...m, loading: false }));
+    }
+  };
+  // ---
+
+  const filtered = useMemo(() => {
+    if (!statusFilter) return orders;
+    return orders.filter((o) => o.status === statusFilter);
+  }, [orders, statusFilter]);
+
+  // Login “simple”
+  if (!secret) {
+    return (
+      <section className="aorders-wrap">
+        <div className="aorders-card">
+          <div className="aorders-header">
+            <h2 className="aorders-title">Órdenes</h2>
+            <Link to="/dashboard" className="btn btn--ghost">Volver al panel</Link>
+          </div>
+
+          <form onSubmit={login} className="aorders-login">
+            <input
+              className="input"
+              placeholder="ADMIN_SECRET"
+              value={inputSecret}
+              onChange={(e) => setInputSecret(e.target.value)}
+            />
+            <button className="btn btn--primary">Entrar</button>
+          </form>
+
+          {message && <p className="aorders-msg">{message}</p>}
+          <p className="muted">*Panel interno simple.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="aorders-wrap">
+      <div className="aorders-card">
+        <div className="aorders-header">
+          <h2 className="aorders-title">Órdenes</h2>
+
+        <div className="aorders-controls">
+            <Link to="/dashboard" className="btn btn--ghost">Volver al panel</Link>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="select"
+              title="Filtrar por estado"
+            >
+              <option value="pending">Pendientes</option>
+              <option value="paid">Pagadas</option>
+              <option value="cancelled">Canceladas</option>
+              <option value="">Todas</option>
+            </select>
+
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              Auto-refresh
+            </label>
+
+            <button onClick={fetchOrders} className="btn btn--ghost">Actualizar</button>
+            <button onClick={logout} className="btn btn--danger-ghost">Salir</button>
+          </div>
+        </div>
+
+        {message && <div className="banner">{message}</div>}
+        {loading && <p className="muted">Cargando…</p>}
+
+        {!filtered.length ? (
+          <p className="muted">No hay órdenes para mostrar.</p>
+        ) : (
+          <div className="aorders-tablewrap">
+            <table className="aorders-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Teléfono</th>
+                  <th>Método</th>
+                  <th>Estado</th>
+                  <th className="ta-right">Total</th>
+                  <th>Entrega</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filtered.map((o) => {
+                  const d = new Date(o.createdAt);
+                  const envio = o?.shipping?.method === "envio";
+                  const dir = envio ? buildAddress(o?.shipping?.address) : "Retiro en local";
+                  return (
+                    <tr key={o._id} className="aorders-row">
+                      <td>
+                        <div className="nowrap">{d.toLocaleDateString()}</div>
+                        <div className="nowrap muted">{d.toLocaleTimeString()}</div>
+                      </td>
+
+                      <td>
+                        <div className="strong break">{prettyOrder(o)}</div>
+                        <small className="muted">
+                          Ticket: <span className="mono">{o.shippingTicket || "—"}</span>
+                        </small>
+                        <br />
+                        <small className="muted">
+                          ID: <span className="mono">{o._id}</span>{" "}
+                          <button
+                            className="btn btn--small-ghost"
+                            onClick={() => navigator.clipboard.writeText(o._id)}
+                          >
+                            Copiar
+                          </button>
+                        </small>
+                      </td>
+
+                      <td>{o?.buyer?.nombre || "-"}</td>
+                      <td className="mono">{o?.buyer?.telefono || "-"}</td>
+                      <td>{o.paymentMethod}</td>
+                      <td>
+                        <span className={`badge badge--${o.status}`}>{o.status}</span>
+                      </td>
+                      <td className="ta-right strong">${niceMoney(o.total)}</td>
+
+                      <td className="break">
+                        {envio ? (
+                          <>
+                            <div className="strong">Envío a domicilio</div>
+                            <div className="muted">{dir || "—"}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="strong">Retiro en local</div>
+                            <div className="muted">Coordinamos por WhatsApp</div>
+                          </>
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="row-actions">
+                          <button className="btn btn--ghost" onClick={() => setDetail(o)}>
+                            Ver
+                          </button>
+                          {o.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => openActionModal("confirm", o)}
+                                className="btn btn--primary"
+                              >
+                                Confirmar
+                              </button>
+                              <button
+                                onClick={() => openActionModal("reject", o)}
+                                className="btn btn--danger"
+                              >
+                                Rechazar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Detalle */}
+      {detail && (
+        <div className="modal-backdrop" onClick={() => setDetail(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Detalle del pedido</h3>
+              <button onClick={() => setDetail(null)} className="x-btn">✕</button>
+            </div>
+
+            <div className="modal-body">
+              <p><b>Pedido:</b> {prettyOrder(detail)}</p>
+              <p>
+                <b>Ticket:</b> {detail.shippingTicket || "—"}{" "}
+                {detail.shippingTicket && (
+                  <button
+                    className="btn btn--small-ghost"
+                    onClick={() => navigator.clipboard.writeText(detail.shippingTicket)}
+                  >
+                    Copiar
+                  </button>
+                )}
+              </p>
+              <p>
+                <b>ID:</b> <span className="mono">{detail._id}</span>{" "}
+                <button
+                  className="btn btn--small-ghost"
+                  onClick={() => navigator.clipboard.writeText(detail._id)}
+                >
+                  Copiar
+                </button>
+              </p>
+              <p>
+                <b>Estado:</b>{" "}
+                <span className={`badge badge--${detail.status}`}>{detail.status}</span>
+              </p>
+              <p><b>Método:</b> {detail.paymentMethod}</p>
+              <p><b>Total:</b> ${niceMoney(detail.total)}</p>
+              <p><b>Cliente:</b> {detail?.buyer?.nombre || "-"} — {detail?.buyer?.email || "-"}</p>
+              <p><b>Teléfono:</b> {detail?.buyer?.telefono || "-"}</p>
+              <p>
+                <b>Entrega:</b>{" "}
+                {detail?.shipping?.method === "envio"
+                  ? `Envío — ${buildAddress(detail?.shipping?.address)}`
+                  : "Retiro en local"}
+              </p>
+
+              <div className="modal-items">
+                <b>Productos:</b>
+                <ul>
+                  {(detail.items || []).map((it, idx) => (
+                    <li key={idx}>
+                      {it.nombre}
+                      {it?.variant?.size || it?.variant?.color
+                        ? ` (${[it?.variant?.size, it?.variant?.color].filter(Boolean).join(" / ")})`
+                        : ""}{" "}
+                      x{it.cantidad} — ${niceMoney(it.subtotal)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="modal-actions">
+                {detail?.buyer?.telefono && (
+                  <a
+                    href={`https://wa.me/${normalizePhone(detail.buyer.telefono)}?text=${encodeURIComponent(
+                      `Hola ${detail?.buyer?.nombre || ""}, soy AESTHETIC. Tu pedido ${prettyOrder(detail)} está en estado ${detail.status}.`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn--ghost"
+                  >
+                    WhatsApp comprador
+                  </a>
+                )}
+
+                {FRONT_URL && (
+                  <a
+                    href={`${FRONT_URL}/pago/pending?o=${detail._id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn--ghost"
+                  >
+                    Ver en el sitio
+                  </a>
+                )}
+
+                {detail.status === "pending" && (
+                  <>
+                    <button
+                      className="btn btn--primary"
+                      onClick={() => openActionModal("confirm", detail)}
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      className="btn btn--danger"
+                      onClick={() => openActionModal("reject", detail)}
+                    >
+                      Rechazar
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmación */}
+      {actionModal.open && (
+        <div className="modal-backdrop" onClick={closeActionModal}>
+          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className={actionModal.type === "reject" ? "title-red" : "title-green"}>
+              {actionModal.type === "reject" ? "Rechazar orden" : "Confirmar pago"}
+            </h3>
+            <p>
+              {actionModal.type === "reject"
+                ? "Esta acción cancelará la orden. ¿Querés continuar?"
+                : "Vas a marcar la orden como pagada. ¿Confirmás?"}
+            </p>
+
+            <div className="confirm-box">
+              <div><b>Pedido:</b> {prettyOrder(actionModal.order)}</div>
+              <div><b>Cliente:</b> {actionModal.order?.buyer?.nombre || "-"}</div>
+              <div><b>Total:</b> ${niceMoney(actionModal.order?.total)}</div>
+            </div>
+
+            <div className="confirm-actions">
+              <button className="btn btn--ghost" onClick={closeActionModal} disabled={actionModal.loading}>
+                Cancelar
+              </button>
+              {actionModal.type === "reject" ? (
+                <button className="btn btn--danger" onClick={handleActionConfirm} disabled={actionModal.loading}>
+                  {actionModal.loading ? "Procesando…" : "Rechazar"}
+                </button>
+              ) : (
+                <button className="btn btn--primary" onClick={handleActionConfirm} disabled={actionModal.loading}>
+                  {actionModal.loading ? "Procesando…" : "Confirmar"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
