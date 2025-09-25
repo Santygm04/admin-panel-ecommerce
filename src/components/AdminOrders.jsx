@@ -171,6 +171,59 @@ export default function AdminOrders() {
   };
   // ---
 
+  // === NUEVO: acciones de despacho/entrega ===
+  const markShipped = async (order) => {
+    if (!secret || !order) return;
+    const tn = window.prompt("Tracking/código (Andreani, Correo, etc.)", order?.shipping?.trackingNumber || "");
+    if (!tn) return;
+    let company = window.prompt("Compañía (andreani/correo/oca…)", order?.shipping?.company || "andreani") || "";
+    company = company.trim() || "andreani";
+    let method = order?.shipping?.method || "envio";
+    const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
+    if (askMethod) {
+      const m = askMethod.toLowerCase();
+      if (m === "envio" || m === "retiro") method = m;
+    }
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ trackingNumber: tn, company, method }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
+      setMessage("📦 Pedido marcado como despachado");
+      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
+      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error al marcar despachado"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markDelivered = async (order) => {
+    if (!secret || !order) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No se pudo marcar entregado");
+      setMessage("🚚 Pedido marcado como entregado");
+      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
+      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error al marcar entregado"));
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ===========================================
+
   const filtered = useMemo(() => {
     if (!statusFilter) return orders;
     return orders.filter((o) => o.status === statusFilter);
@@ -209,7 +262,7 @@ export default function AdminOrders() {
         <div className="aorders-header">
           <h2 className="aorders-title">Órdenes</h2>
 
-        <div className="aorders-controls">
+          <div className="aorders-controls">
             <Link to="/dashboard" className="btn btn--ghost">Volver al panel</Link>
 
             <select
@@ -265,6 +318,8 @@ export default function AdminOrders() {
                   const d = new Date(o.createdAt);
                   const envio = o?.shipping?.method === "envio";
                   const dir = envio ? buildAddress(o?.shipping?.address) : "Retiro en local";
+                  const canShip = o.status === "paid" && !o?.shipping?.trackingNumber;
+                  const canDeliver = o.status !== "cancelled" && !o?.shipping?.deliveredAt && (o?.shipping?.trackingNumber || o?.shipping?.method === "retiro");
                   return (
                     <tr key={o._id} className="aorders-row">
                       <td>
@@ -309,6 +364,15 @@ export default function AdminOrders() {
                             <div className="muted">Coordinamos por WhatsApp</div>
                           </>
                         )}
+                        {o?.shipping?.trackingNumber && (
+                          <div className="muted">Tracking: <span className="mono">{o.shipping.trackingNumber}</span></div>
+                        )}
+                        {o?.shipping?.company && (
+                          <div className="muted">Compañía: {o.shipping.company}</div>
+                        )}
+                        {o?.shipping?.deliveredAt && (
+                          <div className="muted">Entregado: {new Date(o.shipping.deliveredAt).toLocaleString()}</div>
+                        )}
                       </td>
 
                       <td>
@@ -331,6 +395,16 @@ export default function AdminOrders() {
                                 Rechazar
                               </button>
                             </>
+                          )}
+                          {canShip && (
+                            <button className="btn btn--ghost" onClick={() => markShipped(o)}>
+                              Despachar
+                            </button>
+                          )}
+                          {canDeliver && (
+                            <button className="btn btn--ghost" onClick={() => markDelivered(o)}>
+                              Entregado
+                            </button>
                           )}
                         </div>
                       </td>
@@ -388,6 +462,15 @@ export default function AdminOrders() {
                   ? `Envío — ${buildAddress(detail?.shipping?.address)}`
                   : "Retiro en local"}
               </p>
+              {detail?.shipping?.trackingNumber && (
+                <p><b>Tracking:</b> <span className="mono">{detail.shipping.trackingNumber}</span></p>
+              )}
+              {detail?.shipping?.company && (
+                <p><b>Compañía:</b> {detail.shipping.company}</p>
+              )}
+              {detail?.shipping?.deliveredAt && (
+                <p><b>Entregado:</b> {new Date(detail.shipping.deliveredAt).toLocaleString()}</p>
+              )}
 
               <div className="modal-items">
                 <b>Productos:</b>
@@ -444,6 +527,18 @@ export default function AdminOrders() {
                       Rechazar
                     </button>
                   </>
+                )}
+
+                {/* NUEVO: acciones rápidas en el detalle */}
+                {detail.status === "paid" && !detail?.shipping?.trackingNumber && (
+                  <button className="btn btn--ghost" onClick={() => markShipped(detail)}>
+                    Despachar
+                  </button>
+                )}
+                {(!detail?.shipping?.deliveredAt && (detail?.shipping?.trackingNumber || detail?.shipping?.method === "retiro")) && (
+                  <button className="btn btn--ghost" onClick={() => markDelivered(detail)}>
+                    Entregado
+                  </button>
                 )}
               </div>
             </div>
