@@ -10,7 +10,7 @@ export default function AdminOrders() {
   const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET") || "");
   const [inputSecret, setInputSecret] = useState("");
   const [orders, setOrders] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("paid"); // 👈 ÚNICO CAMBIO (antes: "pending")
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [message, setMessage] = useState("");
