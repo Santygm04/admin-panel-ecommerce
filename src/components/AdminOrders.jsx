@@ -172,36 +172,41 @@ export default function AdminOrders() {
   // ---
 
   // === NUEVO: acciones de despacho/entrega ===
-  const markShipped = async (order) => {
-    if (!secret || !order) return;
-    const tn = window.prompt("Tracking/código (Andreani, Correo, etc.)", order?.shipping?.trackingNumber || "");
-    if (!tn) return;
-    let company = window.prompt("Compañía (andreani/correo/oca…)", order?.shipping?.company || "andreani") || "";
-    company = company.trim() || "andreani";
-    let method = order?.shipping?.method || "envio";
-    const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
-    if (askMethod) {
-      const m = askMethod.toLowerCase();
-      if (m === "envio" || m === "retiro") method = m;
-    }
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-        body: JSON.stringify({ trackingNumber: tn, company, method }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
-      setMessage("📦 Pedido marcado como despachado");
-      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
-      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error al marcar despachado"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // dentro de AdminOrders.jsx
+const markShipped = async (order) => {
+  if (!secret || !order) return;
+  const tn = window.prompt("Tracking/código (Andreani, Correo, etc.) — opcional", order?.shipping?.trackingNumber || "");
+  if (!tn) {
+    const ok = window.confirm("¿Marcar como DESPACHADO sin tracking? Podrás cargar el código más tarde.");
+    if (!ok) return;
+  }
+  let company = window.prompt("Compañía (andreani/correo/oca…) — opcional", order?.shipping?.company || "") || "";
+  company = company.trim();
+  let method = order?.shipping?.method || "envio";
+  const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
+  if (askMethod) {
+    const m = askMethod.toLowerCase();
+    if (m === "envio" || m === "retiro") method = m;
+  }
+  try {
+    setLoading(true);
+    const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+      body: JSON.stringify({ trackingNumber: tn || undefined, company: company || undefined, method }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
+    setMessage("📦 Pedido marcado como despachado");
+    setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
+    if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
+  } catch (e) {
+    setMessage("❌ " + (e.message || "Error al marcar despachado"));
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const markDelivered = async (order) => {
     if (!secret || !order) return;
