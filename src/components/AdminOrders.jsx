@@ -173,40 +173,39 @@ export default function AdminOrders() {
 
   // === NUEVO: acciones de despacho/entrega ===
   // dentro de AdminOrders.jsx
-const markShipped = async (order) => {
-  if (!secret || !order) return;
-  const tn = window.prompt("Tracking/código (Andreani, Correo, etc.) — opcional", order?.shipping?.trackingNumber || "");
-  if (!tn) {
-    const ok = window.confirm("¿Marcar como DESPACHADO sin tracking? Podrás cargar el código más tarde.");
-    if (!ok) return;
-  }
-  let company = window.prompt("Compañía (andreani/correo/oca…) — opcional", order?.shipping?.company || "") || "";
-  company = company.trim();
-  let method = order?.shipping?.method || "envio";
-  const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
-  if (askMethod) {
-    const m = askMethod.toLowerCase();
-    if (m === "envio" || m === "retiro") method = m;
-  }
-  try {
-    setLoading(true);
-    const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-      body: JSON.stringify({ trackingNumber: tn || undefined, company: company || undefined, method }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
-    setMessage("📦 Pedido marcado como despachado");
-    setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
-    if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
-  } catch (e) {
-    setMessage("❌ " + (e.message || "Error al marcar despachado"));
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const markShipped = async (order) => {
+    if (!secret || !order) return;
+    const tn = window.prompt("Tracking/código (Andreani, Correo, etc.) — opcional", order?.shipping?.trackingNumber || "");
+    if (!tn) {
+      const ok = window.confirm("¿Marcar como DESPACHADO sin tracking? Podrás cargar el código más tarde.");
+      if (!ok) return;
+    }
+    let company = window.prompt("Compañía (andreani/correo/oca…) — opcional", order?.shipping?.company || "") || "";
+    company = company.trim();
+    let method = order?.shipping?.method || "envio";
+    const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
+    if (askMethod) {
+      const m = askMethod.toLowerCase();
+      if (m === "envio" || m === "retiro") method = m;
+    }
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ trackingNumber: tn || undefined, company: company || undefined, method }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
+      setMessage("📦 Pedido marcado como despachado");
+      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
+      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error al marcar despachado"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const markDelivered = async (order) => {
     if (!secret || !order) return;
@@ -223,6 +222,28 @@ const markShipped = async (order) => {
       if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
     } catch (e) {
       setMessage("❌ " + (e.message || "Error al marcar entregado"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 👇 NUEVO: eliminar órdenes canceladas
+  const deleteOrder = async (order) => {
+    if (!secret || !order) return;
+    if (!window.confirm("¿Eliminar definitivamente esta orden cancelada? Esta acción no se puede deshacer.")) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/api/payments/order/${order._id}`, {
+        method: "DELETE",
+        headers: { "x-admin-secret": secret },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "No se pudo eliminar");
+      setOrders(arr => arr.filter(o => o._id !== order._id));
+      if (detail && detail._id === order._id) setDetail(null);
+      setMessage("🗑️ Orden eliminada");
+    } catch (e) {
+      setMessage("❌ " + (e.message || "Error al eliminar"));
     } finally {
       setLoading(false);
     }
@@ -324,7 +345,7 @@ const markShipped = async (order) => {
                   const envio = o?.shipping?.method === "envio";
                   const dir = envio ? buildAddress(o?.shipping?.address) : "Retiro en local";
                   const canShip = o.status === "paid" && !o?.shipping?.trackingNumber;
-                  const canDeliver = o.status !== "cancelled" && !o?.shipping?.deliveredAt && (o?.shipping?.trackingNumber || o?.shipping?.method === "retiro");
+                  const canDeliver = o.status === "paid" && !o?.shipping?.deliveredAt && (o?.shipping?.trackingNumber || o?.shipping?.method === "retiro"); // 👈 ahora exige paid
                   return (
                     <tr key={o._id} className="aorders-row">
                       <td>
@@ -409,6 +430,11 @@ const markShipped = async (order) => {
                           {canDeliver && (
                             <button className="btn btn--ghost" onClick={() => markDelivered(o)}>
                               Entregado
+                            </button>
+                          )}
+                          {o.status === "cancelled" && (
+                            <button className="btn btn--danger-ghost" onClick={() => deleteOrder(o)}>
+                              Eliminar
                             </button>
                           )}
                         </div>
@@ -543,6 +569,11 @@ const markShipped = async (order) => {
                 {(!detail?.shipping?.deliveredAt && (detail?.shipping?.trackingNumber || detail?.shipping?.method === "retiro")) && (
                   <button className="btn btn--ghost" onClick={() => markDelivered(detail)}>
                     Entregado
+                  </button>
+                )}
+                {detail.status === "cancelled" && (
+                  <button className="btn btn--danger-ghost" onClick={() => deleteOrder(detail)}>
+                    Eliminar
                   </button>
                 )}
               </div>
