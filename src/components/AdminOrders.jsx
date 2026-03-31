@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
+import "./AdminOrders.css"
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const ADMIN_WA = (import.meta.env.VITE_ADMIN_PHONE || "").replace(/\D/g, "");
 
