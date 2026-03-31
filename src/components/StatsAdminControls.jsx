@@ -6,13 +6,13 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 export default function StatsAdminControls({ onAfterAction, className = "" }) {
   const [days, setDays] = useState(30);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg,  setMsg]  = useState("");
 
   const adminSecret = sessionStorage.getItem("ADMIN_SECRET") || "";
 
   async function call(method, path, body) {
     if (!adminSecret) {
-      setMsg("Falta ADMIN_SECRET en sessionStorage (loggate en Órdenes)");
+      setMsg("Falta ADMIN_SECRET (loggate en Órdenes)");
       return null;
     }
     setBusy(true);
@@ -39,55 +39,82 @@ export default function StatsAdminControls({ onAfterAction, className = "" }) {
     }
   }
 
-  const handleClear = () => call("DELETE", "/api/payments/stats/snapshot/clear");
-  const handleRun = () => call("POST", "/api/payments/stats/snapshot/run", { days: Number(days) || 30 });
-  const handleReset = () => call("POST", "/api/payments/stats/snapshot/reset", { days: Number(days) || 30 });
-
   const todayYMD = new Date().toISOString().slice(0, 10);
-  const handleRecalcToday = () => call("POST", `/api/payments/stats/snapshot/day/${todayYMD}`);
+
+  const BTNS = [
+    {
+      label: "Reconstruir",
+      variant: "ghost",
+      onClick: () => call("POST",   "/api/payments/stats/snapshot/run",          { days: Number(days) || 30 }),
+    },
+    {
+      label: "Limpiar",
+      variant: "danger",
+      onClick: () => call("DELETE", "/api/payments/stats/snapshot/clear"),
+    },
+    {
+      label: "Reset",
+      variant: "primary",
+      onClick: () => call("POST",   "/api/payments/stats/snapshot/reset",         { days: Number(days) || 30 }),
+    },
+    {
+      label: "Hoy",
+      variant: "ghost",
+      onClick: () => call("POST",   `/api/payments/stats/snapshot/day/${todayYMD}`),
+    },
+  ];
+
+  const variantCls = {
+    primary: "bg-gradient-to-r from-[#10b981] to-[#22c55e] text-white",
+    ghost:   "bg-white text-[#b51775] border-2 border-[#ffd0ea]",
+    danger:  "bg-white text-[#ef4444] border-2 border-[#fecaca]",
+  };
 
   return (
-    <div className={`stats-admin ${className}`}>
-      <div className="row">
-        <label className="lbl">Días</label>
+    <div className={`flex flex-col gap-2 w-full ${className}`}>
+
+      {/* Fila 1: input días */}
+      <div className="flex items-center gap-2">
+        <label htmlFor="sa-days" className="text-[#6b6b6b] text-sm whitespace-nowrap">
+          Días
+        </label>
         <input
-          type="number"
-          min={1}
-          max={365}
+          id="sa-days"
+          type="number" min={1} max={365}
           value={days}
           onChange={(e) => setDays(e.target.value)}
-          className="in"
+          disabled={busy}
+          className="w-20 h-9 border-2 border-[#f4c5df] rounded-xl px-2 outline-none bg-white text-sm focus:border-[#d63384] disabled:opacity-50"
         />
-        <button className="btn btn--ghost" disabled={busy} onClick={handleRun}>Reconstruir</button>
-        <button className="btn btn--danger-ghost" disabled={busy} onClick={handleClear}>Limpiar</button>
-        <button className="btn btn--primary" disabled={busy} onClick={handleReset}>Reset (clear+run)</button>
-        <button className="btn btn--ghost" disabled={busy} onClick={handleRecalcToday}>Recalcular hoy</button>
       </div>
-      {msg && <p className="mini-msg">{msg}</p>}
 
-      {/* Estilos mínimos locales (no pisa tu theme) */}
-      <style>{`
-        .stats-admin { display:flex; flex-direction:column; gap:6px; }
-        .stats-admin .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-        .stats-admin .lbl { color:#6b6b6b; font-size:.9rem; }
-        .stats-admin .in {
-          width:80px; height:36px; border:1.5px solid #f4c5df; border-radius:10px; padding:0 .6rem;
-          outline:none; background:#fff;
-        }
-        .stats-admin .mini-msg { margin:4px 0 0; color:#6b6b6b; font-size:.9rem; }
-        .btn{
-          border:none; border-radius:999px; padding:.45rem .85rem; font-weight:900; cursor:pointer;
-        }
-        .btn--primary{
-          background: linear-gradient(95deg,#10b981 0%,#22c55e 100%); color:#fff;
-        }
-        .btn--ghost{
-          background:#fff; color:#b51775; border:2px solid #ffd0ea;
-        }
-        .btn--danger-ghost{
-          background:#fff; color:#ef4444; border:2px solid #fecaca;
-        }
-      `}</style>
+      {/* Fila 2: botones
+          Móvil:  grilla 2×2
+          sm+:    fila flex
+      */}
+      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        {BTNS.map(({ label, variant, onClick }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            disabled={busy}
+            className={[
+              "rounded-xl px-3 py-2 text-xs font-black cursor-pointer transition-all duration-150",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              "sm:rounded-full sm:flex-1 sm:min-w-[90px]",
+              variantCls[variant],
+            ].join(" ")}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Mensaje de resultado */}
+      {msg && (
+        <p className="text-[#6b6b6b] text-xs m-0">{msg}</p>
+      )}
     </div>
   );
 }
