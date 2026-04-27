@@ -1,473 +1,549 @@
+// AdminOrders.jsx — v5 Premium
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import "./AdminOrders.css"
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+import "./AdminOrders.css";
+
+const API_URL  = import.meta.env.VITE_API_URL  || "http://localhost:4000";
 const ADMIN_WA = (import.meta.env.VITE_ADMIN_PHONE || "").replace(/\D/g, "");
 
+/* helpers */
+const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
+const adr  = (a = {}) =>
+  [[a.calle, a.numero].filter(Boolean).join(" "), a.piso, a.ciudad, a.provincia, a.cp]
+    .filter(Boolean).join(", ");
+const tel  = (r) => r ? String(r).replace(/\D/g, "") : "";
+const shrt = (id) => id ? String(id).slice(-8) : "—";
+const num  = (o) => o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || `#${shrt(o?._id)}`;
+const fd   = (d) => d.toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit", year:"2-digit" });
+const ft   = (d) => d.toLocaleTimeString("es-AR", { hour:"2-digit", minute:"2-digit" });
+
+const ST = {
+  pending:   { lbl:"Pendiente",  cls:"ao-s-pending"   },
+  paid:      { lbl:"Pagada",     cls:"ao-s-paid"      },
+  cancelled: { lbl:"Cancelada",  cls:"ao-s-cancelled" },
+  rejected:  { lbl:"Rechazada",  cls:"ao-s-rejected"  },
+  shipped:   { lbl:"Despachada", cls:"ao-s-shipped"   },
+  deleted:   { lbl:"Eliminada",  cls:"ao-s-deleted"   },
+};
+
+const TABS = [
+  { v:"pending",   ico:"⏳", lbl:"Pendientes"  },
+  { v:"paid",      ico:"✅", lbl:"Pagadas"     },
+  { v:"cancelled", ico:"❌", lbl:"Canceladas"  },
+  { v:"deleted",   ico:"🗑", lbl:"Eliminadas"  },
+  { v:"",          ico:"📋", lbl:"Todas"       },
+];
+
+function Badge({ s }) {
+  const d = ST[s] || { lbl: s, cls: "ao-s-deleted" };
+  return <span className={`ao-badge ${d.cls}`}>{d.lbl}</span>;
+}
+
+const waTxt = (o) => {
+  const envio = o?.shipping?.method === "envio";
+  const lines = (o.items||[]).map(it => {
+    const vp = it?.variant?.size||it?.variant?.color
+      ? ` (${[it?.variant?.size,it?.variant?.color].filter(Boolean).join(" / ")})`:"";
+    return `• ${it.nombre}${vp} ×${it.cantidad} — ${$m(it.subtotal)}`;
+  }).join("\n");
+  return [
+    "✅ *Pedido confirmado*","",
+    `*Pedido:* ${num(o)}`,`*Pago:* ${o.paymentMethod}`,"",
+    `*Cliente:* ${o?.buyer?.nombre||"-"}`,`*Tel:* ${o?.buyer?.telefono||"-"}`,"",
+    `*Entrega:* ${envio?"Envío":("Retiro en local")}`,
+    ...(envio?[`*Dir:* ${adr(o?.shipping?.address||{})}`]:[]),"",
+    "*Productos:*",lines||"—","",`*Total:* ${$m(o.total)}`,
+  ].join("\n");
+};
+
 export default function AdminOrders() {
-  const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET") || "");
-  const [inputSecret, setInputSecret] = useState("");
+  const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET")||"");
+  const [iSec,   setISec]   = useState("");
   const [orders, setOrders] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("paid");
-  const [loading, setLoading] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [message, setMessage] = useState("");
-
+  const [tab,    setTab]    = useState("pending");
+  const [load,   setLoad]   = useState(false);
+  const [autoR,  setAutoR]  = useState(true);
+  const [msg,    setMsg]    = useState("");
   const [detail, setDetail] = useState(null);
-  const [actionModal, setActionModal] = useState({ open: false, type: null, order: null, loading: false });
-  const [deleteModal, setDeleteModal] = useState({ open: false, order: null, loading: false });
+  const [actM,   setActM]   = useState({open:false,type:null,order:null,loading:false});
+  const [delM,   setDelM]   = useState({open:false,order:null,loading:false});
 
-  const niceMoney = (n) =>
-    typeof n === "number" ? n.toLocaleString("es-AR") : String(n || "");
-
-  const buildAddress = (a = {}) =>
-    [[a.calle, a.numero].filter(Boolean).join(" "), a.piso, a.ciudad, a.provincia, a.cp]
-      .filter(Boolean).join(", ");
-
-  const normalizePhone = (raw) => (raw ? String(raw).replace(/\D/g, "") : "");
-  const shortId = (id) => (id ? String(id).slice(-6).toUpperCase() : "—");
-  const prettyOrder = (o) =>
-    o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || `AE-${shortId(o?._id)}`;
-
-  const orderTextForWhatsApp = (o) => {
-    const envio = o?.shipping?.method === "envio";
-    const addr = envio ? buildAddress(o?.shipping?.address || {}) : "—";
-    const code = prettyOrder(o);
-    const itemsLines = (o.items || []).map((it) => {
-      const varPart = it?.variant?.size || it?.variant?.color
-        ? ` (${[it?.variant?.size, it?.variant?.color].filter(Boolean).join(" / ")})`
-        : "";
-      return `• ${it.nombre}${varPart} x${it.cantidad} — $${niceMoney(it.subtotal)}`;
-    }).join("\n");
-
-    return ["✅ *Pedido confirmado*","",`*Pedido:* ${code}`,`*Estado:* ${o.status}`,`*Pago:* ${o.paymentMethod}`,"",`*Cliente:* ${o?.buyer?.nombre || "-"}`,`*Tel:* ${o?.buyer?.telefono || "-"}`,`*Email:* ${o?.buyer?.email || "-"}`,"",`*Entrega:* ${envio ? "Envío a domicilio" : "Retiro en local"}`,`*Dirección:* ${envio ? addr : "—"}`,"",`*Productos:*`,itemsLines || "—","",`*Total:* $${niceMoney(o.total)}`].join("\n");
-  };
-
-  const fetchOrders = async () => {
+  const fetch_ = async () => {
     if (!secret) return;
-    setLoading(true);
+    setLoad(true);
     try {
-      const url = new URL(`${API_URL}/api/payments/orders`);
-      if (statusFilter) url.searchParams.set("status", statusFilter);
-      const res = await fetch(url, { headers: { "x-admin-secret": secret } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No autorizado o error de servidor");
-      setOrders(data.orders || []);
-      setMessage("");
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error cargando órdenes"));
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
+      const u = new URL(`${API_URL}/api/payments/orders`);
+      if (tab) u.searchParams.set("status", tab);
+      const r = await fetch(u, {headers:{"x-admin-secret":secret}});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.message||"Error");
+      setOrders(d.orders||[]); setMsg("");
+    } catch(e) { setMsg("❌ "+e.message); setOrders([]); }
+    finally    { setLoad(false); }
   };
 
-  useEffect(() => {
-    fetchOrders();
-    if (!secret || !autoRefresh) return;
-    const id = setInterval(fetchOrders, 10000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret, statusFilter, autoRefresh]);
+  useEffect(()=>{
+    fetch_();
+    if (!secret||!autoR) return;
+    const id=setInterval(fetch_,10000);
+    return ()=>clearInterval(id);
+    // eslint-disable-next-line
+  },[secret,tab,autoR]);
 
-  const login = (e) => {
-    e.preventDefault();
-    if (!inputSecret.trim()) return;
-    sessionStorage.setItem("ADMIN_SECRET", inputSecret.trim());
-    setSecret(inputSecret.trim());
-    setInputSecret("");
-    setTimeout(fetchOrders, 150);
+  const login = e => {
+    e.preventDefault(); if (!iSec.trim()) return;
+    sessionStorage.setItem("ADMIN_SECRET",iSec.trim());
+    setSecret(iSec.trim()); setISec(""); setTimeout(fetch_,150);
   };
-
   const logout = () => {
     sessionStorage.removeItem("ADMIN_SECRET");
-    setSecret("");
-    setOrders([]);
-    setDetail(null);
+    setSecret(""); setOrders([]); setDetail(null);
   };
 
-  const openActionModal = (type, order) => setActionModal({ open: true, type, order, loading: false });
-  const closeActionModal = () => setActionModal({ open: false, type: null, order: null, loading: false });
+  const openAct  = (type,order) => setActM({open:true,type,order,loading:false});
+  const closeAct = () => setActM({open:false,type:null,order:null,loading:false});
+  const openDel  = (order) => setDelM({open:true,order,loading:false});
+  const closeDel = () => setDelM({open:false,order:null,loading:false});
 
-  const openDeleteModal = (order) => setDeleteModal({ open: true, order, loading: false });
-  const closeDeleteModal = () => setDeleteModal({ open: false, order: null, loading: false });
-
-  const handleActionConfirm = async () => {
-    if (!secret || !actionModal.order) return;
-    const { type, order } = actionModal;
+  const doAction = async () => {
+    if (!secret||!actM.order) return;
+    const {type,order} = actM;
+    setActM(m=>({...m,loading:true}));
     try {
-      setActionModal((m) => ({ ...m, loading: true }));
-      const endpoint = type === "confirm"
+      const ep = type==="confirm"
         ? `${API_URL}/api/payments/order/${order._id}/confirm`
         : `${API_URL}/api/payments/order/${order._id}/reject`;
+      const r = await fetch(ep,{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:"{}"});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.message||"Error");
+      if (type==="confirm") {
+        setMsg("✅ Orden confirmada y notificada");
+        setOrders(a=>a.map(o=>o._id===order._id?{...o,status:"paid"}:o));
+        if (detail?._id===order._id) setDetail(x=>({...x,status:"paid"}));
+        const lnk = d?.whatsappLink||(ADMIN_WA?`https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt({...order,status:"paid"}))}`:null);
+        if (lnk) window.open(lnk,"_blank","noopener,noreferrer");
+      } else {
+        setMsg("🚫 Orden rechazada");
+        setOrders(a=>a.map(o=>o._id===order._id?{...o,status:"cancelled"}:o));
+        if (detail?._id===order._id) setDetail(x=>({...x,status:"cancelled"}));
+      }
+      closeAct();
+    } catch(e) { setMsg("❌ "+e.message); setActM(m=>({...m,loading:false})); }
+  };
 
-      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify({}) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No se pudo completar la acción");
+  const doDel = async () => {
+    if (!secret||!delM.order) return;
+    setDelM(m=>({...m,loading:true}));
+    try {
+      const r = await fetch(`${API_URL}/api/payments/order/${delM.order._id}`,{method:"DELETE",headers:{"x-admin-secret":secret}});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.message||"Error");
+      // Actualizar status a "deleted" en el array local en lugar de filtrar
+      // Así si el tab es "deleted" aparece, si es otro desaparece
+      setOrders(a=>a.map(o=>o._id===delM.order._id ? {...o,status:"deleted"} : o));
+      if (detail?._id===delM.order._id) setDetail(null);
+      setMsg("🗑 Orden eliminada — aparece en tab 'Eliminadas'");
+      closeDel();
+      // Recargar desde el backend para tener el estado real
+      setTimeout(()=>fetch_(), 300);
+    } catch(e) { setMsg("❌ "+e.message); setDelM(m=>({...m,loading:false})); }
+  };
 
-      if (type === "confirm") {
-        setMessage("✅ Orden confirmada");
-        setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, status: "paid" } : o)));
-        if (detail && detail._id === order._id) setDetail({ ...detail, status: "paid" });
-        if (data?.whatsappLink) {
-          window.open(data.whatsappLink, "_blank", "noopener,noreferrer");
-        } else if (ADMIN_WA) {
-          const txt = orderTextForWhatsApp({ ...order, status: "paid" });
-          window.open(`https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(txt)}`, "_blank", "noopener,noreferrer");
+  const doShip = async (order) => {
+    const isRetiro = order?.shipping?.method === "retiro";
+    const tn = isRetiro ? "" : (window.prompt("Número de tracking (opcional):", order?.shipping?.trackingNumber||"")||"");
+    if (!isRetiro && tn === null) return;
+    const co = isRetiro ? "" : (window.prompt("Empresa de envío (ej: Andreani, OCA):", order?.shipping?.company||"")||"").trim();
+    let mt = order?.shipping?.method || "envio";
+    try {
+      setLoad(true);
+      const r = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`,{
+        method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},
+        body:JSON.stringify({trackingNumber:tn||undefined,company:co||undefined,method:mt}),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.message||"Error");
+      setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d.shipping}:o));
+      if (detail?._id===order._id) setDetail(x=>({...x,shipping:d.shipping}));
+      if (isRetiro) {
+        // Para retiro: marcar como entregado automáticamente
+        const r2 = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`,{method:"POST",headers:{"x-admin-secret":secret}});
+        const d2 = await r2.json();
+        if (r2.ok) {
+          setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d2.shipping}:o));
+          if (detail?._id===order._id) setDetail(x=>({...x,shipping:d2.shipping}));
+          setMsg("🏪 Pedido marcado como listo para retirar");
         }
       } else {
-        setMessage("🚫 Orden rechazada");
-        setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, status: "cancelled" } : o)));
-        if (detail && detail._id === order._id) setDetail({ ...detail, status: "cancelled" });
+        setMsg("📦 Pedido despachado");
       }
-      closeActionModal();
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error al ejecutar la acción"));
-      setActionModal((m) => ({ ...m, loading: false }));
-    }
+    } catch(e){setMsg("❌ "+e.message);}
+    finally{setLoad(false);}
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!secret || !deleteModal.order) return;
-    const order = deleteModal.order;
+  const doRetiro = async (order) => {
     try {
-      setDeleteModal((m) => ({ ...m, loading: true }));
-      const res = await fetch(`${API_URL}/api/payments/order/${order._id}`, {
-        method: "DELETE",
-        headers: { "x-admin-secret": secret },
+      setLoad(true);
+      // ship sin tracking (solo marca shippedAt)
+      const r1 = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-admin-secret":secret},
+        body: JSON.stringify({ method: "retiro" }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No se pudo eliminar");
-      setOrders((arr) => arr.filter((o) => o._id !== order._id));
-      if (detail && detail._id === order._id) setDetail(null);
-      setMessage("🗑️ Orden eliminada");
-      closeDeleteModal();
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error al eliminar"));
-      setDeleteModal((m) => ({ ...m, loading: false }));
-    }
+      const d1 = await r1.json();
+      if (!r1.ok) throw new Error(d1?.message || "Error al marcar listo");
+      // inmediatamente delivered
+      const r2 = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`, {
+        method:"POST",
+        headers:{"x-admin-secret":secret},
+      });
+      const d2 = await r2.json();
+      if (!r2.ok) throw new Error(d2?.message || "Error al marcar entregado");
+      setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d2.shipping}:o));
+      if (detail?._id===order._id) setDetail(x=>({...x,shipping:d2.shipping}));
+      setMsg("🏪 Pedido marcado como retirado");
+    } catch(e){ setMsg("❌ "+e.message); }
+    finally{ setLoad(false); }
   };
 
-  const markShipped = async (order) => {
-    if (!secret || !order) return;
-    const tn = window.prompt("Tracking/código (opcional)", order?.shipping?.trackingNumber || "");
-    if (!tn) { const ok = window.confirm("¿Marcar como DESPACHADO sin tracking?"); if (!ok) return; }
-    let company = (window.prompt("Compañía (andreani/correo/oca…) — opcional", order?.shipping?.company || "") || "").trim();
-    let method = order?.shipping?.method || "envio";
-    const askMethod = window.prompt("Método (envio/retiro) — Enter para dejar igual", method);
-    if (askMethod) { const m = askMethod.toLowerCase(); if (m === "envio" || m === "retiro") method = m; }
-
+  const doDeliv = async (order) => {
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-        body: JSON.stringify({ trackingNumber: tn || undefined, company: company || undefined, method }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No se pudo marcar despachado");
-      setMessage("📦 Pedido marcado como despachado");
-      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
-      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error al marcar despachado"));
-    } finally {
-      setLoading(false);
-    }
+      setLoad(true);
+      const r = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`,{method:"POST",headers:{"x-admin-secret":secret}});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.message||"Error");
+      setMsg("🚚 Pedido entregado");
+      setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d.shipping}:o));
+      if (detail?._id===order._id) setDetail(x=>({...x,shipping:d.shipping}));
+    } catch(e){setMsg("❌ "+e.message);}
+    finally{setLoad(false);}
   };
 
-  const markDelivered = async (order) => {
-    if (!secret || !order) return;
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`, {
-        method: "POST",
-        headers: { "x-admin-secret": secret },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "No se pudo marcar entregado");
-      setMessage("🚚 Pedido marcado como entregado");
-      setOrders((arr) => arr.map((o) => (o._id === order._id ? { ...o, shipping: data.shipping } : o)));
-      if (detail && detail._id === order._id) setDetail((d) => ({ ...d, shipping: data.shipping }));
-    } catch (e) {
-      setMessage("❌ " + (e.message || "Error al marcar entregado"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const rows = useMemo(()=>tab?orders.filter(o=>o.status===tab):orders,[orders,tab]);
 
-  const filtered = useMemo(() => {
-    if (!statusFilter) return orders;
-    return orders.filter((o) => o.status === statusFilter);
-  }, [orders, statusFilter]);
-
-  if (!secret) {
-    return (
-      <section className="aorders-wrap">
-        <div className="aorders-card">
-          <div className="aorders-header">
-            <h2 className="aorders-title">Órdenes</h2>
-            <Link to="/dashboard" className="btn btn--ghost">← Volver al panel</Link>
-          </div>
-          <form onSubmit={login} className="aorders-login">
-            <input className="input" placeholder="ADMIN_SECRET" value={inputSecret} onChange={(e) => setInputSecret(e.target.value)} />
-            <button className="btn btn--primary" type="submit">Entrar</button>
-          </form>
-          {message && <p className="aorders-msg">{message}</p>}
-          <p className="muted" style={{ marginTop: 8 }}>*Panel interno simple.</p>
+  /* ── LOGIN ── */
+  if (!secret) return (
+    <div className="ao-page">
+      <nav className="ao-nav">
+        <div className="ao-nav-left">
+          <div className="ao-nav-logo">🧾</div>
+          <div><div className="ao-nav-title">Órdenes</div><div className="ao-nav-subtitle">Panel Admin</div></div>
         </div>
-      </section>
-    );
-  }
+        <Link to="/dashboard" className="ao-nav-btn">← Volver</Link>
+      </nav>
+      <div className="ao-login-wrap">
+        <p className="ao-login-title">Ingresá tu clave de admin</p>
+        <form onSubmit={login} style={{display:"flex",flexDirection:"column",gap:10}}>
+          <input className="ao-login-input" type="password" placeholder="Clave de administrador"
+            value={iSec} onChange={e=>setISec(e.target.value)}/>
+          <button className="ao-btn ao-btn-confirm ao-btn-full" type="submit" style={{height:46}}>
+            Entrar al panel
+          </button>
+        </form>
+        {msg && <p className="ao-msg">{msg}</p>}
+      </div>
+    </div>
+  );
 
+  /* ── MAIN ── */
   return (
-    <section className="aorders-wrap">
-      <div className="aorders-card">
-        <div className="aorders-header">
-          <h2 className="aorders-title">🧾 Órdenes</h2>
-          <div className="aorders-controls">
-            <Link to="/dashboard" className="btn btn--ghost">← Volver al panel</Link>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="select" title="Filtrar por estado">
-              <option value="pending">Pendientes</option>
-              <option value="paid">Pagadas</option>
-              <option value="cancelled">Canceladas</option>
-              <option value="">Todas</option>
-            </select>
-            <label className="check">
-              <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
-              Auto-refresh
-            </label>
-            <button onClick={fetchOrders} className="btn btn--ghost" type="button">Actualizar</button>
-            <button onClick={logout} className="btn btn--danger-ghost" type="button">Salir</button>
+    <div className="ao-page">
+
+      {/* Nav */}
+      <nav className="ao-nav">
+        <div className="ao-nav-left">
+          <div className="ao-nav-logo">🧾</div>
+          <div>
+            <div className="ao-nav-title">Órdenes{load && <span style={{fontSize:".7rem",fontWeight:500,color:"#b0aab8",marginLeft:6}}>cargando…</span>}</div>
+            <div className="ao-nav-subtitle">{rows.length} resultado{rows.length!==1?"s":""}</div>
           </div>
         </div>
+        <div className="ao-nav-right">
+          <label className="ao-autorefresh">
+            <input type="checkbox" checked={autoR} onChange={e=>setAutoR(e.target.checked)}/>
+            Auto
+          </label>
+          <button onClick={fetch_} className="ao-nav-btn" type="button" title="Actualizar">↻</button>
+          <Link to="/dashboard" className="ao-nav-btn">← Panel</Link>
+          <button onClick={logout} className="ao-nav-btn ao-nav-btn-ghost" type="button">Salir</button>
+        </div>
+      </nav>
 
-        {message && <div className="banner">{message}</div>}
-        {loading && <p className="muted">Cargando…</p>}
+      <div className="ao-main">
 
-        {!filtered.length ? (
-          <p className="muted">No hay órdenes para mostrar.</p>
-        ) : (
-          <>
-            {/* CARDS MOBILE */}
-            <div className="aorders-cards">
-              {filtered.map((o) => {
-                const d = new Date(o.createdAt);
-                const envio = o?.shipping?.method === "envio";
-                const canShip = o.status === "paid" && !o?.shipping?.trackingNumber;
-                const canDeliver = o.status === "paid" && !o?.shipping?.deliveredAt && (o?.shipping?.trackingNumber || o?.shipping?.method === "retiro");
+        {/* Tabs */}
+        <div className="ao-tabs">
+          {TABS.map(t=>(
+            <button key={t.v} type="button"
+              className={`ao-tab${tab===t.v?" ao-tab-on":""}`}
+              onClick={()=>setTab(t.v)}>
+              {t.ico} {t.lbl}
+            </button>
+          ))}
+        </div>
 
-                return (
-                  <div key={o._id} className="order-card">
-                    <div className="order-card-header">
-                      <div>
-                        <div className="order-card-id">{prettyOrder(o)}</div>
-                        <span className={`badge badge--${o.status}`}>{o.status}</span>
-                      </div>
-                      <div className="order-card-date">
-                        {d.toLocaleDateString()}<br />
-                        {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </div>
+        {msg && <div className="ao-banner">{msg}</div>}
+
+        {!rows.length ? (
+          <div className="ao-empty">
+            <span className="ao-empty-emoji">📭</span>
+            <p className="ao-empty-text">No hay órdenes en esta sección</p>
+          </div>
+        ) : (<>
+
+          {/* ══ CARDS MÓVIL ══ */}
+          <div className="ao-cards">
+            {rows.map(o=>{
+              const d=new Date(o.createdAt);
+              const envio=o?.shipping?.method==="envio";
+              const isRetiro=o?.shipping?.method==="retiro";
+              const canShip=o.status==="paid"&&!o?.shipping?.shippedAt&&!isRetiro;
+              const canRetiro=o.status==="paid"&&!o?.shipping?.deliveredAt&&isRetiro;
+              const canDeliv=o.status==="paid"&&!o?.shipping?.deliveredAt&&!isRetiro&&!!o?.shipping?.trackingNumber;
+              return (
+                <div key={o._id} className="ao-card">
+                  <div className="ao-card-top">
+                    <div>
+                      <div className="ao-card-num">{num(o)}</div>
+                      {o.shippingTicket&&<span className="ao-card-ticket">{o.shippingTicket}</span>}
                     </div>
-                    <div className="order-card-body">
-                      <div className="order-card-field"><span>Cliente</span><span>{o?.buyer?.nombre || "—"}</span></div>
-                      <div className="order-card-field"><span>Teléfono</span><span className="mono">{o?.buyer?.telefono || "—"}</span></div>
-                      <div className="order-card-field"><span>Método pago</span><span>{o.paymentMethod || "—"}</span></div>
-                      <div className="order-card-field"><span>Total</span><span className="order-card-total">${niceMoney(o.total)}</span></div>
-                      <div className="order-card-field full"><span>Entrega</span><span>{envio ? `Envío — ${buildAddress(o?.shipping?.address || {})}` : "Retiro en local"}</span></div>
-                      {o?.shipping?.trackingNumber && (
-                        <div className="order-card-field full"><span>Tracking</span><span className="mono">{o.shipping.trackingNumber}</span></div>
-                      )}
-                    </div>
-                    <div className="order-card-actions">
-                      <button className="btn btn--ghost" onClick={() => setDetail(o)} type="button">Ver detalle</button>
-                      {o.status === "pending" && (
-                        <>
-                          <button className="btn btn--primary" onClick={() => openActionModal("confirm", o)} type="button">Confirmar</button>
-                          <button className="btn btn--danger" onClick={() => openActionModal("reject", o)} type="button">Rechazar</button>
-                        </>
-                      )}
-                      {canShip && <button className="btn btn--ghost" onClick={() => markShipped(o)} type="button">📦 Despachar</button>}
-                      {canDeliver && <button className="btn btn--ghost" onClick={() => markDelivered(o)} type="button">✅ Entregado</button>}
-                      <button className="btn btn--danger-ghost" onClick={() => openDeleteModal(o)} type="button">🗑 Eliminar</button>
+                    <div className="ao-card-right">
+                      <Badge s={o.status}/>
+                      <div className="ao-card-ts">{fd(d)}<br/>{ft(d)}</div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* TABLE DESKTOP */}
-            <div className="aorders-tablewrap">
-              <table className="aorders-table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th><th>Pedido</th><th>Cliente</th><th>Teléfono</th>
-                    <th>Método</th><th>Estado</th><th className="ta-right">Total</th>
-                    <th>Entrega</th><th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((o) => {
-                    const d = new Date(o.createdAt);
-                    const envio = o?.shipping?.method === "envio";
-                    const dir = envio ? buildAddress(o?.shipping?.address) : "Retiro en local";
-                    const canShip = o.status === "paid" && !o?.shipping?.trackingNumber;
-                    const canDeliver = o.status === "paid" && !o?.shipping?.deliveredAt && (o?.shipping?.trackingNumber || o?.shipping?.method === "retiro");
+                  <div className="ao-card-grid">
+                    <div className="ao-kv">
+                      <span className="ao-kv-k">Cliente</span>
+                      <span className="ao-kv-v">{o?.buyer?.nombre||"—"}</span>
+                    </div>
+                    <div className="ao-kv">
+                      <span className="ao-kv-k">Teléfono</span>
+                      <span className="ao-kv-v ao-kv-v-mono">{o?.buyer?.telefono||"—"}</span>
+                    </div>
+                    <div className="ao-kv">
+                      <span className="ao-kv-k">Método de pago</span>
+                      <span className="ao-kv-v" style={{textTransform:"capitalize"}}>{o.paymentMethod||"—"}</span>
+                    </div>
+                    <div className="ao-kv">
+                      <span className="ao-kv-k">Total</span>
+                      <span className="ao-kv-v ao-kv-v-total">{$m(o.total)}</span>
+                    </div>
+                    <div className="ao-kv ao-kv-full">
+                      <span className="ao-kv-k">Entrega</span>
+                      <span className="ao-kv-v">{envio?`📦 Envío — ${adr(o?.shipping?.address)}`:"🏪 Retiro en local"}</span>
+                    </div>
+                    {o?.shipping?.trackingNumber&&(
+                      <div className="ao-kv ao-kv-full">
+                        <span className="ao-kv-k">Tracking</span>
+                        <span className="ao-kv-v ao-kv-v-mono">{o.shipping.trackingNumber}</span>
+                      </div>
+                    )}
+                  </div>
 
-                    return (
-                      <tr key={o._id} className="aorders-row">
-                        <td>
-                          <div className="nowrap">{d.toLocaleDateString()}</div>
-                          <div className="nowrap muted">{d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
-                        </td>
-                        <td>
-                          <div className="strong break">{prettyOrder(o)}</div>
-                          <small className="muted">Ticket: <span className="mono">{o.shippingTicket || "—"}</span></small>
-                          <br />
-                          <small className="muted">ID: <span className="mono">{o._id}</span>{" "}
-                            <button className="btn btn--small-ghost" onClick={() => navigator.clipboard.writeText(o._id)} type="button">Copiar</button>
-                          </small>
-                        </td>
-                        <td>{o?.buyer?.nombre || "-"}</td>
-                        <td className="mono">{o?.buyer?.telefono || "-"}</td>
-                        <td>{o.paymentMethod}</td>
-                        <td><span className={`badge badge--${o.status}`}>{o.status}</span></td>
-                        <td className="ta-right strong">${niceMoney(o.total)}</td>
-                        <td className="break">
-                          {envio ? (<><div className="strong">Envío</div><div className="muted">{dir || "—"}</div></>) : (<><div className="strong">Retiro en local</div><div className="muted">Coordinamos por WhatsApp</div></>)}
-                          {o?.shipping?.trackingNumber && <div className="muted">Tracking: <span className="mono">{o.shipping.trackingNumber}</span></div>}
-                          {o?.shipping?.deliveredAt && <div className="muted">Entregado: {new Date(o.shipping.deliveredAt).toLocaleString()}</div>}
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            <button className="btn btn--ghost" onClick={() => setDetail(o)} type="button">Ver</button>
-                            {o.status === "pending" && (
-                              <>
-                                <button onClick={() => openActionModal("confirm", o)} className="btn btn--primary" type="button">Confirmar</button>
-                                <button onClick={() => openActionModal("reject", o)} className="btn btn--danger" type="button">Rechazar</button>
-                              </>
-                            )}
-                            {canShip && <button className="btn btn--ghost" onClick={() => markShipped(o)} type="button">Despachar</button>}
-                            {canDeliver && <button className="btn btn--ghost" onClick={() => markDelivered(o)} type="button">Entregado</button>}
-                            <button className="btn btn--danger-ghost" onClick={() => openDeleteModal(o)} type="button">🗑 Eliminar</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                  <div className="ao-card-actions">
+                    <button className="ao-btn ao-btn-outline" onClick={()=>setDetail(o)} type="button">👁 Ver</button>
+                    {o.status==="pending"&&<>
+                      <button className="ao-btn ao-btn-confirm" onClick={()=>openAct("confirm",o)} type="button">✓ Confirmar</button>
+                      <button className="ao-btn ao-btn-reject"  onClick={()=>openAct("reject",o)}  type="button">✗ Rechazar</button>
+                    </>}
+                    {canShip   &&<button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}  type="button">📦 Despachar</button>}
+                    {canRetiro &&<button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}  type="button">🏪 Listo para retirar</button>}
+                    {canDeliv  &&<button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)} type="button">✅ Entregado</button>}
+                    <button className="ao-btn ao-btn-delete full-col" onClick={()=>openDel(o)} type="button">🗑 Eliminar</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ══ TABLA DESKTOP ══ */}
+          <div className="ao-table-wrap">
+            <table className="ao-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Teléfono</th>
+                  <th>Método</th>
+                  <th>Estado</th>
+                  <th style={{textAlign:"right"}}>Total</th>
+                  <th>Entrega</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(o=>{
+                  const d=new Date(o.createdAt);
+                  const envio=o?.shipping?.method==="envio";
+                  const isRetiro=o?.shipping?.method==="retiro";
+                  const canShip=o.status==="paid"&&!o?.shipping?.shippedAt&&!isRetiro;
+                  const canRetiro=o.status==="paid"&&!o?.shipping?.deliveredAt&&isRetiro;
+                  const canDeliv=o.status==="paid"&&!o?.shipping?.deliveredAt&&!isRetiro&&!!o?.shipping?.trackingNumber;
+                  return (
+                    <tr key={o._id}>
+                      <td>
+                        <div style={{fontWeight:700,fontSize:".86rem"}}>{fd(d)}</div>
+                        <div className="ao-cell-sub">{ft(d)}</div>
+                      </td>
+                      <td>
+                        <div className="ao-cell-num">{num(o)}</div>
+                        {o.shippingTicket&&<span className="ao-card-ticket">{o.shippingTicket}</span>}
+                        <div className="ao-cell-id">
+                          <span>…{shrt(o._id)}</span>
+                          <button className="ao-btn-xs" onClick={()=>navigator.clipboard.writeText(o._id)} type="button">Copiar</button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="ao-cell-name">{o?.buyer?.nombre||"—"}</div>
+                        <div className="ao-cell-sub">{o?.buyer?.email||""}</div>
+                      </td>
+                      <td className="ao-cell-mono">{o?.buyer?.telefono||"—"}</td>
+                      <td style={{textTransform:"capitalize",fontSize:".85rem"}}>{o.paymentMethod||"—"}</td>
+                      <td><Badge s={o.status}/></td>
+                      <td style={{textAlign:"right"}}><span className="ao-cell-total">{$m(o.total)}</span></td>
+                      <td>
+                        <div style={{fontWeight:700,fontSize:".86rem"}}>{envio?"📦 Envío":"🏪 Retiro"}</div>
+                        <div className="ao-cell-sub">{envio?adr(o?.shipping?.address):"Coordinamos por WhatsApp"}</div>
+                        {o?.shipping?.trackingNumber&&<span className="ao-track-pill">🚚 {o.shipping.trackingNumber}</span>}
+                        {o?.shipping?.deliveredAt&&<div className="ao-cell-sub">Entregado: {new Date(o.shipping.deliveredAt).toLocaleDateString("es-AR")}</div>}
+                      </td>
+                      <td>
+                        <div className="ao-actions-col">
+                          <button className="ao-btn ao-btn-outline" onClick={()=>setDetail(o)} type="button">VER</button>
+                          {o.status==="pending"&&<>
+                            <button className="ao-btn ao-btn-confirm" onClick={()=>openAct("confirm",o)} type="button">CONFIRMAR</button>
+                            <button className="ao-btn ao-btn-reject"  onClick={()=>openAct("reject",o)}  type="button">RECHAZAR</button>
+                          </>}
+                          {canShip   &&<button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}   type="button">DESPACHAR</button>}
+                          {canRetiro &&<button className="ao-btn ao-btn-ship"    onClick={()=>doRetiro(o)} type="button">LISTO RETIRAR</button>}
+                          {canDeliv  &&<button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)}  type="button">ENTREGADO</button>}
+                          <button className="ao-btn ao-btn-delete" onClick={()=>openDel(o)} type="button">🗑 ELIMINAR</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>)}
       </div>
 
-      {/* MODAL DETALLE */}
-      {detail && (
-        <div className="modal-backdrop" onClick={() => setDetail(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
+      {/* ══ MODAL DETALLE ══ */}
+      {detail&&(
+        <div className="ao-overlay" onClick={()=>setDetail(null)}>
+          <div className="ao-modal" onClick={e=>e.stopPropagation()}>
+            <div className="ao-modal-pull"/>
+            <div className="ao-modal-header">
               <h3>Detalle del pedido</h3>
-              <button onClick={() => setDetail(null)} className="x-btn" type="button">✕</button>
+              <button onClick={()=>setDetail(null)} className="ao-x" type="button">✕</button>
             </div>
-            <div className="modal-body">
-              <p><b>Pedido:</b> {prettyOrder(detail)}</p>
-              <p><b>Estado:</b> <span className={`badge badge--${detail.status}`}>{detail.status}</span></p>
-              <p><b>Método:</b> {detail.paymentMethod}</p>
-              <p><b>Total:</b> ${niceMoney(detail.total)}</p>
-              <p><b>Cliente:</b> {detail?.buyer?.nombre || "-"} — {detail?.buyer?.email || "-"}</p>
-              <p><b>Teléfono:</b> {detail?.buyer?.telefono || "-"}</p>
-              <p><b>Entrega:</b> {detail?.shipping?.method === "envio" ? `Envío — ${buildAddress(detail?.shipping?.address)}` : "Retiro en local"}</p>
-              {detail?.shipping?.trackingNumber && <p><b>Tracking:</b> <span className="mono">{detail.shipping.trackingNumber}</span></p>}
-              {detail?.shipping?.deliveredAt && <p><b>Entregado:</b> {new Date(detail.shipping.deliveredAt).toLocaleString()}</p>}
-              <div className="modal-items">
+            <div className="ao-modal-body">
+              <p><b>Pedido:</b> {num(detail)} &nbsp;<Badge s={detail.status}/></p>
+              <p><b>Método:</b> {detail.paymentMethod} &nbsp;·&nbsp; <b>Total:</b> {$m(detail.total)}</p>
+              <p><b>Cliente:</b> {detail?.buyer?.nombre||"—"} — {detail?.buyer?.email||"—"}</p>
+              <p><b>Teléfono:</b> {detail?.buyer?.telefono||"—"}</p>
+              <p><b>Entrega:</b> {detail?.shipping?.method==="envio"?`Envío a ${adr(detail?.shipping?.address)}`:"Retiro en local"}</p>
+              {detail?.shipping?.trackingNumber&&<p><b>Tracking:</b> <span className="ao-cell-mono">{detail.shipping.trackingNumber}</span></p>}
+              {detail?.shipping?.deliveredAt&&<p><b>Entregado:</b> {new Date(detail.shipping.deliveredAt).toLocaleString("es-AR")}</p>}
+              <div className="ao-modal-items">
                 <b>Productos:</b>
                 <ul>
-                  {(detail.items || []).map((it, idx) => (
-                    <li key={idx}>
-                      {it.nombre}{it?.variant?.size || it?.variant?.color ? ` (${[it?.variant?.size, it?.variant?.color].filter(Boolean).join(" / ")})` : ""} x{it.cantidad} — ${niceMoney(it.subtotal)}
+                  {(detail.items||[]).map((it,i)=>(
+                    <li key={i}>
+                      {it.nombre}
+                      {it?.variant?.size||it?.variant?.color?` (${[it?.variant?.size,it?.variant?.color].filter(Boolean).join(" / ")})`:""}
+                      {" "}×{it.cantidad} — {$m(it.subtotal)}
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="modal-actions">
-                {detail?.buyer?.telefono && (
-                  <a href={`https://wa.me/${normalizePhone(detail.buyer.telefono)}?text=${encodeURIComponent(`Hola ${detail?.buyer?.nombre || ""}, soy AESTHETIC. Tu pedido ${prettyOrder(detail)} está en estado ${detail.status}.`)}`} target="_blank" rel="noreferrer" className="btn btn--ghost">WhatsApp</a>
-                )}
-                {detail.status === "pending" && (
-                  <>
-                    <button className="btn btn--primary" onClick={() => openActionModal("confirm", detail)} type="button">Confirmar</button>
-                    <button className="btn btn--danger" onClick={() => openActionModal("reject", detail)} type="button">Rechazar</button>
-                  </>
-                )}
-                {detail.status === "paid" && !detail?.shipping?.trackingNumber && (
-                  <button className="btn btn--ghost" onClick={() => markShipped(detail)} type="button">📦 Despachar</button>
-                )}
-                {!detail?.shipping?.deliveredAt && (detail?.shipping?.trackingNumber || detail?.shipping?.method === "retiro") && (
-                  <button className="btn btn--ghost" onClick={() => markDelivered(detail)} type="button">✅ Entregado</button>
-                )}
-                <button className="btn btn--danger-ghost" onClick={() => { setDetail(null); openDeleteModal(detail); }} type="button">🗑 Eliminar</button>
+            </div>
+            <div className="ao-modal-footer">
+              {detail?.buyer?.telefono&&(
+                <a href={`https://wa.me/${tel(detail.buyer.telefono)}?text=${encodeURIComponent(
+                  `Hola ${detail?.buyer?.nombre||""}, soy AESTHETIC. Tu pedido ${num(detail)} está ${detail.status}.`
+                )}`} target="_blank" rel="noreferrer" className="ao-btn ao-btn-wa">💬 WhatsApp</a>
+              )}
+              {detail.status==="pending"&&<>
+                <button className="ao-btn ao-btn-confirm" onClick={()=>openAct("confirm",detail)} type="button">Confirmar</button>
+                <button className="ao-btn ao-btn-reject"  onClick={()=>openAct("reject",detail)}  type="button">Rechazar</button>
+              </>}
+              {detail.status==="paid"&&!detail?.shipping?.shippedAt&&detail?.shipping?.method!=="retiro"&&(
+                <button className="ao-btn ao-btn-ship" onClick={()=>doShip(detail)} type="button">📦 Despachar</button>
+              )}
+              {detail.status==="paid"&&!detail?.shipping?.deliveredAt&&detail?.shipping?.method==="retiro"&&(
+                <button className="ao-btn ao-btn-ship" onClick={()=>doRetiro(detail)} type="button">🏪 Listo para retirar</button>
+              )}
+              {!detail?.shipping?.deliveredAt&&!!detail?.shipping?.trackingNumber&&detail?.shipping?.method!=="retiro"&&(
+                <button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(detail)} type="button">✅ Entregado</button>
+              )}
+              <button className="ao-btn ao-btn-delete" onClick={()=>{setDetail(null);openDel(detail);}} type="button">🗑 Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL CONFIRMAR/RECHAZAR ══ */}
+      {actM.open&&(
+        <div className="ao-overlay" onClick={closeAct}>
+          <div className="ao-modal" style={{maxWidth:460}} onClick={e=>e.stopPropagation()}>
+            <div className="ao-modal-pull"/>
+            <div className="ao-modal-header">
+              <h3 style={{color:actM.type==="reject"?"#dc2626":"#059669"}}>
+                {actM.type==="reject"?"🚫 Rechazar orden":"✅ Confirmar pago"}
+              </h3>
+              <button onClick={closeAct} className="ao-x" type="button">✕</button>
+            </div>
+            <div className="ao-modal-body">
+              <p>{actM.type==="reject"?"Esta acción cancelará la orden permanentemente.":"Vas a marcar esta orden como pagada."}</p>
+              <div className={`ao-confirm-box${actM.type==="reject"?" ao-confirm-box-danger":""}`}>
+                <div><b>Pedido:</b> {num(actM.order)}</div>
+                <div><b>Cliente:</b> {actM.order?.buyer?.nombre||"—"}</div>
+                <div><b>Total:</b> {$m(actM.order?.total)}</div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CONFIRMAR/RECHAZAR */}
-      {actionModal.open && (
-        <div className="modal-backdrop" onClick={closeActionModal}>
-          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className={actionModal.type === "reject" ? "title-red" : "title-green"}>
-              {actionModal.type === "reject" ? "Rechazar orden" : "Confirmar pago"}
-            </h3>
-            <p>{actionModal.type === "reject" ? "Esta acción cancelará la orden. ¿Querés continuar?" : "Vas a marcar la orden como pagada. ¿Confirmás?"}</p>
-            <div className="confirm-box">
-              <div><b>Pedido:</b> {prettyOrder(actionModal.order)}</div>
-              <div><b>Cliente:</b> {actionModal.order?.buyer?.nombre || "-"}</div>
-              <div><b>Total:</b> ${niceMoney(actionModal.order?.total)}</div>
-            </div>
-            <div className="confirm-actions">
-              <button className="btn btn--ghost" onClick={closeActionModal} disabled={actionModal.loading} type="button">Cancelar</button>
-              {actionModal.type === "reject" ? (
-                <button className="btn btn--danger" onClick={handleActionConfirm} disabled={actionModal.loading} type="button">
-                  {actionModal.loading ? "Procesando…" : "Rechazar"}
-                </button>
-              ) : (
-                <button className="btn btn--primary" onClick={handleActionConfirm} disabled={actionModal.loading} type="button">
-                  {actionModal.loading ? "Procesando…" : "Confirmar"}
-                </button>
-              )}
+            <div className="ao-modal-footer">
+              <button className="ao-btn ao-btn-outline" onClick={closeAct} disabled={actM.loading} type="button">Cancelar</button>
+              {actM.type==="reject"
+                ?<button className="ao-btn ao-btn-reject"  onClick={doAction} disabled={actM.loading} type="button">{actM.loading?"Procesando…":"Rechazar"}</button>
+                :<button className="ao-btn ao-btn-confirm" onClick={doAction} disabled={actM.loading} type="button">{actM.loading?"Procesando…":"Confirmar pago"}</button>
+              }
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
-      {deleteModal.open && (
-        <div className="modal-backdrop" onClick={closeDeleteModal}>
-          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3 className="title-red">🗑 Eliminar orden</h3>
-              <button onClick={closeDeleteModal} className="x-btn" type="button">✕</button>
+      {/* ══ MODAL ELIMINAR ══ */}
+      {delM.open&&(
+        <div className="ao-overlay" onClick={closeDel}>
+          <div className="ao-modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
+            <div className="ao-modal-pull"/>
+            <div className="ao-modal-header">
+              <h3 style={{color:"#dc2626"}}>🗑 Eliminar orden</h3>
+              <button onClick={closeDel} className="ao-x" type="button">✕</button>
             </div>
-            <p style={{ color: "#374151", marginBottom: 12 }}>
-              Esta acción es <strong>permanente</strong> y no se puede deshacer. ¿Estás seguro?
-            </p>
-            <div className="confirm-box confirm-box--danger">
-              <div><b>Pedido:</b> {prettyOrder(deleteModal.order)}</div>
-              <div><b>Cliente:</b> {deleteModal.order?.buyer?.nombre || "-"}</div>
-              <div><b>Estado:</b> <span className={`badge badge--${deleteModal.order?.status}`}>{deleteModal.order?.status}</span></div>
-              <div><b>Total:</b> ${niceMoney(deleteModal.order?.total)}</div>
+            <div className="ao-modal-body">
+              <p>Esta acción no se puede deshacer.</p>
+              <div className="ao-confirm-box ao-confirm-box-danger">
+                <div><b>Pedido:</b> {num(delM.order)}</div>
+                <div><b>Cliente:</b> {delM.order?.buyer?.nombre||"—"}</div>
+                <div><b>Estado:</b> <Badge s={delM.order?.status}/></div>
+                <div><b>Total:</b> {$m(delM.order?.total)}</div>
+              </div>
             </div>
-            <div className="confirm-actions">
-              <button className="btn btn--ghost" onClick={closeDeleteModal} disabled={deleteModal.loading} type="button">Cancelar</button>
-              <button className="btn btn--danger" onClick={handleDeleteConfirm} disabled={deleteModal.loading} type="button">
-                {deleteModal.loading ? "Eliminando…" : "Sí, eliminar"}
+            <div className="ao-modal-footer">
+              <button className="ao-btn ao-btn-outline" onClick={closeDel}   disabled={delM.loading} type="button">Cancelar</button>
+              <button className="ao-btn ao-btn-reject"  onClick={doDel}      disabled={delM.loading} type="button">
+                {delM.loading?"Eliminando…":"Sí, eliminar"}
               </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

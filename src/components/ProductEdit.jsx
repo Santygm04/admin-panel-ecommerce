@@ -12,9 +12,10 @@ const subcategoriasPorCategoria = {
   bodycare: ["jabones", "cremas corporales", "aceites"],
   uñas: ["Soft-Gel", "Semi-Permanente", "Normal", "soft-gel"],
   pestañas: ["insumos", "kits", "extensiones"],
-  peluquería: ["peines", "cepillos", "accesorios"],
+  peluquería: ["peines", "cepillos", "tratamientos"],
   bijouterie: ["aros", "collares", "pulseras", "anillos"],
   marroquineria: ["mochilas", "riñoneras", "bolsos"],
+  accesorios: ["pelo"],
 };
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
@@ -28,15 +29,12 @@ export default function EditProduct() {
   const { id }   = useParams();
   const nav      = useNavigate();
 
-  const [loading, setLoading]     = useState(true);
-  const [producto, setProducto]   = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [producto, setProducto]     = useState(null);
   const [imagenFile, setImagenFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  // variantes SOLO talle/color
   const [variantes, setVariantes] = useState([]);
-
-  // quick add – chips
   const [selSizes, setSelSizes]   = useState([]);
   const [selColors, setSelColors] = useState([]);
 
@@ -49,16 +47,22 @@ export default function EditProduct() {
         const { data } = await axios.get(`${API}/productos/${id}`, { params: { admin: true } });
         const p = data || {};
         setProducto({
-          nombre: p.nombre || "",
-          precio: p.precio === 0 || p.precio ? String(p.precio) : "",
-          descripcion: p.descripcion || "",
-          categoria: p.categoria || "",
-          subcategoria: p.subcategoria || "",
-          stock: p.stock === 0 || p.stock ? String(p.stock) : "",
-          destacado: !!p.destacado,
-          imagen: p.imagen || "",
-          tags: Array.isArray(p.tags) ? p.tags : [],
-          createdAt: p.createdAt,
+          nombre:          p.nombre          || "",
+          precio:          p.precio === 0 || p.precio ? String(p.precio) : "",
+          precioEspecial:  p.precioEspecial  != null ? String(p.precioEspecial)  : "",
+          precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
+          descripcion:     p.descripcion     || "",
+          categoria:       p.categoria       || "",
+          subcategoria:    p.subcategoria    || "",
+          stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
+          destacado:       !!p.destacado,
+          imagen:          p.imagen          || "",
+          tags:            Array.isArray(p.tags) ? p.tags : [],
+          createdAt:       p.createdAt,
+          unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
+          cantidadTonos:    p.cantidadTonos    != null ? String(p.cantidadTonos)    : "",
+          modoTonos:        p.modoTonos || "automatico",
+          tonosDisponibles: Array.isArray(p.tonosDisponibles) ? p.tonosDisponibles : [],
         });
 
         const rawVars = Array.isArray(p.variantes) ? p.variantes
@@ -97,36 +101,53 @@ export default function EditProduct() {
       return;
     }
 
-    const nextVal = type === "checkbox" ? checked : value;
+    if (type === "checkbox") {
+      setProducto(prev => ({ ...prev, [name]: checked }));
+      return;
+    }
+
+    const numericOptional = ["precioEspecial", "precioMayorista", "unidadesPorCaja", "cantidadTonos"];
+    if (numericOptional.includes(name)) {
+      setProducto(prev => ({ ...prev, [name]: value }));
+      if (name === "categoria") setProducto(prev => ({ ...prev, [name]: value, subcategoria: "" }));
+      return;
+    }
+
     setProducto(prev => {
-      const base = { ...prev, [name]: nextVal };
+      const base = { ...prev, [name]: value };
       if (name === "categoria") base.subcategoria = "";
       return base;
     });
   };
 
-  const addVar = () => setVariantes(v => [...v, { talle: "", color: "" }]);
   const delVar = (i) => setVariantes(v => v.filter((_, idx) => idx !== i));
   const setVar = (i, key, val) => setVariantes(v => v.map((row, idx) => idx === i ? { ...row, [key]: val } : row));
 
   const addBulk = () => {
-    if (!selSizes.length) { toast.warn("Elegí al menos un talle"); return; }
-    if (!selColors.length) { toast.warn("Elegí al menos un color"); return; }
+    if (!selSizes.length && !selColors.length) {
+      toast.warn("Elegí al menos un talle o un color"); return;
+    }
     setVariantes((list) => {
       const next = [...list];
-      selSizes.forEach(sz => {
-        selColors.forEach(col => {
-          const exists = next.some(v => (v.talle === sz) && (v.color||"") === col);
-          if (!exists) next.push({ talle: sz, color: col });
+      if (selSizes.length && selColors.length) {
+        selSizes.forEach(sz => selColors.forEach(col => {
+          if (!next.some(v => v.talle === sz && v.color === col))
+            next.push({ talle: sz, color: col });
+        }));
+      } else if (selSizes.length) {
+        selSizes.forEach(sz => {
+          if (!next.some(v => v.talle === sz && !v.color))
+            next.push({ talle: sz, color: "" });
         });
-      });
+      } else {
+        selColors.forEach(col => {
+          if (!next.some(v => !v.talle && v.color === col))
+            next.push({ talle: "", color: col });
+        });
+      }
       return next;
     });
   };
-
-  const selectAllSizes = () => setSelSizes(SIZES);
-  const clearSizes = () => setSelSizes([]);
-  const clearColors = () => setSelColors([]);
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -167,16 +188,22 @@ export default function EditProduct() {
         .filter(v => v.size || v.color);
 
       const body = {
-        nombre: producto.nombre,
-        precio: safeInt(producto.precio),
-        descripcion: producto.descripcion,
-        categoria: (producto.categoria || "").toLowerCase(),
-        subcategoria: (producto.subcategoria || "").toLowerCase(),
-        stock: safeInt(producto.stock),        // stock global
-        destacado: !!producto.destacado,
-        tags: producto.tags || [],
-        imagen: imagenUrl,
-        variants: clean,                        // sólo talle/color
+        nombre:          producto.nombre,
+        precio:          safeInt(producto.precio),
+        precioEspecial:  producto.precioEspecial  !== "" ? safeInt(producto.precioEspecial)  : null,
+        precioMayorista: producto.precioMayorista !== "" ? safeInt(producto.precioMayorista) : null,
+        descripcion:     producto.descripcion,
+        categoria:       (producto.categoria  || "").toLowerCase(),
+        subcategoria:    (producto.subcategoria || "").toLowerCase(),
+        stock:           safeInt(producto.stock),
+        destacado:       !!producto.destacado,
+        tags:            producto.tags || [],
+        imagen:          imagenUrl,
+        variants:        clean,
+        unidadesPorCaja: producto.unidadesPorCaja !== "" ? safeInt(producto.unidadesPorCaja) : null,
+        cantidadTonos:   producto.cantidadTonos   !== "" ? safeInt(producto.cantidadTonos)   : null,
+        modoTonos:       producto.modoTonos || "automatico",
+        tonosDisponibles: producto.tonosDisponibles || [],
       };
 
       await axios.put(`${API}/productos/${id}`, body);
@@ -201,6 +228,8 @@ export default function EditProduct() {
 
   return (
     <form className="product-form" onSubmit={handleSubmit} autoComplete="off">
+
+      {/* HEADER */}
       <header className="pf-header">
         <div>
           <h2>Editar producto</h2>
@@ -213,27 +242,145 @@ export default function EditProduct() {
         </div>
       </header>
 
+      {/* NOMBRE — ancho completo, FUERA del grid */}
+      <div className="form-group pf-full">
+        <label>Nombre</label>
+        <input name="nombre" value={producto.nombre} onChange={handleChange} required />
+      </div>
+
+      {/* BLOQUE 3 PRECIOS — ancho completo, FUERA del grid */}
+      <div className="pf-precio-block pf-full">
+        <div className="pf-precio-header">
+          <span className="pf-precio-title">Sistema de precios</span>
+          <span className="pf-precio-hint">Dejá vacío si no aplica el nivel</span>
+        </div>
+        <div className="pf-precio-grid">
+
+          <div className="form-group pf-precio-item">
+            <label className="pf-precio-label">
+              <span className="pf-precio-tag pf-precio-tag--u">U</span>
+              Precio Unitario <span className="pf-precio-req">*</span>
+            </label>
+            <input name="precio" type="number" inputMode="decimal" step="1" min="0"
+              value={producto.precio} onChange={handleChange}
+              onWheel={(e) => e.currentTarget.blur()} required />
+            <small className="hint">Sin mínimo de compra</small>
+          </div>
+
+          <div className="form-group pf-precio-item">
+            <label className="pf-precio-label">
+              <span className="pf-precio-tag pf-precio-tag--e">E</span>
+              Precio Especial
+            </label>
+            <input name="precioEspecial" type="number" inputMode="decimal" step="1" min="0"
+              placeholder="Ej: 1200"
+              value={producto.precioEspecial ?? ""} onChange={handleChange}
+              onWheel={(e) => e.currentTarget.blur()} />
+            <small className="hint">Llevando 5+ productos</small>
+          </div>
+
+          <div className="form-group pf-precio-item">
+            <label className="pf-precio-label">
+              <span className="pf-precio-tag pf-precio-tag--m">M</span>
+              Precio Mayorista
+            </label>
+            <input name="precioMayorista" type="number" inputMode="decimal" step="1" min="0"
+              placeholder="Ej: 900"
+              value={producto.precioMayorista ?? ""} onChange={handleChange}
+              onWheel={(e) => e.currentTarget.blur()} />
+            <small className="hint">Compra mínima $30.000</small>
+          </div>
+
+        </div>
+      </div>
+
+      {/* GRID PRINCIPAL */}
       <div className="pf-grid">
+
         {/* Columna izquierda */}
         <div className="pf-col">
-          <div className="form-group">
-            <label>Nombre</label>
-            <input name="nombre" value={producto.nombre} onChange={handleChange} required />
-          </div>
 
           <div className="pf-row">
             <div className="form-group">
-              <label>Precio</label>
-              <input name="precio" type="number" inputMode="numeric" step="1"
-                     value={producto.precio} onChange={handleChange} onWheel={(e)=>e.currentTarget.blur()} required />
+              <label>Stock</label>
+              <input name="stock" type="number" inputMode="numeric" min="0" step="1"
+                value={producto.stock} onChange={handleChange}
+                onWheel={(e) => e.currentTarget.blur()} />
+              <small className="hint">Las variantes son solo talle/color.</small>
             </div>
 
             <div className="form-group">
-              <label>Stock</label>
-              <input name="stock" type="number" inputMode="numeric" min="0" step="1"
-                     value={producto.stock} onChange={handleChange} onWheel={(e)=>e.currentTarget.blur()} />
-              <small className="hint">El stock se maneja por este campo. Las variantes son solo talle/color.</small>
+              <label>Unidades por caja <span className="muted">(opcional)</span></label>
+              <input name="unidadesPorCaja" type="number" min="1" step="1"
+                placeholder="Ej: 8 (bases), 3 (labiales)"
+                value={producto.unidadesPorCaja ?? ""} onChange={handleChange}
+                onWheel={(e) => e.currentTarget.blur()} />
+              <small className="hint">El contador suma de a múltiplos. Vacío = unidad.</small>
             </div>
+          </div>
+
+          {/* TONOS */}
+          <div className="pf-precio-block pf-full" style={{ marginTop: 0 }}>
+            <div className="pf-precio-header">
+              <span className="pf-precio-title">Tonos del producto <span className="muted" style={{ fontWeight: 400 }}>(opcional)</span></span>
+              <span className="pf-precio-hint">Solo para productos con variantes de tono</span>
+            </div>
+            <div className="pf-precio-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <div className="form-group pf-precio-item">
+                <label className="pf-precio-label">Cantidad de tonos</label>
+                <select value={producto.cantidadTonos ?? ""}
+                  onChange={e => {
+                    const n = e.target.value === "" ? "" : Number(e.target.value);
+                    const tonos = n ? Array.from({ length: n }, (_, i) => `Tono ${i + 1}`) : [];
+                    setProducto(p => ({ ...p, cantidadTonos: n, tonosDisponibles: p.modoTonos === "automatico" ? tonos : (p.tonosDisponibles || []).slice(0, n || 0) }));
+                  }}>
+                  <option value="">Sin tonos</option>
+                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} tono{n > 1 ? "s" : ""}</option>)}
+                </select>
+                <small className="hint">Distribución siempre pareja</small>
+              </div>
+
+              {producto.cantidadTonos && (
+                <div className="form-group pf-precio-item">
+                  <label className="pf-precio-label">Modo</label>
+                  <select value={producto.modoTonos || "automatico"}
+                    onChange={e => {
+                      const modo = e.target.value;
+                      const n = Number(producto.cantidadTonos) || 0;
+                      const tonos = modo === "automatico"
+                        ? Array.from({ length: n }, (_, i) => `Tono ${i + 1}`)
+                        : (producto.tonosDisponibles || []);
+                      setProducto(p => ({ ...p, modoTonos: modo, tonosDisponibles: tonos }));
+                    }}>
+                    <option value="automatico">Automático</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {producto.cantidadTonos && producto.modoTonos === "manual" && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                {Array.from({ length: Number(producto.cantidadTonos) }, (_, i) => (
+                  <div key={i} className="form-group pf-precio-item" style={{ minWidth: 120 }}>
+                    <label className="pf-precio-label">Tono {i + 1}</label>
+                    <input placeholder="Ej: Beige"
+                      value={(producto.tonosDisponibles || [])[i] || ""}
+                      onChange={e => {
+                        const arr = [...(producto.tonosDisponibles || [])];
+                        arr[i] = e.target.value;
+                        setProducto(p => ({ ...p, tonosDisponibles: arr }));
+                      }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {producto.cantidadTonos && producto.unidadesPorCaja && (
+              <div style={{ marginTop: 8, padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: ".82rem", color: "#15803d", fontWeight: 600 }}>
+                ✓ {producto.unidadesPorCaja} uds. ÷ {producto.cantidadTonos} tonos = {Math.floor(producto.unidadesPorCaja / producto.cantidadTonos)} por tono
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -265,33 +412,23 @@ export default function EditProduct() {
             )}
           </div>
 
-          {/* VARIANTES (solo talle/color) */}
+          {/* VARIANTES */}
           <div className="variants">
-            <div className="variants-head">
-              <div className="vhead-left">
-                {/* <h3>Variantes (talle y color) — <span className="muted">opcional</span></h3>
-                <span className="stock-pill">Stock global: {Number(producto.stock || 0)}</span> */}
-              </div>
-              {/* <button className="btn-add-var" type="button" onClick={addVar}>+ Agregar variante</button> */}
-            </div>
-
-            {/* Paso a paso claro */}
             <div className="qa">
               <div className="choice-group">
                 <span className="choice-label">1) Elegí talles</span>
                 <div className="choice-grid">
                   {SIZES.map((s) => (
-                    <button type="button"
-                            key={s}
-                            className={`choice ${selSizes.includes(s) ? "active" : ""}`}
-                            onClick={() => toggle(selSizes, setSelSizes, s)}>
+                    <button type="button" key={s}
+                      className={`choice ${selSizes.includes(s) ? "active" : ""}`}
+                      onClick={() => toggle(selSizes, setSelSizes, s)}>
                       {s}
                     </button>
                   ))}
                 </div>
                 <div className="qa-tools">
-                  <button type="button" className="qa-link" onClick={()=>setSelSizes(SIZES)}>Todos</button>
-                  <button type="button" className="qa-link" onClick={()=>setSelSizes([])}>Limpiar</button>
+                  <button type="button" className="qa-link" onClick={() => setSelSizes(SIZES)}>Todos</button>
+                  <button type="button" className="qa-link" onClick={() => setSelSizes([])}>Limpiar</button>
                 </div>
               </div>
 
@@ -299,16 +436,15 @@ export default function EditProduct() {
                 <span className="choice-label">2) Elegí colores</span>
                 <div className="choice-grid">
                   {COLORS.map((c) => (
-                    <button type="button"
-                            key={c}
-                            className={`choice ${selColors.includes(c) ? "active" : ""}`}
-                            onClick={() => toggle(selColors, setSelColors, c)}>
+                    <button type="button" key={c}
+                      className={`choice ${selColors.includes(c) ? "active" : ""}`}
+                      onClick={() => toggle(selColors, setSelColors, c)}>
                       {c}
                     </button>
                   ))}
                 </div>
                 <div className="qa-tools">
-                  <button type="button" className="qa-link" onClick={()=>setSelColors([])}>Limpiar</button>
+                  <button type="button" className="qa-link" onClick={() => setSelColors([])}>Limpiar</button>
                 </div>
               </div>
 
@@ -327,25 +463,24 @@ export default function EditProduct() {
                 <div className="var-row var-row--head">
                   <span>Talle</span>
                   <span>Color</span>
-                  <span className="var-actions-col"></span>
+                  <span className="var-actions-col" />
                 </div>
-
                 {variantes.map((v, i) => (
                   <div className="var-row" key={`${v.talle}-${v.color}-${i}`}>
                     <div className="var-cell">
-                      <select value={v.talle || ""} onChange={(e)=>setVar(i, "talle", e.target.value)}>
+                      <select value={v.talle || ""} onChange={(e) => setVar(i, "talle", e.target.value)}>
                         <option value="">Talle…</option>
                         {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="var-cell">
-                      <select value={v.color || ""} onChange={(e)=>setVar(i, "color", e.target.value)}>
+                      <select value={v.color || ""} onChange={(e) => setVar(i, "color", e.target.value)}>
                         <option value="">Color…</option>
                         {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div className="var-cell var-actions">
-                      <button type="button" className="var-del" onClick={()=>delVar(i)} aria-label="Eliminar variante">✕</button>
+                      <button type="button" className="var-del" onClick={() => delVar(i)} aria-label="Eliminar variante">✕</button>
                     </div>
                   </div>
                 ))}
@@ -366,7 +501,7 @@ export default function EditProduct() {
                 <div className="dz-empty">
                   <div className="dz-icon">📷</div>
                   <div>Arrastrá una imagen o <u>hacé click</u></div>
-                  <small className="muted">JPG/PNG · Recomendado 700×700</small>
+                  <small className="muted">JPG/PNG vertical · Recomendado 700×900 (4:5)</small>
                 </div>
               )}
             </label>
@@ -375,16 +510,16 @@ export default function EditProduct() {
           <div className="switches">
             <label className="switch">
               <input type="checkbox" name="destacado"
-                     checked={!!producto.destacado}
-                     onChange={(e)=>setProducto({ ...producto, destacado: e.target.checked })}/>
-              <span className="slider"></span>
+                checked={!!producto.destacado}
+                onChange={(e) => setProducto({ ...producto, destacado: e.target.checked })} />
+              <span className="slider" />
               <span className="switch-label">Producto destacado</span>
             </label>
 
             <label className="switch">
               <input type="checkbox" name="isNuevoIngreso"
-                     checked={isNuevoIngreso} onChange={handleChange}/>
-              <span className="slider"></span>
+                checked={isNuevoIngreso} onChange={handleChange} />
+              <span className="slider" />
               <span className="switch-label">Mostrar en <b className="ni">Nuevos ingresos</b></span>
             </label>
           </div>
@@ -392,11 +527,13 @@ export default function EditProduct() {
       </div>
 
       <div className="pf-actions">
-        <button type="button" className="btn-primary" style={{ background: "#bbb", marginRight: 8 }} onClick={()=>nav(-1)}>
+        <button type="button" className="btn-primary"
+          style={{ background: "#bbb", marginRight: 8 }} onClick={() => nav(-1)}>
           Cancelar
         </button>
         <button type="submit" className="btn-primary">Guardar cambios</button>
       </div>
+
     </form>
   );
 }

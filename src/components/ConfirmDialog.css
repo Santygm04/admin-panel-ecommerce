@@ -1,21 +1,116 @@
-.cd-backdrop{
-  position: fixed; inset:0; background: rgba(0,0,0,.25);
-  display:grid; place-items:center; z-index: 3000;
+/* =====================================================
+   ConfirmDialog.css  —  Modal de confirmación admin
+   ===================================================== */
+
+.cd-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 3000;
+  padding: 20px;
+  animation: cdFade 0.18s ease-out;
 }
-.cd-modal{
-  width: min(520px, 92vw);
-  background:#fff; border:1px solid #f3c9e2; border-radius:14px;
-  box-shadow:0 20px 60px rgba(214,51,132,.18);
-  padding:1rem 1.1rem;
-  animation: cdIn .18s ease-out;
+@keyframes cdFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-@keyframes cdIn{ from{opacity:0; transform: translateY(8px);} to{opacity:1; transform:translateY(0);} }
-.cd-title{ margin: .2rem 0 .4rem; color:#d63384; }
-.cd-message{ color:#444; margin: 0 0 .9rem; }
-.cd-actions{ display:flex; justify-content:flex-end; gap:.6rem; }
-.cd-btn{
-  border:none; border-radius:10px; padding:.5rem .8rem; font-weight:800; cursor:pointer;
+
+.cd-modal {
+  width: min(460px, 100%);
+  background: var(--adm-surface, #ffffff);
+  border: 1px solid var(--adm-border, #e5e7eb);
+  border-radius: 14px;
+  box-shadow:
+    0 24px 48px rgba(17, 24, 39, 0.18),
+    0 8px 16px rgba(17, 24, 39, 0.08);
+  padding: 1.25rem 1.35rem;
+  animation: cdIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
-.cd-cancel{ background:#f7f7f7; color:#333; }
-.cd-confirm{ background:#e53935; color:#fff; }
-.cd-btn:disabled{ opacity:.6; cursor:not-allowed; }
+@keyframes cdIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cd-title {
+  margin: 0 0 0.5rem;
+  color: var(--adm-ink, #111827);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.cd-message {
+  color: var(--adm-ink-2, #374151);
+  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.cd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cd-btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  min-height: 40px;
+  min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-cancel {
+  background: var(--adm-surface, #fff);
+  color: var(--adm-ink-2, #374151);
+  border-color: var(--adm-border, #e5e7eb);
+}
+.cd-cancel:hover:not(:disabled) {
+  background: var(--adm-surface-3, #f3f4f6);
+  border-color: var(--adm-border-strong, #d1d5db);
+  color: var(--adm-ink, #111827);
+}
+
+.cd-confirm {
+  background: var(--adm-danger, #ef4444);
+  color: #fff;
+  border-color: var(--adm-danger, #ef4444);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.22);
+}
+.cd-confirm:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+.cd-confirm:active { transform: translateY(0); }
+
+.cd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cd-btn:focus-visible {
+  outline: 2px solid var(--adm-brand, #db2777);
+  outline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .cd-actions { flex-direction: column-reverse; }
+  .cd-btn { width: 100%; min-width: 0; }
+}
