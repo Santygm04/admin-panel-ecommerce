@@ -42,10 +42,13 @@ const waTxt = (o) => {
   const envio = o?.shipping?.method === "envio";
   const ticket = o?.shippingTicket || (o?.orderNumber ? `#${o.orderNumber}` : null);
   const lines = (o.items||[]).map(it => {
-    const vp = it?.variant?.size||it?.variant?.color
-      ? ` (${[it?.variant?.size,it?.variant?.color].filter(Boolean).join(" / ")})`:"";
-    return `• ${it.nombre}${vp} ×${it.cantidad} — ${$m(it.subtotal)}`;
-  }).join("\n");
+  const vp = it?.variant?.size || it?.variant?.color || it?.variant?.tono
+    ? ` (${[it?.variant?.size, it?.variant?.color, it?.variant?.tono].filter(Boolean).join(" / ")})` : "";
+  const tonosPart = Array.isArray(it?.distribucionTonos) && it.distribucionTonos.length
+    ? "\n   " + it.distribucionTonos.map(t => `${t.tono}: ${t.cantidad} u.`).join(" | ")
+    : "";
+  return `• ${it.nombre}${vp} ×${it.cantidad} — ${$m(it.subtotal)}${tonosPart}`;
+}).join("\n");
   return [
     "✅ *¡Tu pedido fue confirmado, Aesthetic te lo confirma!*","",
     `🏷 *Código de pedido:* ${ticket||num(o)}`,
@@ -64,6 +67,79 @@ const waTxt = (o) => {
   ].join("\n");
 };
 
+function TrackModal({ order, onClose, onConfirm }) {
+  const [tn, setTn] = useState(order?.shipping?.trackingNumber||"");
+  const [co, setCo] = useState(order?.shipping?.company||"andreani");
+  return (
+    <div className="ao-overlay" onClick={onClose}>
+      <div className="ao-modal" style={{maxWidth:460}} onClick={e=>e.stopPropagation()}>
+        <div className="ao-modal-pull"/>
+        <div className="ao-modal-header">
+          <h3>📦 Despachar pedido</h3>
+          <button onClick={onClose} className="ao-x" type="button">✕</button>
+        </div>
+        <div className="ao-modal-body">
+          <div className="ao-confirm-box">
+            <div><b>Pedido:</b> {order?.orderNumber ? `#${order.orderNumber}` : order?.shippingTicket||"—"}</div>
+            {order?.shippingTicket && (
+              <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+                <b>Código:</b>
+                <span style={{fontFamily:"monospace",fontWeight:900,color:"#ff2ea6",fontSize:".9rem"}}>
+                  {order.shippingTicket}
+                </span>
+                <button type="button" className="ao-btn-xs"
+                  onClick={()=>navigator.clipboard.writeText(order.shippingTicket)}>
+                  Copiar
+                </button>
+              </div>
+            )}
+            <div><b>Cliente:</b> {order?.buyer?.nombre||"—"}</div>
+          </div>
+          <div style={{marginTop:12}}>
+            <label style={{fontWeight:700,fontSize:".85rem",color:"#3d3450",display:"block",marginBottom:6}}>Empresa de envío</label>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+              {["andreani","oca","correo argentino","via cargo","fadeeac"].map(emp=>(
+                <button key={emp} type="button" onClick={()=>setCo(emp)} style={{
+                  padding:"6px 14px",borderRadius:8,border:"1.5px solid",cursor:"pointer",
+                  fontWeight:700,fontSize:".8rem",textTransform:"capitalize",
+                  borderColor:co===emp?"#ff2ea6":"#ede4f0",
+                  background:co===emp?"#fff0f8":"#fff",
+                  color:co===emp?"#e11a8a":"#8b7fa8"
+                }}>{emp}</button>
+              ))}
+            </div>
+            <input style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #ede4f0",fontSize:".88rem"}}
+              placeholder="O escribí otra empresa..." value={co} onChange={e=>setCo(e.target.value)}/>
+          </div>
+          <div style={{marginTop:10}}>
+            <label style={{fontWeight:700,fontSize:".85rem",color:"#3d3450",display:"block",marginBottom:6}}>
+              Número de tracking <span style={{fontWeight:400,color:"#8b7fa8"}}>(opcional)</span>
+            </label>
+            <input style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #ede4f0",fontSize:".88rem"}}
+              placeholder="Ej: 12345678901" value={tn} onChange={e=>setTn(e.target.value)}/>
+            {tn && co.toLowerCase().includes("andreani") && (
+              <a href={`https://www.andreani.com/#!/informacion-de-envio/${tn}`} target="_blank" rel="noreferrer"
+                style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:6,fontSize:".78rem",color:"#e11a8a",fontWeight:700,textDecoration:"none"}}>
+                🔍 Verificar en Andreani ↗
+              </a>
+            )}
+            {tn && co.toLowerCase().includes("oca") && (
+              <a href={`https://www.oca.com.ar/OcaWebNet/FeChequeoEnvio/ChequeoSinLogin.aspx`} target="_blank" rel="noreferrer"
+                style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:6,fontSize:".78rem",color:"#e11a8a",fontWeight:700,textDecoration:"none"}}>
+                🔍 Verificar en OCA ↗
+              </a>
+            )}
+          </div>
+        </div>
+        <div className="ao-modal-footer">
+          <button className="ao-btn ao-btn-outline" onClick={onClose} type="button">Cancelar</button>
+          <button className="ao-btn ao-btn-ship" onClick={()=>onConfirm(tn,co)} type="button">📦 Confirmar despacho</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminOrders() {
   const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET")||"");
   const [iSec,   setISec]   = useState("");
@@ -76,6 +152,7 @@ export default function AdminOrders() {
   const [actM,   setActM]   = useState({open:false,type:null,order:null,loading:false});
   const [delM,   setDelM]   = useState({open:false,order:null,loading:false});
   const [waM,    setWaM]    = useState({open:false,link:null,order:null});
+  const [trackM, setTrackM] = useState({open:false,order:null});
 
   const closeWaM = () => setWaM({open:false,link:null,order:null});
 
@@ -174,12 +251,8 @@ export default function AdminOrders() {
     } catch(e) { setMsg("❌ "+e.message); setDelM(m=>({...m,loading:false})); }
   };
 
-  const doShip = async (order) => {
+    const doShip = async (order, tn = "", co = "") => {
     const isRetiro = order?.shipping?.method === "retiro";
-    const tn = isRetiro ? "" : window.prompt("Número de tracking (opcional):", order?.shipping?.trackingNumber || "");
-if (!isRetiro && tn === null) return;
-    if (!isRetiro && tn === null) return;
-    const co = isRetiro ? "" : (window.prompt("Empresa de envío (ej: Andreani, OCA):", order?.shipping?.company||"")||"").trim();
     const mt = order?.shipping?.method || "envio";
     try {
       setLoad(true);
@@ -192,13 +265,7 @@ if (!isRetiro && tn === null) return;
       setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d.shipping}:o));
       if (detail?._id===order._id) setDetail(x=>({...x,shipping:d.shipping}));
       if (isRetiro) {
-        const r2 = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`,{method:"POST",headers:{"x-admin-secret":secret}});
-        const d2 = await r2.json();
-        if (r2.ok) {
-          setOrders(a=>a.map(o=>o._id===order._id?{...o,shipping:d2.shipping}:o));
-          if (detail?._id===order._id) setDetail(x=>({...x,shipping:d2.shipping}));
-          setMsg("🏪 Pedido marcado como listo para retirar");
-        }
+        setMsg("🏪 Pedido marcado como listo para retirar");
       } else {
         setMsg("📦 Pedido despachado");
       }
@@ -328,7 +395,8 @@ if (!isRetiro && tn === null) return;
               const isRetiro = method === "retiro";
 
               const canShip   = o.status === "paid" && !shipped   && method === "envio";
-              const canRetiro = o.status === "paid" && !delivered && method === "retiro";
+              const canRetiro  = o.status === "paid" && !o?.shipping?.shippedAt  && method === "retiro";
+              const canRetirado = o.status === "paid" && !!o?.shipping?.shippedAt && !o?.shipping?.deliveredAt && method === "retiro";
               const canDeliv  = o.status === "paid" && !delivered && method === "envio" && !!o?.shipping?.trackingNumber;
               return (
                 <div key={o._id} className="ao-card">
@@ -376,9 +444,11 @@ if (!isRetiro && tn === null) return;
                       <button className="ao-btn ao-btn-confirm" onClick={()=>openAct("confirm",o)} type="button">✓ Confirmar</button>
                       <button className="ao-btn ao-btn-reject"  onClick={()=>openAct("reject",o)}  type="button">✗ Rechazar</button>
                     </>}
-                    {canShip   &&<button className="ao-btn ao-btn-ship"    onClick={()=>doRetiro(o)}  type="button">📦 Despachar</button>}
-                    {canRetiro &&<button className="ao-btn ao-btn-ship"    onClick={()=>doRetiro(o)}  type="button">🏪 Listo para retirar</button>}
+                    {canShip   &&<button className="ao-btn ao-btn-ship" onClick={()=>setTrackM({open:true,order:o})} type="button">📦 Despachar</button>}
+                    {canRetiro   && <button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}   type="button">🏪 Listo para retirar</button>}
+                    {canRetirado && <button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)}  type="button">✅ Retirado</button>}
                     {canDeliv  &&<button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)} type="button">✅ Entregado</button>}
+                    {o.status==="paid"&&<button className="ao-btn ao-btn-wa" onClick={()=>{const lnk=ADMIN_WA?`https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt(o))}`:null;setWaM({open:true,link:lnk,order:o});}} type="button">💬 WA</button>}
                     <button className="ao-btn ao-btn-delete full-col" onClick={()=>openDel(o)} type="button">🗑 Eliminar</button>
                   </div>
                 </div>
@@ -402,7 +472,8 @@ if (!isRetiro && tn === null) return;
                   const envio=o?.shipping?.method==="envio";
                   const isRetiro=o?.shipping?.method==="retiro";
                   const canShip=o.status==="paid"&&!o?.shipping?.shippedAt&&!isRetiro;
-                  const canRetiro=o.status==="paid"&&!o?.shipping?.deliveredAt&&isRetiro;
+                  const canRetiro  = o.status === "paid" && !o?.shipping?.shippedAt  && isRetiro;
+                  const canRetirado = o.status === "paid" && !!o?.shipping?.shippedAt && !o?.shipping?.deliveredAt && isRetiro;
                   const canDeliv=o.status==="paid"&&!o?.shipping?.deliveredAt&&!isRetiro&&!!o?.shipping?.trackingNumber;
                   return (
                     <tr key={o._id}>
@@ -439,9 +510,11 @@ if (!isRetiro && tn === null) return;
                             <button className="ao-btn ao-btn-confirm" onClick={()=>openAct("confirm",o)} type="button">CONFIRMAR</button>
                             <button className="ao-btn ao-btn-reject"  onClick={()=>openAct("reject",o)}  type="button">RECHAZAR</button>
                           </>}
-                          {canShip   &&<button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}   type="button">DESPACHAR</button>}
-                          {canRetiro &&<button className="ao-btn ao-btn-ship"    onClick={()=>doRetiro(o)} type="button">LISTO RETIRAR</button>}
+                          {canShip   &&<button className="ao-btn ao-btn-ship" onClick={()=>setTrackM({open:true,order:o})} type="button">DESPACHAR</button>}
+                          {canRetiro   && <button className="ao-btn ao-btn-ship"    onClick={()=>doShip(o)}  type="button">LISTO RETIRAR</button>}
+                          {canRetirado && <button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)} type="button">RETIRADO</button>}
                           {canDeliv  &&<button className="ao-btn ao-btn-outline" onClick={()=>doDeliv(o)}  type="button">ENTREGADO</button>}
+                          {o.status==="paid"&&<button className="ao-btn ao-btn-wa" onClick={()=>{const lnk=ADMIN_WA?`https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt(o))}`:null;setWaM({open:true,link:lnk,order:o});}} type="button">💬 WA</button>}
                           <button className="ao-btn ao-btn-delete" onClick={()=>openDel(o)} type="button">🗑 ELIMINAR</button>
                         </div>
                       </td>
@@ -786,6 +859,21 @@ if (!isRetiro && tn === null) return;
             </div>
           </div>
         </div>
+
+          
+
+      )}
+
+      {/* MODAL TRACKING */}
+      {trackM.open && (
+        <TrackModal
+          order={trackM.order}
+          onClose={()=>setTrackM({open:false,order:null})}
+          onConfirm={async(tn,co)=>{
+            await doShip(trackM.order, tn, co);
+            setTrackM({open:false,order:null});
+          }}
+        />
       )}
 
     </div>
