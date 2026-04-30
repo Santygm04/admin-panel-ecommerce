@@ -153,7 +153,7 @@ export default function AdminOrders() {
   const [delM,   setDelM]   = useState({open:false,order:null,loading:false});
   const [waM,    setWaM]    = useState({open:false,link:null,order:null});
   const [trackM, setTrackM] = useState({open:false,order:null});
-
+  const [timeFilter, setTimeFilter] = useState("all");
   const closeWaM = () => setWaM({open:false,link:null,order:null});
 
   const fetch_ = async () => {
@@ -309,7 +309,21 @@ export default function AdminOrders() {
     finally{setLoad(false);}
   };
 
-  const rows = useMemo(()=>tab?orders.filter(o=>o.status===tab):orders,[orders,tab]);
+  const rows = useMemo(() => {
+  let filtered = tab ? orders.filter(o => o.status === tab) : orders;
+if (timeFilter !== "all") {
+  let cutoff;
+  if (timeFilter === "today") {
+    cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0); // desde las 00:00 de hoy
+  } else {
+    const days = { "7d":7, "14d":14, "1m":30, "3m":90, "6m":180, "12m":365 };
+    cutoff = new Date(Date.now() - days[timeFilter] * 86400000);
+  }
+  filtered = filtered.filter(o => new Date(o.createdAt) >= cutoff);
+}
+  return filtered;
+}, [orders, tab, timeFilter]);
 
 
   
@@ -371,6 +385,25 @@ export default function AdminOrders() {
             </button>
           ))}
         </div>
+
+        <div className="ao-time-filters">
+  {[
+    { v:"all",  lbl:"Todos" },
+    { v:"today",lbl:"Hoy" },
+    { v:"7d",   lbl:"7 días" },
+    { v:"14d",  lbl:"14 días" },
+    { v:"1m",   lbl:"1 mes" },
+    { v:"3m",   lbl:"3 meses" },
+    { v:"6m",   lbl:"6 meses" },
+    { v:"12m",  lbl:"12 meses" },
+  ].map(f => (
+    <button key={f.v} type="button"
+      className={`ao-tfilter${timeFilter===f.v?" ao-tfilter-on":""}`}
+      onClick={() => setTimeFilter(f.v)}>
+      {f.lbl}
+    </button>
+  ))}
+</div>
 
         {msg && <div className="ao-banner">{msg}</div>}
 

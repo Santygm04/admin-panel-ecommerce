@@ -598,3 +598,35 @@
   .ao-modal-pull { display: none; }
   .ao-modal-footer { grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); }
 }
+
+/* ── Filtros de tiempo ── */
+.ao-time-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ao-tfilter {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .14s;
+  font-family: inherit;
+}
+.ao-tfilter:hover {
+  border-color: var(--pink-bd);
+  color: var(--pink-h);
+  background: var(--pink-soft);
+}
+.ao-tfilter.ao-tfilter-on {
+  background: linear-gradient(135deg, var(--pink), var(--pink-h));
+  color: #fff;
+  border-color: var(--pink);
+  box-shadow: 0 3px 10px rgba(255,46,166,.28);
+}
