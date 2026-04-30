@@ -50,21 +50,21 @@ const waTxt = (o) => {
   return `• ${it.nombre}${vp} ×${it.cantidad} — ${$m(it.subtotal)}${tonosPart}`;
 }).join("\n");
   return [
-    "✅ *¡Tu pedido fue confirmado, Aesthetic te lo confirma!*","",
-    `🏷 *Código de pedido:* ${ticket||num(o)}`,
-    `   _Guardá este código para hacer seguimiento_`,"",
-    `📦 *Detalle del pedido:*`,
-    `*Método de pago:* ${o.paymentMethod === "mercadopago" ? "Mercado Pago" : "Transferencia"}`,"",
-    `👤 *Datos del cliente:*`,
+    "\u2705 *\u00a1Tu pedido fue confirmado, Aesthetic te lo confirma!*", "",
+    "\uD83C\uDFF7 *C\u00f3digo de pedido:* " + (ticket||num(o)),
+    "   _Guard\u00e1 este c\u00f3digo para hacer seguimiento_", "",
+    "\uD83D\uDCE6 *Detalle del pedido:*",
+    `*M\u00e9todo de pago:* ${o.paymentMethod === "mercadopago" ? "Mercado Pago" : "Transferencia"}`, "",
+    "\uD83D\uDC64 *Datos del cliente:*",
     `*Nombre:* ${o?.buyer?.nombre||"-"}`,
-    `*Teléfono:* ${o?.buyer?.telefono||"-"}`,"",
-    `🚚 *Entrega:* ${envio?"Envío a domicilio":"Retiro en local"}`,
-    ...(envio?[`*Dirección:* ${adr(o?.shipping?.address||{})}`]:[]),"",
-    `🛍 *Productos:*`,lines||"—","",
-    `💰 *Total:* ${$m(o.total)}`,
+    `*Tel\u00e9fono:* ${o?.buyer?.telefono||"-"}`, "",
+    `\uD83D\uDE9A *Entrega:* ${envio?"Env\u00edo a domicilio":"Retiro en local"}`,
+    ...(envio?[`*Direcci\u00f3n:* ${adr(o?.shipping?.address||{})}`]:[]), "",
+    "\uD83D\uDECD *Productos:*", lines||"\u2014", "",
+    `\uD83D\uDCB0 *Total:* ${$m(o.total)}`,
     "",
-    "¡Gracias por tu compra! Ante cualquier consulta estamos a tu disposición 🌸",
-  ].join("\n");
+    "\u00a1Gracias por tu compra! Ante cualquier consulta estamos a tu disposici\u00f3n \uD83C\uDF38",
+].join("\n");
 };
 
 function TrackModal({ order, onClose, onConfirm }) {
