@@ -40,6 +40,7 @@ export default function ProductForm() {
     // ← CAMBIO #8
     unidadesPorCaja: "",
     cantidadTonos: "",
+    minimoMayorista: "",
     modoTonos: "automatico",
     tonosDisponibles: [],
   });
@@ -165,6 +166,7 @@ export default function ProductForm() {
         variants: cleanVariants,
         // ← CAMBIO #8
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? Number(producto.unidadesPorCaja) : null,
+        minimoMayorista: producto.minimoMayorista !== "" ? Number(producto.minimoMayorista) : null,
         cantidadTonos:   producto.cantidadTonos   !== "" ? Number(producto.cantidadTonos)   : null,
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -178,7 +180,7 @@ export default function ProductForm() {
         descripcion: "", categoria: "", subcategoria: "",
         stock: "", destacado: false, tags: [], variants: [],
         // ← CAMBIO #8
-        unidadesPorCaja: "", cantidadTonos: "", modoTonos: "automatico", tonosDisponibles: [],
+        unidadesPorCaja: "", cantidadTonos: "", modoTonos: "automatico", tonosDisponibles: [], minimoMayorista: "",
       });
       setSelSizes([]); setSelColors([]);
       setImagenFile(null); setPreviewUrl("");
@@ -274,6 +276,26 @@ export default function ProductForm() {
             />
             <small className="hint">Compra mínima $30.000</small>
           </div>
+
+          {producto.categoria === "lenceria" && (
+            <div className="form-group pf-precio-item">
+              <label className="pf-precio-label">
+                <span className="pf-precio-tag pf-precio-tag--m">6x</span>
+                Mínimo mayorista
+              </label>
+              <input
+                name="minimoMayorista"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Ej: 6"
+                value={producto.minimoMayorista ?? ""}
+                onChange={handleChange}
+              />
+              <small className="hint">Unidades mínimas para precio mayorista. Ej: 6 → 6, 12, 18...</small>
+            </div>
+          )}
+
         </div>
       </div>
 

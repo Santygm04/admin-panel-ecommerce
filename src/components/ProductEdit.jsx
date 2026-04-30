@@ -60,6 +60,7 @@ export default function EditProduct() {
           tags:            Array.isArray(p.tags) ? p.tags : [],
           createdAt:       p.createdAt,
           unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
+          minimoMayorista:  p.minimoMayorista  != null ? String(p.minimoMayorista)  : "",
           cantidadTonos:    p.cantidadTonos    != null ? String(p.cantidadTonos)    : "",
           modoTonos:        p.modoTonos || "automatico",
           tonosDisponibles: Array.isArray(p.tonosDisponibles) ? p.tonosDisponibles : [],
@@ -201,6 +202,7 @@ export default function EditProduct() {
         imagen:          imagenUrl,
         variants:        clean,
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? safeInt(producto.unidadesPorCaja) : null,
+        minimoMayorista: producto.minimoMayorista !== "" ? safeInt(producto.minimoMayorista) : null,
         cantidadTonos:   producto.cantidadTonos   !== "" ? safeInt(producto.cantidadTonos)   : null,
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -290,6 +292,25 @@ export default function EditProduct() {
               onWheel={(e) => e.currentTarget.blur()} />
             <small className="hint">Compra mínima $30.000</small>
           </div>
+
+          {producto.categoria === "lenceria" && (
+            <div className="form-group pf-precio-item">
+              <label className="pf-precio-label">
+                <span className="pf-precio-tag pf-precio-tag--m">6x</span>
+                Mínimo mayorista
+              </label>
+              <input
+                name="minimoMayorista"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Ej: 6"
+                value={producto.minimoMayorista ?? ""}
+                onChange={handleChange}
+              />
+              <small className="hint">Unidades mínimas para precio mayorista. Ej: 6 → 6, 12, 18...</small>
+            </div>
+          )}
 
         </div>
       </div>

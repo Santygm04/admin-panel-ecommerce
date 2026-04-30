@@ -10,7 +10,14 @@ const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
 const adr  = (a = {}) =>
   [[a.calle, a.numero].filter(Boolean).join(" "), a.piso, a.ciudad, a.provincia, a.cp]
     .filter(Boolean).join(", ");
-const tel  = (r) => r ? String(r).replace(/\D/g, "") : "";
+const tel = (r) => {
+  if (!r) return "";
+  const clean = String(r).replace(/\D/g, "");
+  // si ya tiene código de país (empieza con 54) lo dejamos
+  if (clean.startsWith("54")) return clean;
+  // agregamos 54 9 para Argentina
+  return "549" + clean;
+};
 const shrt = (id) => id ? String(id).slice(-8) : "—";
 const num  = (o) => o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || `#${shrt(o?._id)}`;
 const fd   = (d) => d.toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit", year:"2-digit" });
@@ -50,20 +57,22 @@ const waTxt = (o) => {
     return `- ${it.nombre}${vp} x${it.cantidad} --- ${$m(it.subtotal)}${tonosPart}`;
   }).join("\n");
   return [
-    "*¡Tu pedido fue confirmado, Aesthetic te lo confirma!*", "",
-    `*Codigo de pedido:* ${ticket||num(o)}`,
+    "✅ *¡Tu pedido fue confirmado, Aesthetic te lo confirma!*", "",
+    `🏷️ *Codigo de pedido:* ${ticket||num(o)}`,
     `   _Guarda este codigo para hacer seguimiento_`, "",
-    `*Detalle del pedido:*`,
+    `📦 *Detalle del pedido:*`,
     `*Metodo de pago:* ${o.paymentMethod === "mercadopago" ? "Mercado Pago" : "Transferencia"}`, "",
-    `*Datos del cliente:*`,
+    `👤 *Datos del cliente:*`,
     `*Nombre:* ${o?.buyer?.nombre||"-"}`,
     `*Telefono:* ${o?.buyer?.telefono||"-"}`, "",
-    `*Entrega:* ${envio?"Envio a domicilio":"Retiro en local"}`,
+    `🚚 *Entrega:* ${envio?"Envio a domicilio":"Retiro en local"}`,
     ...(envio?[`*Direccion:* ${adr(o?.shipping?.address||{})}`]:[]), "",
-    `*Productos:*`, lines||"—", "",
-    `*Total:* ${$m(o.total)}`,
+    `🛒 *Productos:*`, lines||"—", "",
+    `💰 *Total:* ${$m(o.total)}`,
     "",
-    "Gracias por tu compra! Ante cualquier consulta estamos a tu disposicion",
+    `Segui tu pedido aqui: https://aestheticmakeup.com.ar/pago/paid?orderId=${o._id}`,
+    "",
+    "Gracias por tu compra! Ante cualquier consulta estamos a tu disposicion 🌸",
   ].join("\n");
 };
 
@@ -590,7 +599,7 @@ export default function AdminOrders() {
       <div className="ao-modal-pull" />
 
       <div className="ao-modal-header">
-        <h3>🧾 Pedido {num(detail)}</h3>
+        <h3>🧾 Pedido {detail?.shippingTicket || num(detail)}</h3>
         <button onClick={() => setDetail(null)} className="ao-x">✕</button>
       </div>
 
@@ -737,14 +746,17 @@ export default function AdminOrders() {
       <div className="ao-modal-footer">
 
         {detail?.buyer?.telefono && (
-          <a
-            href={`https://wa.me/${tel(detail.buyer.telefono)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="ao-btn ao-btn-wa"
-          >
-            💬 WhatsApp
-          </a>
+          <button
+  className="ao-btn ao-btn-wa"
+  type="button"
+  onClick={() => {
+    const msg = `¡Hola ${detail?.buyer?.nombre}! 👋\n\nRecibimos tu pedido en *Aesthetic* y lo estamos revisando.\n\n🏷 *Código de pedido:* ${num(detail)}\n💰 *Total:* ${$m(detail.total)}\n\nEn breve te confirmamos y comenzamos a prepararlo. Ante cualquier consulta estamos a tu disposición 🌸`;
+    navigator.clipboard.writeText(msg);
+    window.open(`https://wa.me/${tel(detail?.buyer?.telefono)}`, "_blank");
+  }}
+>
+  💬 Avisar al cliente
+</button>
         )}
 
         {detail.status === "pending" && (
@@ -879,16 +891,18 @@ export default function AdminOrders() {
               </div>
             </div>
             <div className="ao-modal-footer" style={{gridTemplateColumns:"1fr"}}>
-              <a
-                href={waM.link}
-                target="_blank"
-                rel="noreferrer"
-                className="ao-btn ao-btn-wa"
-                onClick={closeWaM}
-                style={{justifyContent:"center"}}
-              >
-                💬 Abrir WhatsApp y enviar
-              </a>
+              <button
+  className="ao-btn ao-btn-wa"
+  type="button"
+  style={{justifyContent:"center"}}
+  onClick={() => {
+    navigator.clipboard.writeText(waTxt(waM.order));
+    window.open(`https://wa.me/${tel(waM.order?.buyer?.telefono)}`, "_blank");
+    closeWaM();
+  }}
+>
+  💬 Abrir WhatsApp y pegar mensaje
+</button>
               <button
                 className="ao-btn ao-btn-outline"
                 type="button"
