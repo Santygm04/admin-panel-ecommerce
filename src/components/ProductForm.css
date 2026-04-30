@@ -642,3 +642,23 @@ input[type="number"] { -moz-appearance: textfield; }
     grid-column: unset;
   }
 }
+
+/* ── Bloque de tonos: fix mobile ── */
+.pf-tonos-grid {
+  display: grid;
+  grid-template-columns: 1fr;   /* mobile: apilado */
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .pf-tonos-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pf-tonos-nombres {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}

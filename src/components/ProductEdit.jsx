@@ -12,7 +12,7 @@ const subcategoriasPorCategoria = {
   bodycare: ["jabones", "cremas corporales", "aceites"],
   uñas: ["Soft-Gel", "Semi-Permanente", "Normal", "soft-gel"],
   pestañas: ["insumos", "kits", "extensiones"],
-  peluquería: ["peines", "cepillos", "tratamientos"],
+  peluquería: ["peines", "cepillos", "tratamientos", "coloración"],
   bijouterie: ["aros", "collares", "pulseras", "anillos"],
   marroquineria: ["mochilas", "riñoneras", "bolsos"],
   accesorios: ["pelo"],
@@ -325,7 +325,7 @@ export default function EditProduct() {
               <span className="pf-precio-title">Tonos del producto <span className="muted" style={{ fontWeight: 400 }}>(opcional)</span></span>
               <span className="pf-precio-hint">Solo para productos con variantes de tono</span>
             </div>
-            <div className="pf-precio-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <div className="pf-tonos-grid">
               <div className="form-group pf-precio-item">
                 <label className="pf-precio-label">Cantidad de tonos</label>
                 <select value={producto.cantidadTonos ?? ""}
@@ -360,7 +360,7 @@ export default function EditProduct() {
             </div>
 
             {producto.cantidadTonos && producto.modoTonos === "manual" && (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <div className="pf-tonos-nombres">
                 {Array.from({ length: Number(producto.cantidadTonos) }, (_, i) => (
                   <div key={i} className="form-group pf-precio-item" style={{ minWidth: 120 }}>
                     <label className="pf-precio-label">Tono {i + 1}</label>

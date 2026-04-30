@@ -154,6 +154,7 @@ export default function AdminOrders() {
   const [waM,    setWaM]    = useState({open:false,link:null,order:null});
   const [trackM, setTrackM] = useState({open:false,order:null});
   const [timeFilter, setTimeFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const closeWaM = () => setWaM({open:false,link:null,order:null});
 
   const fetch_ = async () => {
@@ -309,22 +310,30 @@ export default function AdminOrders() {
     finally{setLoad(false);}
   };
 
-  const rows = useMemo(() => {
+ const rows = useMemo(() => {
   let filtered = tab ? orders.filter(o => o.status === tab) : orders;
-if (timeFilter !== "all") {
-  let cutoff;
-  if (timeFilter === "today") {
-    cutoff = new Date();
-    cutoff.setHours(0, 0, 0, 0); // desde las 00:00 de hoy
-  } else {
-    const days = { "7d":7, "14d":14, "1m":30, "3m":90, "6m":180, "12m":365 };
-    cutoff = new Date(Date.now() - days[timeFilter] * 86400000);
+  if (timeFilter !== "all") {
+    let cutoff;
+    if (timeFilter === "today") {
+      cutoff = new Date();
+      cutoff.setHours(0, 0, 0, 0);
+    } else {
+      const days = { "7d":7, "14d":14, "1m":30, "3m":90, "6m":180, "12m":365 };
+      cutoff = new Date(Date.now() - days[timeFilter] * 86400000);
+    }
+    filtered = filtered.filter(o => new Date(o.createdAt) >= cutoff);
   }
-  filtered = filtered.filter(o => new Date(o.createdAt) >= cutoff);
-}
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    filtered = filtered.filter(o =>
+      (o.shippingTicket||"").toLowerCase().includes(q) ||
+      String(o.orderNumber||"").includes(q) ||
+      (o?.buyer?.nombre||"").toLowerCase().includes(q) ||
+      (o?.buyer?.telefono||"").includes(q)
+    );
+  }
   return filtered;
-}, [orders, tab, timeFilter]);
-
+}, [orders, tab, timeFilter, search]);
 
   
   /* ── LOGIN ── */
@@ -403,6 +412,20 @@ if (timeFilter !== "all") {
       {f.lbl}
     </button>
   ))}
+</div>
+
+<div className="ao-search-wrap">
+  <span className="ao-search-ico">🔍</span>
+  <input
+    className="ao-search-input"
+    type="text"
+    placeholder="Buscar por ticket, número, cliente o teléfono…"
+    value={search}
+    onChange={e => setSearch(e.target.value)}
+  />
+  {search && (
+    <button className="ao-search-clear" onClick={() => setSearch("")} type="button">✕</button>
+  )}
 </div>
 
         {msg && <div className="ao-banner">{msg}</div>}
