@@ -40,7 +40,8 @@ export default function ProductForm() {
     // ← CAMBIO #8
     unidadesPorCaja: "",
     cantidadTonos: "",
-    minimoMayorista: "",
+    minimoMayorista2: "",
+    precioMayorista2: "",
     modoTonos: "automatico",
     tonosDisponibles: [],
   });
@@ -166,7 +167,8 @@ export default function ProductForm() {
         variants: cleanVariants,
         // ← CAMBIO #8
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? Number(producto.unidadesPorCaja) : null,
-        minimoMayorista: producto.minimoMayorista !== "" ? Number(producto.minimoMayorista) : null,
+       minimoMayorista2: producto.minimoMayorista2 !== "" ? Number(producto.minimoMayorista2) : null,
+       precioMayorista2: producto.precioMayorista2 !== "" ? Number(producto.precioMayorista2) : null,
         cantidadTonos:   producto.cantidadTonos   !== "" ? Number(producto.cantidadTonos)   : null,
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -278,23 +280,67 @@ export default function ProductForm() {
           </div>
 
           {producto.categoria === "lenceria" && (
-            <div className="form-group pf-precio-item">
-              <label className="pf-precio-label">
-                <span className="pf-precio-tag pf-precio-tag--m">6x</span>
-                Mínimo mayorista
-              </label>
-              <input
-                name="minimoMayorista"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Ej: 6"
-                value={producto.minimoMayorista ?? ""}
-                onChange={handleChange}
-              />
-              <small className="hint">Unidades mínimas para precio mayorista. Ej: 6 → 6, 12, 18...</small>
-            </div>
-          )}
+  <>
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m">M1</span>
+        Mínimo Mayorista 1
+      </label>
+      <input
+        name="minimoMayorista"
+        type="number" min="1" step="1"
+        placeholder="Ej: 6"
+        value={producto.minimoMayorista ?? ""}
+        onChange={handleChange}
+      />
+      <small className="hint">Ej: 6 → aplica desde 6 unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
+        Precio Mayorista 1
+      </label>
+      <input
+        name="precioMayorista"
+        type="number" min="0" step="1"
+        placeholder="Ej: 900"
+        value={producto.precioMayorista ?? ""}
+        onChange={handleChange}
+      />
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2</span>
+        Mínimo Mayorista 2
+      </label>
+      <input
+        name="minimoMayorista2"
+        type="number" min="1" step="1"
+        placeholder="Ej: 12"
+        value={producto.minimoMayorista2 ?? ""}
+        onChange={handleChange}
+      />
+      <small className="hint">Ej: 12 → aplica desde 12 unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2$</span>
+        Precio Mayorista 2
+      </label>
+      <input
+        name="precioMayorista2"
+        type="number" min="0" step="1"
+        placeholder="Ej: 750"
+        value={producto.precioMayorista2 ?? ""}
+        onChange={handleChange}
+      />
+      <small className="hint">Precio por unidad al llegar al mínimo M2</small>
+    </div>
+  </>
+)}
 
         </div>
       </div>

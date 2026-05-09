@@ -61,6 +61,8 @@ export default function EditProduct() {
           createdAt:       p.createdAt,
           unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
           minimoMayorista:  p.minimoMayorista  != null ? String(p.minimoMayorista)  : "",
+          minimoMayorista2: p.minimoMayorista2 != null ? String(p.minimoMayorista2) : "",
+          precioMayorista2: p.precioMayorista2 != null ? String(p.precioMayorista2) : "",
           cantidadTonos:    p.cantidadTonos    != null ? String(p.cantidadTonos)    : "",
           modoTonos:        p.modoTonos || "automatico",
           tonosDisponibles: Array.isArray(p.tonosDisponibles) ? p.tonosDisponibles : [],
@@ -107,7 +109,7 @@ export default function EditProduct() {
       return;
     }
 
-    const numericOptional = ["precioEspecial", "precioMayorista", "unidadesPorCaja", "cantidadTonos"];
+    const numericOptional = ["precioEspecial", "precioMayorista", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2"];
     if (numericOptional.includes(name)) {
       setProducto(prev => ({ ...prev, [name]: value }));
       if (name === "categoria") setProducto(prev => ({ ...prev, [name]: value, subcategoria: "" }));
@@ -202,7 +204,9 @@ export default function EditProduct() {
         imagen:          imagenUrl,
         variants:        clean,
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? safeInt(producto.unidadesPorCaja) : null,
-        minimoMayorista: producto.minimoMayorista !== "" ? safeInt(producto.minimoMayorista) : null,
+        minimoMayorista:  producto.minimoMayorista  !== "" ? safeInt(producto.minimoMayorista)  : null,
+        minimoMayorista2: producto.minimoMayorista2 !== "" ? safeInt(producto.minimoMayorista2) : null,
+        precioMayorista2: producto.precioMayorista2 !== "" ? safeInt(producto.precioMayorista2) : null,
         cantidadTonos:   producto.cantidadTonos   !== "" ? safeInt(producto.cantidadTonos)   : null,
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -294,23 +298,71 @@ export default function EditProduct() {
           </div>
 
           {producto.categoria === "lenceria" && (
-            <div className="form-group pf-precio-item">
-              <label className="pf-precio-label">
-                <span className="pf-precio-tag pf-precio-tag--m">6x</span>
-                Mínimo mayorista
-              </label>
-              <input
-                name="minimoMayorista"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Ej: 6"
-                value={producto.minimoMayorista ?? ""}
-                onChange={handleChange}
-              />
-              <small className="hint">Unidades mínimas para precio mayorista. Ej: 6 → 6, 12, 18...</small>
-            </div>
-          )}
+  <>
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m">M1</span>
+        Mínimo Mayorista 1
+      </label>
+      <input
+        name="minimoMayorista"
+        type="number" min="1" step="1"
+        placeholder="Ej: 6"
+        value={producto.minimoMayorista ?? ""}
+        onChange={handleChange}
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+      <small className="hint">Ej: 6 → aplica desde 6 unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
+        Precio Mayorista 1
+      </label>
+      <input
+        name="precioMayorista"
+        type="number" min="0" step="1"
+        placeholder="Ej: 900"
+        value={producto.precioMayorista ?? ""}
+        onChange={handleChange}
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2</span>
+        Mínimo Mayorista 2
+      </label>
+      <input
+        name="minimoMayorista2"
+        type="number" min="1" step="1"
+        placeholder="Ej: 12"
+        value={producto.minimoMayorista2 ?? ""}
+        onChange={handleChange}
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+      <small className="hint">Ej: 12 → aplica desde 12 unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2$</span>
+        Precio Mayorista 2
+      </label>
+      <input
+        name="precioMayorista2"
+        type="number" min="0" step="1"
+        placeholder="Ej: 750"
+        value={producto.precioMayorista2 ?? ""}
+        onChange={handleChange}
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+      <small className="hint">Precio por unidad al llegar al mínimo M2</small>
+    </div>
+  </>
+)}
 
         </div>
       </div>

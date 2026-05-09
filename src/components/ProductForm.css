@@ -662,3 +662,9 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 8px;
   margin-top: 8px;
 }
+
+/* ── Mayorista 2 ── */
+.pf-precio-tag--m2 {
+  background: #7c3aed;
+  color: #fff;
+}
