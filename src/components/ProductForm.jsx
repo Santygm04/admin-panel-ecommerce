@@ -273,23 +273,19 @@ export default function ProductForm() {
           </div>
 
           {/* Precio Mayorista */}
-          <div className="form-group pf-precio-item">
-            <label className="pf-precio-label">
-              <span className="pf-precio-tag pf-precio-tag--m">M</span>
-              Precio Mayorista
-            </label>
-            <input
-              name="precioMayorista"
-              type="number"
-              inputMode="decimal"
-              step="1"
-              min="0"
-              placeholder="Ej: 900"
-              value={producto.precioMayorista}
-              onChange={handleChange}
-            />
-            <small className="hint">Compra mínima $30.000</small>
-          </div>
+          {producto.categoria !== "lenceria" && (
+            <div className="form-group pf-precio-item">
+              <label className="pf-precio-label">
+                <span className="pf-precio-tag pf-precio-tag--m">M</span>
+                Precio Mayorista
+              </label>
+              <input name="precioMayorista" type="number" inputMode="decimal" step="1" min="0"
+                placeholder="Ej: 900"
+                value={producto.precioMayorista ?? ""} onChange={handleChange}
+                onWheel={(e) => e.currentTarget.blur()} />
+              <small className="hint">Compra mínima $30.000</small>
+            </div>
+          )}
 
           {producto.categoria === "lenceria" && (
   <>
@@ -321,21 +317,7 @@ export default function ProductForm() {
       </small>
     </div>
 
-    <div className="form-group pf-precio-item">
-      <label className="pf-precio-label">
-        <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
-        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Precio x2"
-         : SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio x2"
-         : "Precio Mayorista 1"}
-      </label>
-      <input
-        name="precioMayorista"
-        type="number" min="0" step="1"
-        placeholder="Ej: 900"
-        value={producto.precioMayorista ?? ""}
-        onChange={handleChange}
-      />
-    </div>
+   
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
