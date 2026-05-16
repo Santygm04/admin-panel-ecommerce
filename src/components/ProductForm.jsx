@@ -4,6 +4,18 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import "../../src/components/ProductForm.css";
 
+// Subcategorías con precio unitario "desde 2 unidades"
+const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
+// Subcategorías con precio x2 y x6
+const SUBCAT_MEDIAS  = ["medias"];
+
+// Devuelve el mínimo sugerido según subcategoría
+const getMinimoSugerido = (subcat) => {
+  if (SUBCAT_DESDE_2.includes(subcat)) return 2;
+  if (SUBCAT_MEDIAS.includes(subcat))  return 2; // también tiene x6
+  return null;
+};
+
 const subcategoriasPorCategoria = {
   lenceria: ["conjuntos","tops-y-corpiños","vedetinas","colales","boxer","slip","niña","medias"],
   maquillaje: ["labiales", "sombras", "brochas", "sets"],
@@ -281,6 +293,15 @@ export default function ProductForm() {
 
           {producto.categoria === "lenceria" && (
   <>
+    {/* Hint automático según subcategoría */}
+    {producto.subcategoria && getMinimoSugerido(producto.subcategoria) && (
+      <div style={{ gridColumn: "1/-1", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, fontSize: ".82rem", color: "#c2410c", fontWeight: 600 }}>
+        💡 {SUBCAT_MEDIAS.includes(producto.subcategoria)
+          ? "Medias: precio x2 y precio x6 recomendados"
+          : `${producto.subcategoria}: precio unitario desde 2 unidades`}
+      </div>
+    )}
+
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag pf-precio-tag--m">M1</span>
@@ -289,17 +310,23 @@ export default function ProductForm() {
       <input
         name="minimoMayorista"
         type="number" min="1" step="1"
-        placeholder="Ej: 6"
+        placeholder={getMinimoSugerido(producto.subcategoria) ?? "Ej: 6"}
         value={producto.minimoMayorista ?? ""}
         onChange={handleChange}
       />
-      <small className="hint">Ej: 6 → aplica desde 6 unidades</small>
+      <small className="hint">
+        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Ej: 2 → desde 2 unidades"
+         : SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Ej: 2 → precio x2"
+         : "Ej: 6 → aplica desde 6 unidades"}
+      </small>
     </div>
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
-        Precio Mayorista 1
+        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Precio x2"
+         : SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio x2"
+         : "Precio Mayorista 1"}
       </label>
       <input
         name="precioMayorista"
@@ -313,22 +340,24 @@ export default function ProductForm() {
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2</span>
-        Mínimo Mayorista 2
+        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Mínimo x6" : "Mínimo Mayorista 2"}
       </label>
       <input
         name="minimoMayorista2"
         type="number" min="1" step="1"
-        placeholder="Ej: 12"
+        placeholder={SUBCAT_MEDIAS.includes(producto.subcategoria) ? "6" : "Ej: 12"}
         value={producto.minimoMayorista2 ?? ""}
         onChange={handleChange}
       />
-      <small className="hint">Ej: 12 → aplica desde 12 unidades</small>
+      <small className="hint">
+        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Ej: 6 → precio por 6 unidades" : "Ej: 12 → aplica desde 12 unidades"}
+      </small>
     </div>
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2$</span>
-        Precio Mayorista 2
+        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio x6" : "Precio Mayorista 2"}
       </label>
       <input
         name="precioMayorista2"
@@ -337,11 +366,12 @@ export default function ProductForm() {
         value={producto.precioMayorista2 ?? ""}
         onChange={handleChange}
       />
-      <small className="hint">Precio por unidad al llegar al mínimo M2</small>
+      <small className="hint">
+        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio por unidad al llevar 6" : "Precio por unidad al llegar al mínimo M2"}
+      </small>
     </div>
   </>
 )}
-
         </div>
       </div>
 
