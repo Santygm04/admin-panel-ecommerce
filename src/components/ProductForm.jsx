@@ -317,7 +317,21 @@ export default function ProductForm() {
       </small>
     </div>
 
-   
+   <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
+        Precio x6
+      </label>
+      <input
+        name="precioMayorista"
+        type="number" min="0" step="1"
+        placeholder="Ej: 4000"
+        value={producto.precioMayorista ?? ""}
+        onChange={handleChange}
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+      <small className="hint">Precio por unidad al llevar 6</small>
+    </div>
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
