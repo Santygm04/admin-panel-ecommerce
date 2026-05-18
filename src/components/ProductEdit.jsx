@@ -335,7 +335,7 @@ export default function EditProduct() {
         onChange={handleChange}
       />
       <small className="hint">
-        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Ej: 2 → desde 2 unidades"
+        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Ej: 6 → desde 6 unidades"
          : SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Ej: 2 → precio x2"
          : "Ej: 6 → aplica desde 6 unidades"}
       </small>
