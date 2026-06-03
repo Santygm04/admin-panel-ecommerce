@@ -16,19 +16,6 @@ const getMinimoSugerido = (subcat) => {
   return null;
 };
 
-const subcategoriasPorCategoria = {
-  lenceria: ["conjuntos","tops-y-corpiños","vedetinas","colales","boxer","slip","niña","medias"],
-  maquillaje: ["labiales", "sombras", "brochas", "sets"],
-  skincare: ["serums", "limpiadores", "exfoliantes", "cremas"],
-  bodycare: ["jabones", "cremas corporales", "aceites"],
-  uñas: ["Soft-Gel", "Semi-Permanente", "Normal"],
-  pestañas: ["insumos", "kits", "extensiones"],
-  peluquería: ["peines", "cepillos", "tratamientos", "coloración"],
-  bijouterie: ["aros", "collares", "pulseras", "anillos"],
-  marroquineria: ["mochilas", "riñoneras", "bolsos"],
-  accesorios: ["pelo"],
-};
-
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
 
@@ -87,7 +74,13 @@ export default function ProductForm() {
     }
   };
 
-  const subcategorias = subcategoriasPorCategoria[producto.categoria] || [];
+  const [categoriasDB, setCategoriasDB] = useState([]);
+useEffect(() => {
+  axios.get(`${API}/categories`)
+    .then(({ data }) => setCategoriasDB(data.categories || []))
+    .catch(() => {});
+}, []);
+const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.subcategorias || [];
 
   const handleImageChange = (e) => {
   const files = Array.from(e.target.files || []);
@@ -493,9 +486,9 @@ export default function ProductForm() {
               <label>Categoría</label>
               <select name="categoria" value={producto.categoria} onChange={handleChange} required>
                 <option value="">Seleccionar categoría</option>
-                {Object.keys(subcategoriasPorCategoria).map((cat) => (
-                  <option key={cat} value={cat}>{label(cat)}</option>
-                ))}
+                {categoriasDB.map((cat) => (
+  <option key={cat.slug} value={cat.slug}>{cat.nombre}</option>
+))}
               </select>
             </div>
 

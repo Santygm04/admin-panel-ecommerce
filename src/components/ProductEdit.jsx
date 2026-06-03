@@ -100,10 +100,13 @@
       })();
     }, [id, nav]);
 
-    const subcategorias = useMemo(
-      () => subcategoriasPorCategoria[producto?.categoria] || [],
-      [producto?.categoria]
-    );
+    const [categoriasDB, setCategoriasDB] = useState([]);
+useEffect(() => {
+  axios.get(`${API}/categories`)
+    .then(({ data }) => setCategoriasDB(data.categories || []))
+    .catch(() => {});
+}, []);
+const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.subcategorias || [];
 
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
@@ -528,9 +531,9 @@ if (nuevas) imagenesActuales = nuevas;
                 <label>Categoría</label>
                 <select name="categoria" value={producto.categoria} onChange={handleChange} required>
                   <option value="">Seleccionar categoría</option>
-                  {Object.keys(subcategoriasPorCategoria).map((cat) => (
-                    <option key={cat} value={cat}>{label(cat)}</option>
-                  ))}
+                  {categoriasDB.map((cat) => (
+  <option key={cat.slug} value={cat.slug}>{cat.nombre}</option>
+))}
                 </select>
               </div>
 
