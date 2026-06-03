@@ -17,18 +17,6 @@
     return null;
   };
 
-  const subcategoriasPorCategoria = {
-    lenceria: ["conjuntos","tops-y-corpiños","vedetinas","colales","boxer","slip","niña","medias"],
-    maquillaje: ["labiales", "sombras", "brochas", "sets"],
-    skincare: ["serums", "limpiadores", "exfoliantes", "cremas"],
-    bodycare: ["jabones", "cremas corporales", "aceites"],
-    uñas: ["Soft-Gel", "Semi-Permanente", "Normal", "soft-gel"],
-    pestañas: ["insumos", "kits", "extensiones"],
-    peluquería: ["peines", "cepillos", "tratamientos", "coloración"],
-    bijouterie: ["aros", "collares", "pulseras", "anillos"],
-    marroquineria: ["mochilas", "riñoneras", "bolsos"],
-    accesorios: ["pelo"],
-  };
 
   const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
   const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -70,6 +58,7 @@
             stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
             destacado:       !!p.destacado,
             imagen:          p.imagen          || "",
+            imagenes:        Array.isArray(p.imagenes) && p.imagenes.length ? p.imagenes : (p.imagen ? [p.imagen] : []),
             tags:            Array.isArray(p.tags) ? p.tags : [],
             createdAt:       p.createdAt,
             unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
@@ -101,10 +90,12 @@
     }, [id, nav]);
 
     const [categoriasDB, setCategoriasDB] = useState([]);
+const [loadingCats, setLoadingCats] = useState(true);
 useEffect(() => {
   axios.get(`${API}/categories`)
     .then(({ data }) => setCategoriasDB(data.categories || []))
-    .catch(() => {});
+    .catch(() => {})
+    .finally(() => setLoadingCats(false));
 }, []);
 const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.subcategorias || [];
 
@@ -112,14 +103,14 @@ const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.su
       const { name, value, type, checked } = e.target;
 
       if (name === "isNuevoIngreso") {
-        setProducto(prev => {
-          const set = new Set(prev.tags || []);
-          if (checked) set.add("nuevos-ingresos");
-          else set.delete("nuevos-ingresos");
-          return { ...prev, tags: Array.from(set) };
-        });
-        return;
-      }
+  setProducto(prev => {
+    const set = new Set(prev.tags || []);
+    if (checked) set.add("nuevos-ingresos");
+    else set.delete("nuevos-ingresos");
+    return { ...prev, tags: Array.from(set) };
+  });
+  return;
+}
 
       if (type === "checkbox") {
         setProducto(prev => ({ ...prev, [name]: checked }));
@@ -127,17 +118,16 @@ const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.su
       }
 
       const numericOptional = ["precioEspecial", "precioMayorista", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2"];
-      if (numericOptional.includes(name)) {
-        setProducto(prev => ({ ...prev, [name]: value }));
-        if (name === "categoria") setProducto(prev => ({ ...prev, [name]: value, subcategoria: "" }));
-        return;
-      }
+if (numericOptional.includes(name)) {
+  setProducto(prev => ({ ...prev, [name]: value }));
+  return;
+}
 
-      setProducto(prev => {
-        const base = { ...prev, [name]: value };
-        if (name === "categoria") base.subcategoria = "";
-        return base;
-      });
+setProducto(prev => {
+  const base = { ...prev, [name]: value };
+  if (name === "categoria" && value !== prev.categoria) base.subcategoria = "";
+  return base;
+});
     };
 
     const delVar = (i) => setVariantes(v => v.filter((_, idx) => idx !== i));
@@ -170,9 +160,9 @@ const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.su
     };
 
     const handleImageChange = (e) => {
-  const files = Array.from(e.target.files || []);
-  setImagenFiles(files);
-  setPreviewUrls(files.map(f => URL.createObjectURL(f)));
+  const newFiles = Array.from(e.target.files || []);
+  setImagenFiles(prev => [...prev, ...newFiles]);
+  setPreviewUrls(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
 };
 
     const uploadImagesIfNeeded = async () => {
@@ -180,7 +170,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto?.categoria)?.su
   const urls = await Promise.all(imagenFiles.map(async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "aesthetic");
+    formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
     formData.append("folder", "productos");
     const res = await axios.post(
       "https://api.cloudinary.com/v1_1/dl2vebaou/image/upload",
@@ -248,7 +238,7 @@ if (nuevas) imagenesActuales = nuevas;
       }
     };
 
-    if (loading || !producto) {
+    if (loading || loadingCats || !producto) {
       return (
         <div className="product-form">
           <h2>Editando producto</h2>
@@ -642,6 +632,7 @@ if (nuevas) imagenesActuales = nuevas;
               <label>Imagen</label>
               <label className="dropzone">
                 <input type="file" accept="image/*" multiple onChange={handleImageChange} />
+<small style={{fontSize:11,color:"#aaa",display:"block",marginBottom:4}}>Ctrl+click para seleccionar varias</small>
 {(previewUrls.length > 0 || producto.imagenes?.length > 0 || producto.imagen) ? (
   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
     {(previewUrls.length > 0

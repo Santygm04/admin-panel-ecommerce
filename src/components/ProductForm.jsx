@@ -1,5 +1,5 @@
 // ProductForm.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "../../src/components/ProductForm.css";
@@ -83,9 +83,9 @@ useEffect(() => {
 const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.subcategorias || [];
 
   const handleImageChange = (e) => {
-  const files = Array.from(e.target.files || []);
-  setImagenFiles(files);
-  setPreviewUrls(files.map(f => URL.createObjectURL(f)));
+  const newFiles = Array.from(e.target.files || []);
+  setImagenFiles(prev => [...prev, ...newFiles]);
+  setPreviewUrls(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
 };
 
   const uploadImages = async () => {
@@ -93,7 +93,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
   const urls = await Promise.all(imagenFiles.map(async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "aesthetic");
+    formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
     formData.append("folder", "productos");
     const res = await axios.post(
       "https://api.cloudinary.com/v1_1/dl2vebaou/image/upload",
@@ -610,7 +610,8 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
             <label>Imagen</label>
             <label className="dropzone">
               <input type="file" accept="image/*" multiple onChange={handleImageChange} />
-              {previewUrls.length > 0 ? (
+<small style={{fontSize:11,color:"#aaa",display:"block",marginBottom:4}}>Ctrl+click para seleccionar varias</small>
+{previewUrls.length > 0 ? (
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {previewUrls.map((url, i) => (
                     <img key={i} src={url} alt={`Vista previa ${i+1}`} className="preview-image"

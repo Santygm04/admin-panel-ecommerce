@@ -466,10 +466,10 @@ export default function ProductList() {
               <article className="product-card" key={producto._id}>
                 <div className="product-card-main">
                   <img
-                    src={producto.imagen}
-                    alt={producto.nombre}
-                    className="product-card-thumb"
-                  />
+  src={producto.imagenes?.[0] || producto.imagen}
+  alt={producto.nombre}
+  className="product-card-thumb"
+/>
 
                   <div className="product-card-info">
                     <div className="product-card-title-row">
@@ -637,10 +637,10 @@ export default function ProductList() {
                   <tr key={producto._id}>
                     <td>
                       <img
-                        src={producto.imagen}
-                        alt={producto.nombre}
-                        className="thumb"
-                      />
+  src={producto.imagenes?.[0] || producto.imagen}
+  alt={producto.nombre}
+  className="thumb"
+/>
                     </td>
                     <td className="td-ellipsis">
                       {producto.nombre}
