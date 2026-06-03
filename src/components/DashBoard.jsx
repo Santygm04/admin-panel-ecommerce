@@ -4,6 +4,7 @@ import ProductList from "../../src/components/ProductList";
 import ProductForm from "../../src/components/ProductForm";
 import StatsAdminControls from "../../src/components/StatsAdminControls";
 import "../../src/components/DashBoard.css";
+import CategoryManager from "./CategoryManager";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const SHOW_ADVANCED_DEFAULT =
@@ -108,9 +109,10 @@ export default function DashBoard() {
       {/* Tabs */}
       <div className="dash-row">
         <nav className="dash-tabs" role="tablist">
-          <TabBtn id="stock"       icon="📦" label="Ver stock"     />
-          <TabBtn id="crear"       icon="⬆️" label="Subir producto"/>
-          <TabBtn id="estadisticas"icon="📈" label="Estadísticas"  />
+          <TabBtn id="stock"        icon="📦" label="Ver stock"      />
+          <TabBtn id="crear"        icon="⬆️" label="Subir producto" />
+          <TabBtn id="categorias"   icon="🗂️" label="Categorías"    />
+          <TabBtn id="estadisticas" icon="📈" label="Estadísticas"   />
         </nav>
         <Link to="/orders" className="tab-btn tab-cta orders-link">
           <span className="tab-icon">🧾</span>
@@ -125,6 +127,7 @@ export default function DashBoard() {
       <main className="dash-content">
         {vista === "stock"        && <ProductList />}
         {vista === "crear"        && <ProductForm />}
+        {vista === "categorias"   && <CategoryManager />}
         {vista === "estadisticas" && <StatsSection />}
       </main>
     </div>

@@ -1,0 +1,285 @@
+/* ═══════════════════════════════════════════
+   CategoryManager.css — Admin Panel Aesthetic
+═══════════════════════════════════════════ */
+
+.cm-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px;
+}
+
+/* ── Encabezado ── */
+.cm-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ff2ea6;
+  margin: 0 0 4px;
+}
+
+.cm-subtitle {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin: 0 0 24px;
+}
+
+/* ── Formulario ── */
+.cm-form {
+  background: #fff0f8;
+  border: 1px solid #f3c9e2;
+  border-radius: 16px;
+  padding: 22px 20px;
+  margin-bottom: 32px;
+}
+
+.cm-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 520px) {
+  .cm-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cm-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #b02a6b;
+}
+
+.cm-label span {
+  font-weight: 400;
+  color: #aaa;
+}
+
+.cm-input {
+  padding: 9px 12px;
+  border: 1px solid #f3c9e2;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #333;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cm-input:focus {
+  border-color: #ff2ea6;
+  box-shadow: 0 0 0 3px rgba(255, 46, 166, 0.1);
+}
+
+.cm-input-full {
+  margin-bottom: 14px;
+}
+
+.cm-orden-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cm-input-sm {
+  width: 80px;
+  padding: 9px 10px;
+  border: 1px solid #f3c9e2;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #333;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.cm-input-sm:focus {
+  border-color: #ff2ea6;
+  box-shadow: 0 0 0 3px rgba(255, 46, 166, 0.1);
+}
+
+/* ── Botones del form ── */
+.cm-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.cm-btn-primary {
+  background: linear-gradient(135deg, #ff2ea6, #e11a8a);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.12s;
+}
+
+.cm-btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.cm-btn-cancel {
+  background: #e5e7eb;
+  color: #555;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.cm-btn-cancel:hover {
+  background: #d1d5db;
+}
+
+/* ── Lista de categorías ── */
+.cm-list-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #6a1b9a;
+  margin: 0 0 14px;
+}
+
+.cm-empty {
+  color: #aaa;
+  font-size: 0.88rem;
+  padding: 12px 0;
+}
+
+.cm-loading {
+  color: #bbb;
+  font-size: 0.88rem;
+  padding: 12px 0;
+}
+
+.cm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Card de categoría ── */
+.cm-card {
+  background: #fff;
+  border: 1px solid #f3c9e2;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: box-shadow 0.18s;
+}
+
+.cm-card:hover {
+  box-shadow: 0 4px 16px rgba(255, 46, 166, 0.08);
+}
+
+.cm-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cm-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ff2ea6;
+}
+
+.cm-card-slug {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-left: 8px;
+}
+
+.cm-card-orden {
+  font-size: 0.72rem;
+  color: #c084fc;
+  margin-left: 6px;
+  background: #faf0ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.cm-subcats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.cm-subcat-chip {
+  background: #fff0f8;
+  color: #b02a6b;
+  border: 1px solid #f3c9e2;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+/* ── Botones de acción ── */
+.cm-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cm-btn-edit {
+  background: #fff0f8;
+  color: #b02a6b;
+  border: 1px solid #f3c9e2;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cm-btn-edit:hover {
+  background: #fce7f3;
+}
+
+.cm-btn-delete {
+  background: #fee2e2;
+  color: #991b1b;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cm-btn-delete:hover {
+  background: #fecaca;
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .cm-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cm-card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

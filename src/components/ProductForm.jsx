@@ -39,6 +39,7 @@ const API = API_BASE ? `${API_BASE}/api` : "/api";
 export default function ProductForm() {
   const [producto, setProducto] = useState({
     nombre: "",
+    codigoInterno: "",
     precio: "",
     precioEspecial: "",
     precioMayorista: "",
@@ -60,9 +61,8 @@ export default function ProductForm() {
 
   const [selSizes, setSelSizes]   = useState([]);
   const [selColors, setSelColors] = useState([]);
-  const [imagenFile, setImagenFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-
+  const [imagenFiles, setImagenFiles] = useState([]); // array de File
+  const [previewUrls, setPreviewUrls] = useState([]); // array de URLs
   const toggle = (arr, setArr, val) =>
     setArr((list) => (list.includes(val) ? list.filter((x) => x !== val) : [...list, val]));
 
@@ -90,15 +90,16 @@ export default function ProductForm() {
   const subcategorias = subcategoriasPorCategoria[producto.categoria] || [];
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    setImagenFile(file || null);
-    setPreviewUrl(file ? URL.createObjectURL(file) : "");
-  };
+  const files = Array.from(e.target.files || []);
+  setImagenFiles(files);
+  setPreviewUrls(files.map(f => URL.createObjectURL(f)));
+};
 
-  const uploadImage = async () => {
-    if (!imagenFile) return "";
+  const uploadImages = async () => {
+  if (!imagenFiles.length) return [];
+  const urls = await Promise.all(imagenFiles.map(async (file) => {
     const formData = new FormData();
-    formData.append("file", imagenFile);
+    formData.append("file", file);
     formData.append("upload_preset", "aesthetic");
     formData.append("folder", "productos");
     const res = await axios.post(
@@ -106,7 +107,9 @@ export default function ProductForm() {
       formData
     );
     return res.data.secure_url;
-  };
+  }));
+  return urls;
+};
 
   const addVariant = () =>
     setProducto((p) => ({ ...p, variants: [...(p.variants || []), { size: "", color: "" }] }));
@@ -135,19 +138,19 @@ export default function ProductForm() {
       // combinaciones talle × color
       selSizes.forEach((sz) => selColors.forEach((col) => {
         if (!list.some(v => v.size === sz && v.color === col))
-          list.push({ size: sz, color: col });
+          list.push({ size: sz, color: col, stock: 0 });
       }));
     } else if (selSizes.length) {
       // solo talles, sin color
       selSizes.forEach((sz) => {
         if (!list.some(v => v.size === sz && !v.color))
-          list.push({ size: sz, color: "" });
+          list.push({ size: sz, color: "", stock: 0 });
       });
     } else {
       // solo colores, sin talle
       selColors.forEach((col) => {
         if (!list.some(v => !v.size && v.color === col))
-          list.push({ size: "", color: col });
+          list.push({ size: "", color: col, stock: 0 });
       });
     }
     return { ...p, variants: list };
@@ -161,15 +164,19 @@ export default function ProductForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const imagen = await uploadImage();
+      const imagenes = await uploadImages();
 
       const cleanVariants = (producto.variants || [])
-        .filter(v => v.size || v.color)
-        .map(v => ({ size: String(v.size || "").trim(), color: String(v.color || "").trim() }));
+  .filter(v => v.size || v.color)
+  .map(v => ({
+    size:  String(v.size  || "").trim(),
+    color: String(v.color || "").trim(),
+    stock: Number(v.stock ?? 0),
+  }));
 
       const body = {
         ...producto,
-        imagen,
+        imagenes,
         precio:          Number(producto.precio) || 0,
         precioEspecial:  producto.precioEspecial  !== "" ? Number(producto.precioEspecial)  : null,
         precioMayorista: producto.precioMayorista !== "" ? Number(producto.precioMayorista) : null,
@@ -197,7 +204,7 @@ export default function ProductForm() {
         unidadesPorCaja: "", cantidadTonos: "", modoTonos: "automatico", tonosDisponibles: [], minimoMayorista: "",
       });
       setSelSizes([]); setSelColors([]);
-      setImagenFile(null); setPreviewUrl("");
+      setImagenFiles([]); setPreviewUrls([]);
     } catch (err) {
       console.error(err?.response?.data || err);
       toast.error(err?.response?.data?.message || "Error al crear producto");
@@ -224,6 +231,13 @@ export default function ProductForm() {
         <label>Nombre</label>
         <input name="nombre" value={producto.nombre} onChange={handleChange} required />
       </div>
+
+      <div className="form-group pf-full">
+  <label>Código interno <span className="muted">(opcional)</span></label>
+  <input name="codigoInterno" value={producto.codigoInterno || ""}
+    onChange={handleChange} placeholder="Ej: AE0042" style={{ textTransform:"uppercase" }} />
+  <small className="hint">Podés buscar productos por este código en el buscador</small>
+</div>
 
       {/* ── BLOQUE DE 3 PRECIOS — ancho completo, FUERA del pf-grid ── */}
       <div className="pf-precio-block pf-full">
@@ -553,36 +567,45 @@ export default function ProductForm() {
             ) : (
               <div className="var-table">
                 <div className="var-row var-row--head">
-                  <span>Talle</span>
-                  <span>Color</span>
-                  <span className="var-actions-col" />
-                </div>
-                {(producto.variants || []).map((v, i) => (
-                  <div className="var-row" key={`${v.size}-${v.color}-${i}`}>
-                    <div className="var-cell">
-                      <select value={v.size || ""} onChange={e => updateVariant(i, "size", e.target.value)}>
-                        <option value="">Talle…</option>
-                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div className="var-cell">
-                      <select value={v.color || ""} onChange={e => updateVariant(i, "color", e.target.value)}>
-                        <option value="">Color…</option>
-                        {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div className="var-cell var-actions">
-                      <button
-                        type="button"
-                        className="var-del"
-                        onClick={() => removeVariant(i)}
-                        aria-label="Eliminar variante"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
+  <span>Talle</span>
+  <span>Color</span>
+  <span>Stock</span>
+  <span className="var-actions-col" />
+</div>
+{(producto.variants || []).map((v, i) => (
+  <div className="var-row" key={`${v.size}-${v.color}-${i}`}>
+    <div className="var-cell">
+      <select value={v.size || ""} onChange={e => updateVariant(i, "size", e.target.value)}>
+        <option value="">Talle…</option>
+        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+    </div>
+    <div className="var-cell">
+      <select value={v.color || ""} onChange={e => updateVariant(i, "color", e.target.value)}>
+        <option value="">Color…</option>
+        {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+    </div>
+    <div className="var-cell">
+      <input
+        type="number" min="0" step="1"
+        value={v.stock ?? 0}
+        onChange={e => updateVariant(i, "stock", Number(e.target.value) || 0)}
+        style={{ width: "70px", textAlign: "center" }}
+      />
+    </div>
+    <div className="var-cell var-actions">
+      <button
+        type="button"
+        className="var-del"
+        onClick={() => removeVariant(i)}
+        aria-label="Eliminar variante"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+))}
               </div>
             )}
           </div>
@@ -593,9 +616,14 @@ export default function ProductForm() {
           <div className="form-group">
             <label>Imagen</label>
             <label className="dropzone">
-              <input type="file" accept="image/*" onChange={handleImageChange} />
-              {previewUrl ? (
-                <img src={previewUrl} alt="Vista previa" className="preview-image" />
+              <input type="file" accept="image/*" multiple onChange={handleImageChange} />
+              {previewUrls.length > 0 ? (
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {previewUrls.map((url, i) => (
+                    <img key={i} src={url} alt={`Vista previa ${i+1}`} className="preview-image"
+                      style={{ width: 80, height: 80, objectFit:"cover", borderRadius: 8 }} />
+                  ))}
+                </div>
               ) : (
                 <div className="dz-empty">
                   <div className="dz-icon">📷</div>

@@ -122,16 +122,13 @@ export default function ProductList() {
   }, [q]);
 
   const productosFiltrados = useMemo(() => {
-    const base = productos.filter((p) => categoriasValidas.includes(p.categoria));
-    if (!categoriaFiltro) return base;
-    return base.filter((p) => p.categoria === categoriaFiltro);
+    if (!categoriaFiltro) return productos;
+    return productos.filter((p) => p.categoria === categoriaFiltro);
   }, [productos, categoriaFiltro]);
 
   const categoriasUnicas = useMemo(() => {
-    return categoriasValidas.filter((cat) =>
-      productos.some((p) => p.categoria === cat)
-    );
-  }, [productos]);
+  return [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort();
+}, [productos]);
 
   const showNotif = (type, text) => {
     setNotif({ type, text });
