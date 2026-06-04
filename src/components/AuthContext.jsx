@@ -22,11 +22,14 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || "No se pudo iniciar sesión");
-    localStorage.setItem(LS_KEY, data.token);
-    localStorage.setItem(LS_USER, JSON.stringify(data.user));
-    setToken(data.token);
-    setUser(data.user);
-    return data.user;
+   localStorage.setItem(LS_KEY, data.token);
+localStorage.setItem(LS_USER, JSON.stringify(data.user));
+setToken(data.token);
+setUser(data.user);
+// Guardar ADMIN_SECRET automáticamente al hacer login
+const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+if (adminSecret) sessionStorage.setItem("ADMIN_SECRET", adminSecret);
+return data.user;
   };
 
   const logout = () => {
