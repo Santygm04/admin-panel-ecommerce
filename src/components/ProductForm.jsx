@@ -181,6 +181,8 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? Number(producto.unidadesPorCaja) : null,
        minimoMayorista2: producto.minimoMayorista2 !== "" ? Number(producto.minimoMayorista2) : null,
        precioMayorista2: producto.precioMayorista2 !== "" ? Number(producto.precioMayorista2) : null,
+       minimoMayorista3: producto.minimoMayorista3 !== "" ? Number(producto.minimoMayorista3) : null,
+       precioMayorista3: producto.precioMayorista3 !== "" ? Number(producto.precioMayorista3) : null,
         cantidadTonos:   producto.cantidadTonos   !== "" ? Number(producto.cantidadTonos)   : null,
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -294,84 +296,92 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
             </div>
           )}
 
-          {producto.categoria === "lenceria" && (
+      {producto.categoria === "lenceria" && (
   <>
-    {/* Hint automático según subcategoría */}
-    {producto.subcategoria && getMinimoSugerido(producto.subcategoria) && (
-      <div style={{ gridColumn: "1/-1", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, fontSize: ".82rem", color: "#c2410c", fontWeight: 600 }}>
-        💡 {SUBCAT_MEDIAS.includes(producto.subcategoria)
-          ? "Medias: precio x2 y precio x6 recomendados"
-          : `${producto.subcategoria}: precio unitario desde 2 unidades`}
-      </div>
-    )}
-
-    <div className="form-group pf-precio-item">
-      <label className="pf-precio-label">
-        <span className="pf-precio-tag pf-precio-tag--m">M1</span>
-        Mínimo Mayorista 1
-      </label>
-      <input
-        name="minimoMayorista"
-        type="number" min="1" step="1"
-        placeholder={getMinimoSugerido(producto.subcategoria) ?? "Ej: 6"}
-        value={producto.minimoMayorista ?? ""}
-        onChange={handleChange}
-      />
-      <small className="hint">
-        {SUBCAT_DESDE_2.includes(producto.subcategoria) ? "Ej: 2 → desde 2 unidades"
-         : SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Ej: 2 → precio x2"
-         : "Ej: 6 → aplica desde 6 unidades"}
-      </small>
+    <div style={{ gridColumn: "1/-1", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, fontSize: ".82rem", color: "#c2410c", fontWeight: 600 }}>
+      💡 Lencería: cargá el precio total de cada pack. El precio por unidad se calcula automáticamente.
     </div>
 
-   <div className="form-group pf-precio-item">
+    {/* x1 — ya está en Precio Unitario arriba, solo aclaramos */}
+    <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
-        <span className="pf-precio-tag pf-precio-tag--m">M1$</span>
-        Precio x6
+        <span className="pf-precio-tag" style={{background:"#6b7280",color:"#fff"}}>x1</span>
+        Precio x1 (unitario)
       </label>
-      <input
-        name="precioMayorista"
-        type="number" min="0" step="1"
-        placeholder="Ej: 4000"
-        value={producto.precioMayorista ?? ""}
-        onChange={handleChange}
-        onWheel={(e) => e.currentTarget.blur()}
-      />
-      <small className="hint">Precio por unidad al llevar 6</small>
+      <input name="precio" type="number" min="0" step="1"
+        placeholder="Ej: 1000"
+        value={producto.precio ?? ""} onChange={handleChange}
+        onWheel={e => e.currentTarget.blur()} />
+      <small className="hint">Precio por 1 unidad</small>
     </div>
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
-        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2</span>
-        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Mínimo x6" : "Mínimo Mayorista 2"}
+        <span className="pf-precio-tag" style={{background:"#0ea5e9",color:"#fff"}}>x2</span>
+        Mínimo x2
       </label>
-      <input
-        name="minimoMayorista2"
-        type="number" min="1" step="1"
-        placeholder={SUBCAT_MEDIAS.includes(producto.subcategoria) ? "6" : "Ej: 12"}
-        value={producto.minimoMayorista2 ?? ""}
-        onChange={handleChange}
-      />
-      <small className="hint">
-        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Ej: 6 → precio por 6 unidades" : "Ej: 12 → aplica desde 12 unidades"}
-      </small>
+      <input name="minimoMayorista" type="number" min="1" step="1"
+        placeholder="2"
+        value={producto.minimoMayorista ?? ""} onChange={handleChange} />
+      <small className="hint">Cantidad mínima (ej: 2)</small>
     </div>
 
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
-        <span className="pf-precio-tag pf-precio-tag--m" style={{ background: "#7c3aed" }}>M2$</span>
-        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio x6" : "Precio Mayorista 2"}
+        <span className="pf-precio-tag" style={{background:"#0ea5e9",color:"#fff"}}>x2$</span>
+        Precio total x2
       </label>
-      <input
-        name="precioMayorista2"
-        type="number" min="0" step="1"
-        placeholder="Ej: 750"
-        value={producto.precioMayorista2 ?? ""}
-        onChange={handleChange}
-      />
-      <small className="hint">
-        {SUBCAT_MEDIAS.includes(producto.subcategoria) ? "Precio por unidad al llevar 6" : "Precio por unidad al llegar al mínimo M2"}
-      </small>
+      <input name="precioMayorista" type="number" min="0" step="1"
+        placeholder="Ej: 1800"
+        value={producto.precioMayorista ?? ""} onChange={handleChange}
+        onWheel={e => e.currentTarget.blur()} />
+      <small className="hint">Total por {producto.minimoMayorista || 2} unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag" style={{background:"#84e070",color:"#1a1a1a"}}>x6</span>
+        Mínimo x6
+      </label>
+      <input name="minimoMayorista2" type="number" min="1" step="1"
+        placeholder="6"
+        value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
+      <small className="hint">Cantidad mínima (ej: 6)</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag" style={{background:"#84e070",color:"#1a1a1a"}}>x6$</span>
+        Precio total x6
+      </label>
+      <input name="precioMayorista2" type="number" min="0" step="1"
+        placeholder="Ej: 5400"
+        value={producto.precioMayorista2 ?? ""} onChange={handleChange}
+        onWheel={e => e.currentTarget.blur()} />
+      <small className="hint">Total por {producto.minimoMayorista2 || 6} unidades</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag" style={{background:"#7c3aed",color:"#fff"}}>x12</span>
+        Mínimo x12
+      </label>
+      <input name="minimoMayorista3" type="number" min="1" step="1"
+        placeholder="12"
+        value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
+      <small className="hint">Cantidad mínima (ej: 12)</small>
+    </div>
+
+    <div className="form-group pf-precio-item">
+      <label className="pf-precio-label">
+        <span className="pf-precio-tag" style={{background:"#7c3aed",color:"#fff"}}>x12$</span>
+        Precio total x12
+      </label>
+      <input name="precioMayorista3" type="number" min="0" step="1"
+        placeholder="Ej: 9600"
+        value={producto.precioMayorista3 ?? ""} onChange={handleChange}
+        onWheel={e => e.currentTarget.blur()} />
+      <small className="hint">Total por {producto.minimoMayorista3 || 12} unidades</small>
     </div>
   </>
 )}
