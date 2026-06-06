@@ -189,7 +189,11 @@ setProducto(prev => {
         let imagenesActuales = Array.isArray(producto.imagenes) ? producto.imagenes
   : (producto.imagen ? [producto.imagen] : []);
 const nuevas = await uploadImagesIfNeeded();
+// Si se subieron nuevas, REEMPLAZAMOS (no sumamos) las imágenes
+// para evitar duplicados con las que ya estaban
 if (nuevas) imagenesActuales = nuevas;
+// Deduplicar por si acaso
+imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
 
         const safeInt = (s) => {
           const n = parseInt(String(s).replace(/\D+/g, ""), 10);
@@ -648,9 +652,9 @@ if (nuevas) imagenesActuales = nuevas;
 {(previewUrls.length > 0 || producto.imagenes?.length > 0 || producto.imagen) ? (
   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
     {(previewUrls.length > 0
-      ? previewUrls
-      : (producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagen])
-    ).map((url, i) => (
+      ? previewUrls  // si hay nuevas seleccionadas, mostrar SOLO las nuevas
+      : [...new Set((producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagen]).filter(Boolean))]
+    ).slice(0, 10).map((url, i) => (
       <img key={i} src={url} alt={`Imagen ${i+1}`} className="preview-image"
         style={{ width: 80, height: 80, objectFit:"cover", borderRadius: 8 }} />
     ))}
