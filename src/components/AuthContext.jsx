@@ -12,6 +12,14 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(LS_USER) || "null"); } catch { return null; }
   });
 
+  // Restaurar ADMIN_SECRET en sessionStorage si ya hay sesión activa
+  useEffect(() => {
+    const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+    if (adminSecret && localStorage.getItem(LS_KEY)) {
+      sessionStorage.setItem("ADMIN_SECRET", adminSecret);
+    }
+  }, []);
+
   const isAuthenticated = !!token;
 
   const login = async (username, password) => {

@@ -1,5 +1,6 @@
 // ProductForm.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "../../src/components/ProductForm.css";
@@ -24,6 +25,7 @@ const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
 
 export default function ProductForm() {
+  const nav = useNavigate();
   const [producto, setProducto] = useState({
     nombre: "",
     codigoInterno: "",
@@ -190,16 +192,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
 
       await axios.post(`${API}/productos`, body);
       toast.success("Producto creado correctamente");
-
-      setProducto({
-        nombre: "", precio: "", precioEspecial: "", precioMayorista: "",
-        descripcion: "", categoria: "", subcategoria: "",
-        stock: "", destacado: false, tags: [], variants: [],
-        // ← CAMBIO #8
-        unidadesPorCaja: "", cantidadTonos: "", modoTonos: "automatico", tonosDisponibles: [], minimoMayorista: "",
-      });
-      setSelSizes([]); setSelColors([]);
-      setImagenFiles([]); setPreviewUrls([]);
+      nav(-1);
     } catch (err) {
       console.error(err?.response?.data || err);
       toast.error(err?.response?.data?.message || "Error al crear producto");
@@ -316,13 +309,13 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag" style={{background:"#0ea5e9",color:"#fff"}}>x2$</span>
-        Precio total x2
+        Precio por unidad x2
       </label>
       <input name="precioMayorista" type="number" min="0" step="1"
         placeholder="Ej: 1800"
         value={producto.precioMayorista ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
-      <small className="hint">Total por {producto.minimoMayorista || 2} unidades</small>
+      <small className="hint">Precio por unidad (total: ${Number(producto.precioMayorista || 0) * Number(producto.minimoMayorista || 2)})</small>
     </div>
 
     <div className="form-group pf-precio-item">
@@ -339,13 +332,13 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag" style={{background:"#84e070",color:"#1a1a1a"}}>x6$</span>
-        Precio total x6
+        Precio por unidad x6
       </label>
       <input name="precioMayorista2" type="number" min="0" step="1"
         placeholder="Ej: 5400"
         value={producto.precioMayorista2 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
-      <small className="hint">Total por {producto.minimoMayorista2 || 6} unidades</small>
+      <small className="hint">Precio por unidad (total: ${Number(producto.precioMayorista2 || 0) * Number(producto.minimoMayorista2 || 6)})</small>
     </div>
 
     <div className="form-group pf-precio-item">
@@ -362,13 +355,13 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
     <div className="form-group pf-precio-item">
       <label className="pf-precio-label">
         <span className="pf-precio-tag" style={{background:"#7c3aed",color:"#fff"}}>x12$</span>
-        Precio total x12
+        Precio por unidad x12
       </label>
       <input name="precioMayorista3" type="number" min="0" step="1"
         placeholder="Ej: 9600"
         value={producto.precioMayorista3 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
-      <small className="hint">Total por {producto.minimoMayorista3 || 12} unidades</small>
+      <small className="hint">Precio por unidad (total: ${Number(producto.precioMayorista3 || 0) * Number(producto.minimoMayorista3 || 12)})</small>
     </div>
   </>
 )}

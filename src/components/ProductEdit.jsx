@@ -41,14 +41,23 @@
     const toggle = (arr, setArr, val) =>
       setArr((list) => (list.includes(val) ? list.filter((x) => x !== val) : [...list, val]));
 
+    const [categoriasDB, setCategoriasDB] = useState([]);
+
     useEffect(() => {
       (async () => {
         try {
-          const { data } = await axios.get(`${API}/productos/${id}`, { params: { admin: true } });
-          const p = data || {};
+          const [resCats, resProd] = await Promise.all([
+            axios.get(`${API}/categories`),
+            axios.get(`${API}/productos/${id}`, { params: { admin: true } }),
+          ]);
+
+          const cats = resCats.data?.categories || [];
+          setCategoriasDB(cats);
+
+          const p = resProd.data || {};
           setProducto({
             nombre:          p.nombre          || "",
-            codigoInterno: p.codigoInterno || "",
+            codigoInterno:   p.codigoInterno    || "",
             precio:          p.precio === 0 || p.precio ? String(p.precio) : "",
             precioEspecial:  p.precioEspecial  != null ? String(p.precioEspecial)  : "",
             precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
@@ -76,12 +85,12 @@
                         : Array.isArray(p.variants)  ? p.variants
                         : [];
           setVariantes(
-    rawVars.map(v => ({
-      talle: String(v.talle ?? v.size ?? "").trim(),
-      color: String(v.color ?? "").trim(),
-      stock: Number(v.stock ?? 0),
-    }))
-  );
+            rawVars.map(v => ({
+              talle: String(v.talle ?? v.size ?? "").trim(),
+              color: String(v.color ?? "").trim(),
+              stock: Number(v.stock ?? 0),
+            }))
+          );
         } catch (e) {
           toast.error("No se pudo cargar el producto");
           nav(-1);
@@ -91,31 +100,19 @@
       })();
     }, [id, nav]);
 
-    const [categoriasDB, setCategoriasDB] = useState([]);
-const [loadingCats, setLoadingCats] = useState(true);
-useEffect(() => {
-  axios.get(`${API}/categories`)
-    .then(({ data }) => setCategoriasDB(data.categories || []))
-    .catch(() => {})
-    .finally(() => setLoadingCats(false));
-}, []);
-const subcategorias = useMemo(() => 
-  categoriasDB.find(c => c.slug === producto?.categoria)?.subcategorias || [],
-  [categoriasDB, producto?.categoria]
-);
+    const subcategorias = useMemo(() => 
+      categoriasDB.find(c => c.slug === producto?.categoria)?.subcategorias || [],
+      [categoriasDB, producto?.categoria]
+    );
 
-// Cuando las categorías cargan, si el producto ya tiene subcategoría guardada,
-// verificar que sigue siendo válida y forzar re-set para que el select la muestre
-useEffect(() => {
-  if (!loadingCats && producto?.subcategoria && producto?.categoria) {
-    const cats = categoriasDB.find(c => c.slug === producto.categoria);
-    const subs = cats?.subcategorias || [];
-    if (subs.includes(producto.subcategoria)) {
-      // forzar re-render seteando el mismo valor
-      setProducto(prev => ({ ...prev, subcategoria: prev.subcategoria }));
-    }
-  }
-}, [loadingCats, categoriasDB]);
+    useEffect(() => {
+      if (subcategorias.length > 0 && producto?.subcategoria && !subcategorias.includes(producto.subcategoria)) {
+        // la subcategoría existe en DB pero no coincide — no tocar
+      } else if (subcategorias.length > 0 && !producto?.subcategoria) {
+        // no hacer nada, dejarlo vacío
+      }
+    }, [subcategorias]);
+
 
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
@@ -262,7 +259,7 @@ imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
       }
     };
 
-    if (loading || loadingCats || !producto) {
+    if (loading || !producto) {
       return (
         <div className="product-form">
           <h2>Editando producto</h2>
@@ -546,17 +543,15 @@ imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
                 </select>
               </div>
 
-              {subcategorias.length > 0 && (
-                <div className="form-group">
-                  <label>Subcategoría</label>
-                  <select name="subcategoria" value={producto.subcategoria} onChange={handleChange} required>
-                    <option value="">Seleccionar subcategoría</option>
-                    {subcategorias.map((sub) => (
-                      <option key={sub} value={sub}>{sub.charAt(0).toUpperCase() + sub.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="form-group">
+                <label>Subcategoría</label>
+                <select name="subcategoria" value={producto.subcategoria} onChange={handleChange}>
+                  <option value="">Seleccionar subcategoría</option>
+                  {subcategorias.map((sub) => (
+                    <option key={sub} value={sub}>{sub.charAt(0).toUpperCase() + sub.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* VARIANTES */}
