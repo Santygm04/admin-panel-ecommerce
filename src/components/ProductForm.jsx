@@ -257,7 +257,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
               placeholder="Sin mínimo de compra"
               value={producto.precio}
               onChange={handleChange}
-              required
+              required={producto.categoria !== "lenceria"}
             />
             <small className="hint">Sin mínimo de compra</small>
           </div>
@@ -300,19 +300,6 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
   <>
     <div style={{ gridColumn: "1/-1", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, fontSize: ".82rem", color: "#c2410c", fontWeight: 600 }}>
       💡 Lencería: cargá el precio total de cada pack. El precio por unidad se calcula automáticamente.
-    </div>
-
-    {/* x1 — ya está en Precio Unitario arriba, solo aclaramos */}
-    <div className="form-group pf-precio-item">
-      <label className="pf-precio-label">
-        <span className="pf-precio-tag" style={{background:"#6b7280",color:"#fff"}}>x1</span>
-        Precio x1 (unitario)
-      </label>
-      <input name="precio" type="number" min="0" step="1"
-        placeholder="Ej: 1000"
-        value={producto.precio ?? ""} onChange={handleChange}
-        onWheel={e => e.currentTarget.blur()} />
-      <small className="hint">Precio por 1 unidad</small>
     </div>
 
     <div className="form-group pf-precio-item">
