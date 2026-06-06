@@ -104,6 +104,19 @@ const subcategorias = useMemo(() =>
   [categoriasDB, producto?.categoria]
 );
 
+// Cuando las categorías cargan, si el producto ya tiene subcategoría guardada,
+// verificar que sigue siendo válida y forzar re-set para que el select la muestre
+useEffect(() => {
+  if (!loadingCats && producto?.subcategoria && producto?.categoria) {
+    const cats = categoriasDB.find(c => c.slug === producto.categoria);
+    const subs = cats?.subcategorias || [];
+    if (subs.includes(producto.subcategoria)) {
+      // forzar re-render seteando el mismo valor
+      setProducto(prev => ({ ...prev, subcategoria: prev.subcategoria }));
+    }
+  }
+}, [loadingCats, categoriasDB]);
+
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
 
