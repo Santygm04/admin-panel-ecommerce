@@ -105,6 +105,15 @@
       [categoriasDB, producto?.categoria]
     );
 
+    // Normalizar subcategoria del producto para que coincida con las opciones
+    const subcategoriaNormalizada = useMemo(() => {
+      if (!producto?.subcategoria || !subcategorias.length) return producto?.subcategoria || "";
+      const match = subcategorias.find(
+        s => s.toLowerCase() === producto.subcategoria.toLowerCase()
+      );
+      return match || producto.subcategoria;
+    }, [subcategorias, producto?.subcategoria]);
+
     useEffect(() => {
       if (subcategorias.length > 0 && producto?.subcategoria && !subcategorias.includes(producto.subcategoria)) {
         // la subcategoría existe en DB pero no coincide — no tocar
@@ -180,6 +189,22 @@ setProducto(prev => {
   setPreviewUrls(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
 };
 
+const removeImagenExistente = (url) => {
+  setProducto(prev => {
+    const nuevasImagenes = (prev.imagenes || []).filter(u => u !== url);
+    return {
+      ...prev,
+      imagenes: nuevasImagenes,
+      imagen: nuevasImagenes[0] || "",
+    };
+  });
+};
+
+const removeImagenNueva = (idx) => {
+  setImagenFiles(prev => prev.filter((_, i) => i !== idx));
+  setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
+};
+
     const uploadImagesIfNeeded = async () => {
   if (!imagenFiles.length) return null;
   const urls = await Promise.all(imagenFiles.map(async (file) => {
@@ -199,14 +224,9 @@ setProducto(prev => {
     const handleSubmit = async (e) => {
       e.preventDefault();
       try {
-        let imagenesActuales = Array.isArray(producto.imagenes) ? producto.imagenes
-  : (producto.imagen ? [producto.imagen] : []);
-const nuevas = await uploadImagesIfNeeded();
-// Si se subieron nuevas, REEMPLAZAMOS (no sumamos) las imágenes
-// para evitar duplicados con las que ya estaban
-if (nuevas) imagenesActuales = nuevas;
-// Deduplicar por si acaso
-imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
+        const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
+        const nuevas = await uploadImagesIfNeeded();
+        const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
         const safeInt = (s) => {
           const n = parseInt(String(s).replace(/\D+/g, ""), 10);
@@ -267,6 +287,9 @@ imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
         </div>
       );
     }
+
+    console.log("subcategoria del producto:", JSON.stringify(producto.subcategoria));
+    console.log("opciones disponibles:", subcategorias);
 
     const isNuevoIngreso = (producto.tags || []).includes("nuevos-ingresos");
 
@@ -545,7 +568,12 @@ imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
 
               <div className="form-group">
                 <label>Subcategoría</label>
-                <select name="subcategoria" value={producto.subcategoria} onChange={handleChange}>
+                <select
+                  key={`subcat-${subcategorias.length}-${subcategoriaNormalizada}`}
+                  name="subcategoria"
+                  value={subcategoriaNormalizada}
+                  onChange={handleChange}
+                >
                   <option value="">Seleccionar subcategoría</option>
                   {subcategorias.map((sub) => (
                     <option key={sub} value={sub}>{sub.charAt(0).toUpperCase() + sub.slice(1)}</option>
@@ -649,12 +677,27 @@ imagenesActuales = [...new Set(imagenesActuales.filter(Boolean))].slice(0, 10);
 <small style={{fontSize:11,color:"#aaa",display:"block",marginBottom:4}}>Ctrl+click para seleccionar varias</small>
 {(previewUrls.length > 0 || producto.imagenes?.length > 0 || producto.imagen) ? (
   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-    {(previewUrls.length > 0
-      ? previewUrls  // si hay nuevas seleccionadas, mostrar SOLO las nuevas
-      : [...new Set((producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagen]).filter(Boolean))]
-    ).slice(0, 10).map((url, i) => (
-      <img key={i} src={url} alt={`Imagen ${i+1}`} className="preview-image"
-        style={{ width: 80, height: 80, objectFit:"cover", borderRadius: 8 }} />
+    {/* Imágenes existentes (guardadas en DB) */}
+    {previewUrls.length === 0 && [...new Set((producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagen]).filter(Boolean))].map((url, i) => (
+      <div key={i} style={{ position:"relative" }}>
+        <img src={url} alt={`Imagen ${i+1}`} className="preview-image"
+          style={{ width: 80, height: 80, objectFit:"cover", borderRadius: 8, display:"block" }} />
+        <button type="button" onClick={() => removeImagenExistente(url)}
+          style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.6)", color:"#fff", border:"none", borderRadius:"50%", width:20, height:20, cursor:"pointer", fontSize:12, lineHeight:"20px", textAlign:"center", padding:0 }}>
+          ✕
+        </button>
+      </div>
+    ))}
+    {/* Imágenes nuevas (recién seleccionadas) */}
+    {previewUrls.map((url, i) => (
+      <div key={i} style={{ position:"relative" }}>
+        <img src={url} alt={`Nueva ${i+1}`} className="preview-image"
+          style={{ width: 80, height: 80, objectFit:"cover", borderRadius: 8, display:"block" }} />
+        <button type="button" onClick={() => removeImagenNueva(i)}
+          style={{ position:"absolute", top:2, right:2, background:"rgba(0,0,0,0.6)", color:"#fff", border:"none", borderRadius:"50%", width:20, height:20, cursor:"pointer", fontSize:12, lineHeight:"20px", textAlign:"center", padding:0 }}>
+          ✕
+        </button>
+      </div>
     ))}
   </div>
 ) : (

@@ -5,7 +5,7 @@ import "./CategoryManager.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
-const secret = () => sessionStorage.getItem("ADMIN_SECRET") || "";
+const secret = () => import.meta.env.VITE_ADMIN_SECRET || "";
 
 export default function CategoryManager() {
   const [cats, setCats]       = useState([]);
