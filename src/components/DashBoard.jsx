@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import ProductList from "../../src/components/ProductList";
 import ProductForm from "../../src/components/ProductForm";
 import StatsAdminControls from "../../src/components/StatsAdminControls";
@@ -50,6 +50,13 @@ const fmtDT = (iso) => {
 ══════════════════════════════════════════ */
 export default function DashBoard() {
   const [vista, setVista] = useState("stock");
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) setVista(tab);
+  }, [location.search]);
   const adminSecret = useMemo(() => sessionStorage.getItem("ADMIN_SECRET") || "", []);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -126,7 +133,7 @@ export default function DashBoard() {
       {/* Contenido */}
       <main className="dash-content">
         {vista === "stock"        && <ProductList />}
-        {vista === "crear"        && <ProductForm />}
+        {vista === "crear"        && <ProductForm onCreated={() => setVista("stock")} />}
         {vista === "categorias"   && <CategoryManager />}
         {vista === "estadisticas" && <StatsSection />}
       </main>

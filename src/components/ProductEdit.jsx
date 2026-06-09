@@ -228,10 +228,12 @@ const removeImagenNueva = (idx) => {
         const nuevas = await uploadImagesIfNeeded();
         const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
-        const safeInt = (s) => {
-          const n = parseInt(String(s).replace(/\D+/g, ""), 10);
+        const safeNum = (s) => {
+          const str = String(s).trim().replace(",", ".");
+          const n = parseFloat(str);
           return Number.isFinite(n) ? Math.max(0, n) : 0;
         };
+        const safeInt = safeNum; // alias para no tocar el resto
 
         const clean = variantes
     .map(v => ({
@@ -349,9 +351,9 @@ const removeImagenNueva = (idx) => {
                 <span className="pf-precio-tag pf-precio-tag--u">U</span>
                 Precio Unitario <span className="pf-precio-req">*</span>
               </label>
-              <input name="precio" type="number" inputMode="decimal" step="1" min="0"
+              <input name="precio" type="text" inputMode="decimal"
                 value={producto.precio} onChange={handleChange}
-                onWheel={(e) => e.currentTarget.blur()} required={producto.categoria !== "lenceria"} />
+                required={producto.categoria !== "lenceria"} />
               <small className="hint">Sin mínimo de compra</small>
             </div>
 
@@ -360,10 +362,9 @@ const removeImagenNueva = (idx) => {
                 <span className="pf-precio-tag pf-precio-tag--e">E</span>
                 Precio Especial
               </label>
-              <input name="precioEspecial" type="number" inputMode="decimal" step="1" min="0"
+              <input name="precioEspecial" type="text" inputMode="decimal"
                 placeholder="Ej: 1200"
-                value={producto.precioEspecial ?? ""} onChange={handleChange}
-                onWheel={(e) => e.currentTarget.blur()} />
+                value={producto.precioEspecial ?? ""} onChange={handleChange} />
               <small className="hint">Llevando 5+ productos</small>
             </div>
 
@@ -373,10 +374,9 @@ const removeImagenNueva = (idx) => {
                   <span className="pf-precio-tag pf-precio-tag--m">M</span>
                   Precio Mayorista
                 </label>
-                <input name="precioMayorista" type="number" inputMode="decimal" step="1" min="0"
+                <input name="precioMayorista" type="text" inputMode="decimal"
                   placeholder="Ej: 900"
-                  value={producto.precioMayorista ?? ""} onChange={handleChange}
-                  onWheel={(e) => e.currentTarget.blur()} />
+                  value={producto.precioMayorista ?? ""} onChange={handleChange} />
                 <small className="hint">Compra mínima $30.000</small>
               </div>
             )}
@@ -403,7 +403,7 @@ const removeImagenNueva = (idx) => {
         <span className="pf-precio-tag" style={{background:"#0ea5e9",color:"#fff"}}>x2$</span>
         Precio total x2
       </label>
-      <input name="precioMayorista" type="number" min="0" step="1"
+      <input name="precioMayorista" type="number" min="0" step="0.01"
         placeholder="Ej: 1800"
         value={producto.precioMayorista ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
@@ -426,7 +426,7 @@ const removeImagenNueva = (idx) => {
         <span className="pf-precio-tag" style={{background:"#84e070",color:"#1a1a1a"}}>x6$</span>
         Precio total x6
       </label>
-      <input name="precioMayorista2" type="number" min="0" step="1"
+      <input name="precioMayorista2" type="number" min="0" step="0.01"
         placeholder="Ej: 5400"
         value={producto.precioMayorista2 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
@@ -449,7 +449,7 @@ const removeImagenNueva = (idx) => {
         <span className="pf-precio-tag" style={{background:"#7c3aed",color:"#fff"}}>x12$</span>
         Precio total x12
       </label>
-      <input name="precioMayorista3" type="number" min="0" step="1"
+      <input name="precioMayorista3" type="number" min="0" step="0.01"
         placeholder="Ej: 9600"
         value={producto.precioMayorista3 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />

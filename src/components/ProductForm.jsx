@@ -24,9 +24,9 @@ const label = (k) => k.charAt(0).toUpperCase() + k.slice(1);
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
 
-export default function ProductForm() {
+export default function ProductForm({ onCreated }) {
   const nav = useNavigate();
-  const [producto, setProducto] = useState({
+  const PRODUCTO_INICIAL = {
     nombre: "",
     codigoInterno: "",
     precio: "",
@@ -39,14 +39,18 @@ export default function ProductForm() {
     destacado: false,
     tags: [],
     variants: [],
-    // ← CAMBIO #8
     unidadesPorCaja: "",
     cantidadTonos: "",
+    minimoMayorista: "",
     minimoMayorista2: "",
+    minimoMayorista3: "",
     precioMayorista2: "",
+    precioMayorista3: "",
     modoTonos: "automatico",
     tonosDisponibles: [],
-  });
+  };
+
+  const [producto, setProducto] = useState(PRODUCTO_INICIAL);
 
   const [selSizes, setSelSizes]   = useState([]);
   const [selColors, setSelColors] = useState([]);
@@ -68,7 +72,7 @@ export default function ProductForm() {
       return;
     }
 
-    const nextVal = type === "number" ? (value === "" ? "" : Number(value)) : value;
+    const nextVal = value;
     setProducto((prev) => ({ ...prev, [name]: nextVal }));
 
     if (name === "categoria") {
@@ -172,9 +176,9 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
       const body = {
         ...producto,
         imagenes,
-        precio:          Number(producto.precio) || 0,
-        precioEspecial:  producto.precioEspecial  !== "" ? Number(producto.precioEspecial)  : null,
-        precioMayorista: producto.precioMayorista !== "" ? Number(producto.precioMayorista) : null,
+        precio:          parseFloat(String(producto.precio).replace(",", ".")) || 0,
+        precioEspecial:  producto.precioEspecial  !== "" ? parseFloat(String(producto.precioEspecial).replace(",", "."))  : null,
+        precioMayorista: producto.precioMayorista !== "" ? parseFloat(String(producto.precioMayorista).replace(",", ".")) : null,
         stock:           Number(producto.stock) || 0,
         categoria:    (producto.categoria    || "").toLowerCase(),
         subcategoria: (producto.subcategoria || "").toLowerCase(),
@@ -192,7 +196,12 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
 
       await axios.post(`${API}/productos`, body);
       toast.success("Producto creado correctamente");
-      nav(-1);
+      setProducto(PRODUCTO_INICIAL);
+      setSelSizes([]);
+      setSelColors([]);
+      setImagenFiles([]);
+      setPreviewUrls([]);
+      if (onCreated) onCreated();
     } catch (err) {
       console.error(err?.response?.data || err);
       toast.error(err?.response?.data?.message || "Error al crear producto");
@@ -243,10 +252,8 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
             </label>
             <input
               name="precio"
-              type="number"
+              type="text"
               inputMode="decimal"
-              step="1"
-              min="0"
               placeholder="Sin mínimo de compra"
               value={producto.precio}
               onChange={handleChange}
@@ -263,10 +270,8 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
             </label>
             <input
               name="precioEspecial"
-              type="number"
+              type="text"
               inputMode="decimal"
-              step="1"
-              min="0"
               placeholder="Ej: 1200"
               value={producto.precioEspecial}
               onChange={handleChange}
@@ -281,10 +286,9 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
                 <span className="pf-precio-tag pf-precio-tag--m">M</span>
                 Precio Mayorista
               </label>
-              <input name="precioMayorista" type="number" inputMode="decimal" step="1" min="0"
+              <input name="precioMayorista" type="text" inputMode="decimal"
                 placeholder="Ej: 900"
-                value={producto.precioMayorista ?? ""} onChange={handleChange}
-                onWheel={(e) => e.currentTarget.blur()} />
+                value={producto.precioMayorista ?? ""} onChange={handleChange} />
               <small className="hint">Compra mínima $30.000</small>
             </div>
           )}
@@ -311,8 +315,8 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
         <span className="pf-precio-tag" style={{background:"#0ea5e9",color:"#fff"}}>x2$</span>
         Precio por unidad x2
       </label>
-      <input name="precioMayorista" type="number" min="0" step="1"
-        placeholder="Ej: 1800"
+      <input name="precioMayorista2" type="number" min="0" step="0.01"
+        placeholder="Ej: 5400"
         value={producto.precioMayorista ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
       <small className="hint">Precio por unidad (total: ${Number(producto.precioMayorista || 0) * Number(producto.minimoMayorista || 2)})</small>
@@ -334,7 +338,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
         <span className="pf-precio-tag" style={{background:"#84e070",color:"#1a1a1a"}}>x6$</span>
         Precio por unidad x6
       </label>
-      <input name="precioMayorista2" type="number" min="0" step="1"
+      <input name="precioMayorista2" type="number" min="0" step="0.01"
         placeholder="Ej: 5400"
         value={producto.precioMayorista2 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
@@ -357,7 +361,7 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
         <span className="pf-precio-tag" style={{background:"#7c3aed",color:"#fff"}}>x12$</span>
         Precio por unidad x12
       </label>
-      <input name="precioMayorista3" type="number" min="0" step="1"
+      <input name="precioMayorista3" type="number" min="0" step="0.01"
         placeholder="Ej: 9600"
         value={producto.precioMayorista3 ?? ""} onChange={handleChange}
         onWheel={e => e.currentTarget.blur()} />
