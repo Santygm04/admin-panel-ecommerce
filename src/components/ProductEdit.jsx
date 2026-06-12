@@ -25,7 +25,11 @@
   const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
   const API = API_BASE ? `${API_BASE}/api` : "/api";
 
+  import { useAuth } from "./AuthContext";
+
   export default function EditProduct() {
+    const { user } = useAuth();
+    const soloPrecios = user?.role === "vendedor";
     const { id }   = useParams();
     const nav      = useNavigate();
 
@@ -272,7 +276,19 @@ const removeImagenNueva = (idx) => {
           tonosDisponibles: producto.tonosDisponibles || [],
         };
 
-        await axios.put(`${API}/productos/${id}`, body);
+        const payload = soloPrecios
+          ? {
+              precio: body.precio,
+              precioEspecial: body.precioEspecial,
+              precioMayorista: body.precioMayorista,
+              precioMayorista2: body.precioMayorista2,
+              precioMayorista3: body.precioMayorista3,
+              minimoMayorista: body.minimoMayorista,
+              minimoMayorista2: body.minimoMayorista2,
+              minimoMayorista3: body.minimoMayorista3,
+            }
+          : body;
+        await axios.put(`${API}/productos/${id}`, payload);
         toast.success("Producto actualizado");
         nav(-1);
       } catch (err) {
@@ -298,6 +314,11 @@ const removeImagenNueva = (idx) => {
     return (
       <form className="product-form" onSubmit={handleSubmit} autoComplete="off">
 
+        {soloPrecios && (
+          <div className="st-banner st-banner--info" style={{ marginBottom: 16 }}>
+            ℹ️ Solo podés modificar los precios del producto.
+          </div>
+        )}
         {/* HEADER */}
         <header className="pf-header">
           <div>

@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
+import { useAuth } from "./AuthContext";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
@@ -41,6 +42,8 @@ function parsePromoInput(input, basePrice) {
 }
 
 export default function ProductList() {
+  const { user } = useAuth();
+  const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
   const [productos, setProductos] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [q, setQ] = useState("");
@@ -583,7 +586,7 @@ export default function ProductList() {
                     <button
                       className="stk-btn"
                       onClick={() => changeStockBy(producto._id, -10)}
-                      disabled={isSavingStock || stockValue <= 0}
+                      disabled={isSavingStock || stockValue <= 0 || soloStock}
                       type="button"
                     >
                       -10
@@ -610,14 +613,14 @@ export default function ProductList() {
                           setStockDraft(producto._id, producto.stock ?? 0);
                       }}
                       onWheel={(e) => e.currentTarget.blur()}
-                      disabled={isSavingStock}
+                      disabled={isSavingStock || soloStock}
                       aria-label="Stock"
                     />
 
                     <button
                       className="stk-btn"
                       onClick={() => changeStockBy(producto._id, +1)}
-                      disabled={isSavingStock}
+                      disabled={isSavingStock || soloStock}
                       type="button"
                     >
                       +1
@@ -625,7 +628,7 @@ export default function ProductList() {
                     <button
                       className="stk-btn"
                       onClick={() => changeStockBy(producto._id, +10)}
-                      disabled={isSavingStock}
+                      disabled={isSavingStock || soloStock}
                       type="button"
                     >
                       +10
@@ -633,17 +636,21 @@ export default function ProductList() {
                   </div>
                 </div>
 
-                <div className="product-block">
-                  <h4>Promoción</h4>
-                  {renderPromoEditor(producto)}
-                </div>
+                {!soloStock && (
+                  <div className="product-block">
+                    <h4>Promoción</h4>
+                    {renderPromoEditor(producto)}
+                  </div>
+                )}
 
                 <div className="product-actions">
-                  <Link to={`/editar/${producto._id}`} className="btn-edit">
-                    Editar
-                  </Link>
+                  {!soloStock && (
+                    <Link to={`/editar/${producto._id}`} className="btn-edit">
+                      Editar
+                    </Link>
+                  )}
 
-                  {oculto ? (
+                  {!soloStock && oculto ? (
                     <button
                       className="btn-show"
                       onClick={() => setVisible(producto._id, true)}
@@ -664,14 +671,16 @@ export default function ProductList() {
                     </button>
                   )}
 
-                  <button
-                    className="btn-del"
-                    onClick={() => askDelete(producto._id, producto.nombre)}
-                    disabled={isDeleting}
-                    type="button"
-                  >
-                    {isDeleting ? "Eliminando…" : "Eliminar"}
-                  </button>
+                  {!soloStock && (
+                    <button
+                      className="btn-del"
+                      onClick={() => askDelete(producto._id, producto.nombre)}
+                      disabled={isDeleting}
+                      type="button"
+                    >
+                      {isDeleting ? "Eliminando…" : "Eliminar"}
+                    </button>
+                  )}
                 </div>
               </article>
             );
