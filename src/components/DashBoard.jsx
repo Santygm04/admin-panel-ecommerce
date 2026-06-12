@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
 import { Link, useLocation } from "react-router-dom";
 import ProductList from "../../src/components/ProductList";
 import ProductForm from "../../src/components/ProductForm";
@@ -49,6 +50,7 @@ const fmtDT = (iso) => {
    DASHBOARD PRINCIPAL
 ══════════════════════════════════════════ */
 export default function DashBoard() {
+  const { user } = useAuth();
   const [vista, setVista] = useState("stock");
   const location = useLocation();
 
@@ -116,10 +118,22 @@ export default function DashBoard() {
       {/* Tabs */}
       <div className="dash-row">
         <nav className="dash-tabs" role="tablist">
-          <TabBtn id="stock"        icon="📦" label="Ver stock"      />
-          <TabBtn id="crear"        icon="⬆️" label="Subir producto" />
-          <TabBtn id="categorias"   icon="🗂️" label="Categorías"    />
-          <TabBtn id="estadisticas" icon="📈" label="Estadísticas"   />
+          {(user?.role === "admin" || user?.permissions?.verOrdenes) && (
+            <TabBtn id="stock" icon="📦" label="Ver stock" />
+          )}
+          {(user?.role === "admin" || user?.permissions?.crearProductos) && (
+            <TabBtn id="crear" icon="⬆️" label="Subir producto" />
+          )}
+          {(user?.role === "admin" || user?.permissions?.editarCategorias) && (
+            <TabBtn id="categorias" icon="🗂️" label="Categorías" />
+          )}
+          {(user?.role === "admin" || user?.permissions?.verEstadisticas) && (
+            <TabBtn id="estadisticas" icon="📈" label="Estadísticas" />
+          )}
+          <TabBtn id="cuenta" icon="🔐" label="Mi cuenta" />
+          {user?.role === "admin" && (
+            <TabBtn id="usuarios" icon="👥" label="Usuarios" />
+          )}
         </nav>
         <Link to="/orders" className="tab-btn tab-cta orders-link">
           <span className="tab-icon">🧾</span>
@@ -134,8 +148,14 @@ export default function DashBoard() {
       <main className="dash-content">
         {vista === "stock"        && <ProductList />}
         {vista === "crear"        && <ProductForm onCreated={() => setVista("stock")} />}
-        {vista === "categorias"   && <CategoryManager />}
+        {vista === "categorias"   && (
+          user?.role === "admin" || user?.permissions?.editarCategorias
+            ? <CategoryManager />
+            : <SolicitarPermisoSection permiso="editarCategorias" />
+        )}
         {vista === "estadisticas" && <StatsSection />}
+{vista === "cuenta"       && <CuentaSection />}
+{vista === "usuarios"     && <UsuariosSection />}
       </main>
     </div>
   );
@@ -555,6 +575,366 @@ function RangeTabs({ value, onChange }) {
           {l}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   CUENTA — Cambiar contraseña
+══════════════════════════════════════════ */
+function CuentaSection() {
+  const { changePassword, user } = useAuth();
+  const [form, setForm]   = useState({ actual: "", nueva: "", repetir: "" });
+  const [msg, setMsg]     = useState({ text: "", ok: false });
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setMsg({ text: "", ok: false });
+    if (form.nueva.length < 8)
+      return setMsg({ text: "La nueva contraseña debe tener mínimo 8 caracteres.", ok: false });
+    if (form.nueva !== form.repetir)
+      return setMsg({ text: "Las contraseñas no coinciden.", ok: false });
+    setLoading(true);
+    try {
+      await changePassword(form.actual, form.nueva);
+      setMsg({ text: "✅ Contraseña actualizada correctamente.", ok: true });
+      setForm({ actual: "", nueva: "", repetir: "" });
+    } catch (err) {
+      setMsg({ text: err?.message || "Error al cambiar contraseña.", ok: false });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 440, margin: "0 auto", padding: "8px 0" }}>
+      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 4 }}>Mi cuenta</h2>
+      {user && (
+        <p style={{ fontSize: ".85rem", color: "var(--adm-muted)", marginBottom: 20 }}>
+          Usuario: <strong>{user.username}</strong> · Rol: <strong>{user.role}</strong>
+        </p>
+      )}
+
+      <div className="card">
+        <p className="card-title">Cambiar contraseña</p>
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {msg.text && (
+            <div className="st-banner" style={{
+              background: msg.ok ? "var(--adm-success-soft)" : "var(--adm-danger-soft)",
+              color:      msg.ok ? "#065f46"                 : "#991b1b",
+              borderColor: msg.ok ? "#6ee7b7"               : "#fca5a5",
+              marginBottom: 0,
+            }}>
+              {msg.text}
+            </div>
+          )}
+          <input
+            className="adm-input"
+            type="password"
+            placeholder="Contraseña actual"
+            autoComplete="current-password"
+            value={form.actual}
+            onChange={(e) => setForm({ ...form, actual: e.target.value })}
+            required
+          />
+          <input
+            className="adm-input"
+            type="password"
+            placeholder="Nueva contraseña (mín. 8 caracteres)"
+            autoComplete="new-password"
+            value={form.nueva}
+            onChange={(e) => setForm({ ...form, nueva: e.target.value })}
+            required
+          />
+          <input
+            className="adm-input"
+            type="password"
+            placeholder="Repetir nueva contraseña"
+            autoComplete="new-password"
+            value={form.repetir}
+            onChange={(e) => setForm({ ...form, repetir: e.target.value })}
+            required
+          />
+          <button className="adm-btn-brand" disabled={loading} type="submit">
+            {loading ? "Guardando…" : "Actualizar contraseña"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   USUARIOS — Gestión de vendedores
+══════════════════════════════════════════ */
+function UsuariosSection() {
+  const { getUsers, createUser, updateUser, deleteUser, user: me } = useAuth();
+  const [users, setUsers]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg]         = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [form, setForm] = useState({
+    username: "", password: "", name: "", role: "vendedor",
+    permissions: {
+      verEstadisticas: false, verOrdenes: true,
+      editarCategorias: false, crearProductos: true, editarStockSolo: true,
+    },
+  });
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try { setUsers(await getUsers()); } catch (e) { setMsg(e.message); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const resetForm = () => {
+    setForm({
+      username: "", password: "", name: "", role: "vendedor",
+      permissions: {
+        verEstadisticas: false, verOrdenes: true,
+        editarCategorias: false, crearProductos: true, editarStockSolo: true,
+      },
+    });
+    setEditTarget(null);
+    setShowForm(false);
+  };
+
+  const startEdit = (u) => {
+    setEditTarget(u);
+    setForm({
+      username: u.username, password: "", name: u.name || "", role: u.role,
+      permissions: { ...u.permissions },
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg("");
+    try {
+      if (editTarget) {
+        const payload = { name: form.name, role: form.role, permissions: form.permissions };
+        if (form.password) payload.password = form.password;
+        await updateUser(editTarget._id, payload);
+      } else {
+        await createUser(form);
+      }
+      await load();
+      resetForm();
+    } catch (err) {
+      setMsg(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (u) => {
+    if (!window.confirm(`¿Eliminar usuario "${u.username}"?`)) return;
+    try { await deleteUser(u._id); await load(); }
+    catch (err) { setMsg(err.message); }
+  };
+
+  const togglePerm = (key) =>
+    setForm((f) => ({ ...f, permissions: { ...f.permissions, [key]: !f.permissions[key] } }));
+
+  const PERMS = [
+    { key: "verEstadisticas",  label: "Ver estadísticas" },
+    { key: "verOrdenes",       label: "Ver órdenes"      },
+    { key: "editarCategorias", label: "Editar categorías"},
+    { key: "crearProductos",   label: "Crear productos"  },
+    { key: "editarStockSolo",  label: "Solo editar stock"},
+  ];
+
+  return (
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>Gestión de usuarios</h2>
+        <button className="adm-btn-brand" onClick={() => { resetForm(); setShowForm(true); }} type="button">
+          + Nuevo usuario
+        </button>
+      </div>
+
+      {msg && (
+        <div className="st-banner st-banner--err" style={{ marginBottom: 12 }}>{msg}</div>
+      )}
+
+      {/* Formulario */}
+      {showForm && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <p className="card-title">{editTarget ? `Editar: ${editTarget.username}` : "Nuevo usuario"}</p>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {!editTarget && (
+              <input
+                className="adm-input"
+                placeholder="Usuario (ej: vendedora1)"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                required
+              />
+            )}
+            <input
+              className="adm-input"
+              placeholder="Nombre visible"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <input
+              className="adm-input"
+              type="password"
+              placeholder={editTarget ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña (mín. 8 caracteres)"}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              {...(!editTarget && { required: true })}
+            />
+            <select
+              className="adm-input"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+            >
+              <option value="vendedor">Vendedor</option>
+              <option value="admin">Admin</option>
+            </select>
+
+            <p style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--adm-muted)", margin: "4px 0 2px" }}>
+              Permisos
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {PERMS.map(({ key, label }) => (
+                <label key={key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".82rem", cursor: "pointer", color: "var(--adm-ink-2)" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.permissions[key]}
+                    onChange={() => togglePerm(key)}
+                    style={{ accentColor: "var(--adm-brand)" }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button className="adm-btn-brand" disabled={saving} type="submit" style={{ flex: 1 }}>
+                {saving ? "Guardando…" : editTarget ? "Guardar cambios" : "Crear usuario"}
+              </button>
+              <button className="btn-outline" onClick={resetForm} type="button">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Lista */}
+      {loading ? (
+        <p style={{ color: "var(--adm-muted)", fontSize: ".9rem" }}>Cargando usuarios…</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {users.map((u) => (
+            <div key={u._id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: ".9rem" }}>
+                  {u.name || u.username}
+                  {u._id === me?._id && <span style={{ marginLeft: 6, fontSize: ".7rem", background: "var(--adm-brand-soft)", color: "var(--adm-brand)", borderRadius: 999, padding: "2px 8px", fontWeight: 600 }}>Vos</span>}
+                </p>
+                <p style={{ margin: "2px 0 0", fontSize: ".78rem", color: "var(--adm-muted)" }}>
+                  @{u.username} · {u.role} · {u.active ? "✅ activo" : "❌ inactivo"}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button className="btn-outline" onClick={() => startEdit(u)} type="button" style={{ fontSize: ".8rem", padding: "0.4rem 0.8rem" }}>
+                  Editar
+                </button>
+                {u._id !== me?._id && (
+                  <button
+                    onClick={() => handleDelete(u)}
+                    type="button"
+                    style={{ fontSize: ".8rem", padding: "0.4rem 0.8rem", border: "1px solid var(--adm-danger)", color: "var(--adm-danger)", background: "var(--adm-danger-soft)", borderRadius: "var(--adm-r-md)", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {!users.length && <p style={{ color: "var(--adm-muted)", fontSize: ".9rem" }}>No hay usuarios.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SOLICITAR PERMISO — para vendedores sin acceso
+══════════════════════════════════════════ */
+function SolicitarPermisoSection({ permiso }) {
+  const { user, token } = useAuth();
+  const [estado, setEstado] = useState("idle"); // idle | loading | ok | err
+  const [msg, setMsg] = useState("");
+
+  const LABELS = {
+    editarCategorias: "Editar categorías",
+    crearProductos:   "Crear productos",
+    verEstadisticas:  "Ver estadísticas",
+    verOrdenes:       "Ver órdenes",
+    editarStockSolo:  "Editar stock",
+  };
+
+  const enviarSolicitud = async () => {
+    setEstado("loading");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_URL}/api/auth/request-permission`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ permiso }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Error al enviar solicitud");
+      setEstado("ok");
+      setMsg("✅ Solicitud enviada. La administradora recibirá un email para aprobarte.");
+    } catch (err) {
+      setEstado("err");
+      setMsg(err.message);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center", padding: "0 16px" }}>
+      <div style={{ fontSize: "3rem", marginBottom: 12 }}>🔒</div>
+      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 8 }}>
+        Sin acceso a "{LABELS[permiso] || permiso}"
+      </h3>
+      <p style={{ color: "var(--adm-muted)", fontSize: ".88rem", marginBottom: 20 }}>
+        No tenés permiso para esta sección. Podés enviarle una solicitud a la administradora para que te lo habilite.
+      </p>
+      {msg && (
+        <div className="st-banner" style={{
+          background: estado === "ok" ? "var(--adm-success-soft)" : "var(--adm-danger-soft)",
+          color: estado === "ok" ? "#065f46" : "#991b1b",
+          borderColor: estado === "ok" ? "#6ee7b7" : "#fca5a5",
+          marginBottom: 16,
+        }}>
+          {msg}
+        </div>
+      )}
+      {estado !== "ok" && (
+        <button
+          className="adm-btn-brand"
+          onClick={enviarSolicitud}
+          disabled={estado === "loading"}
+          type="button"
+        >
+          {estado === "loading" ? "Enviando…" : "Solicitar permiso"}
+        </button>
+      )}
     </div>
   );
 }

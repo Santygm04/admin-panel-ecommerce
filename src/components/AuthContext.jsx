@@ -12,13 +12,7 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(LS_USER) || "null"); } catch { return null; }
   });
 
-  // Restaurar ADMIN_SECRET en sessionStorage si ya hay sesión activa
-  useEffect(() => {
-    const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
-    if (adminSecret && localStorage.getItem(LS_KEY)) {
-      sessionStorage.setItem("ADMIN_SECRET", adminSecret);
-    }
-  }, []);
+  // ADMIN_SECRET eliminado del frontend — se usa solo JWT
 
   const isAuthenticated = !!token;
 
@@ -34,9 +28,6 @@ export function AuthProvider({ children }) {
 localStorage.setItem(LS_USER, JSON.stringify(data.user));
 setToken(data.token);
 setUser(data.user);
-// Guardar ADMIN_SECRET automáticamente al hacer login
-const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
-if (adminSecret) sessionStorage.setItem("ADMIN_SECRET", adminSecret);
 return data.user;
   };
 
@@ -106,8 +97,51 @@ return data.user;
     return () => { ignore = true; };
   }, [token]);
 
+  const API_URL_CTX = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
+  const getUsers = async () => {
+    const res = await fetch(`${API_URL_CTX}/api/auth/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Error al listar usuarios");
+    return data.users;
+  };
+
+  const createUser = async (payload) => {
+    const res = await fetch(`${API_URL_CTX}/api/auth/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Error al crear usuario");
+    return data.user;
+  };
+
+  const updateUser = async (id, payload) => {
+    const res = await fetch(`${API_URL_CTX}/api/auth/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Error al actualizar usuario");
+    return data.user;
+  };
+
+  const deleteUser = async (id) => {
+    const res = await fetch(`${API_URL_CTX}/api/auth/users/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Error al eliminar usuario");
+    return true;
+  };
+
   const value = useMemo(
-    () => ({ token, user, isAuthenticated, login, logout, changePassword, updateProfile }),
+    () => ({ token, user, isAuthenticated, login, logout, changePassword, updateProfile, getUsers, createUser, updateUser, deleteUser }),
     [token, user, isAuthenticated]
   );
 

@@ -477,9 +477,87 @@ export default function ProductList() {
                       {oculto && <span className="badge-hidden">Oculto</span>}
                     </div>
 
-                    <p className="product-card-price">
-                      ${Number(producto.precio).toLocaleString("es-AR")}
-                    </p>
+                    <div className="product-card-price">
+                      {producto.categoria === "lenceria" ? (
+                        /* LENCERÍA: sin precio unitario → mostrar tiers x2/x6/x12 */
+                        (!producto.precio || producto.precio === 0) ? (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {producto.precioMayorista != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
+                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista2 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
+                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista3 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
+                            {producto.precioMayorista != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
+                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista2 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
+                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista3 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      ) : (
+                        /* OTRAS CATEGORÍAS: unitario + especial + mayorista */
+                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                          {producto.precio > 0 && (
+                            <span style={{fontWeight:700}}>
+                              <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
+                              ${Number(producto.precio).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Especial"}
+                              </span>
+                              ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista2 != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                                {producto.minimoMayorista2 ? `x${producto.minimoMayorista2}` : "Mayorista"}
+                              </span>
+                              ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista3 != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                              ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="product-card-meta">
                       <span>
@@ -646,7 +724,85 @@ export default function ProductList() {
                       {producto.nombre}
                       {oculto && <span className="badge-hidden">Oculto</span>}
                     </td>
-                    <td>${Number(producto.precio).toLocaleString("es-AR")}</td>
+                   <td>
+                      {producto.categoria === "lenceria" ? (
+                        (!producto.precio || producto.precio === 0) ? (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {producto.precioMayorista != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
+                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista2 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
+                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista3 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
+                            {producto.precioMayorista != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
+                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista2 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
+                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                            {producto.precioMayorista3 != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      ) : (
+                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                          {producto.precio > 0 && (
+                            <span style={{fontWeight:700}}>
+                              <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
+                              ${Number(producto.precio).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Especial"}
+                              </span>
+                              ${Number(producto.precioMayorista).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista2 != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                                {producto.minimoMayorista2 ? `x${producto.minimoMayorista2}` : "Mayorista"}
+                              </span>
+                              ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioMayorista3 != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
+                              ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="col-categoria">
                       {producto.categoria === "nuevos-ingresos"
                         ? "Nuevos ingresos"

@@ -710,3 +710,39 @@
   color: #fff !important;
 }
  
+
+/* ── Inputs y botón brand reutilizables ── */
+.adm-input {
+  width: 100%;
+  padding: .58rem .85rem;
+  border-radius: var(--adm-r-md);
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-2);
+  color: var(--adm-ink);
+  font-size: .88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+.adm-input:focus {
+  border-color: var(--adm-brand);
+  box-shadow: 0 0 0 3px rgba(219,39,119,.09);
+}
+.adm-btn-brand {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--adm-r-md);
+  padding: .62rem 1.1rem;
+  font-weight: 700;
+  font-size: .87rem;
+  font-family: inherit;
+  background: linear-gradient(135deg, var(--adm-brand) 0%, var(--adm-brand-600) 100%);
+  color: #fff;
+  box-shadow: var(--adm-shadow-brand);
+  transition: transform .12s, box-shadow .18s, opacity .18s;
+}
+.adm-btn-brand:disabled { opacity: .65; cursor: not-allowed; }
+.adm-btn-brand:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(219,39,119,.32);
+}
