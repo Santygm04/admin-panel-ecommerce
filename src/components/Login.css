@@ -236,7 +236,7 @@
 @media (max-width: 380px) { .auth-card { padding: 1.6rem 1.1rem; } }
 
 .login-left-logo {
-  width: 180px;
+  width: 280px;
   height: auto;
   filter: drop-shadow(0 0 18px rgba(255,46,166,.5)) brightness(1.1);
   border-radius: 10px;
