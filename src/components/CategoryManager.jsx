@@ -6,6 +6,10 @@ import "./CategoryManager.css";
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
 const secret = () => import.meta.env.VITE_ADMIN_SECRET || "";
+const authHeader = () => {
+  const t = localStorage.getItem("aesthetic:token") || "";
+  return t ? { Authorization: `Bearer ${t}` } : { "x-admin-secret": secret() };
+};
 
 export default function CategoryManager() {
   const [cats, setCats]       = useState([]);
@@ -42,12 +46,12 @@ export default function CategoryManager() {
     try {
       if (editing) {
         await axios.put(`${API}/categories/${editing}`, payload, {
-          headers: { "x-admin-secret": secret() },
+          headers: authHeader(),
         });
         toast.success("Categoría actualizada");
       } else {
         await axios.post(`${API}/categories`, payload, {
-          headers: { "x-admin-secret": secret() },
+          headers: authHeader(),
         });
         toast.success("Categoría creada");
       }
@@ -73,7 +77,7 @@ export default function CategoryManager() {
     if (!window.confirm("¿Eliminar esta categoría?")) return;
     try {
       await axios.delete(`${API}/categories/${id}`, {
-        headers: { "x-admin-secret": secret() },
+        headers: authHeader(),
       });
       toast.success("Eliminada");
       fetchCats();
