@@ -154,7 +154,10 @@ export default function ProductList() {
     setSavingStock(s);
 
     try {
-      const { data } = await axios.put(`${API}/productos/${id}`, { stock: current });
+      const token = localStorage.getItem("aesthetic:token");
+      const { data } = await axios.put(`${API}/productos/${id}`, { stock: current }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setProductos((prev) =>
         prev.map((p) =>
           p._id === id ? { ...p, stock: data.stock, visible: data.visible } : p
@@ -485,6 +488,12 @@ export default function ProductList() {
                         /* LENCERÍA: sin precio unitario → mostrar tiers x2/x6/x12 */
                         (!producto.precio || producto.precio === 0) ? (
                           <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {producto.precioEspecial != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
+                              </span>
+                            )}
                             {producto.precioMayorista != null && (
                               <span style={{fontSize:"0.82rem"}}>
                                 <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
@@ -507,6 +516,12 @@ export default function ProductList() {
                         ) : (
                           <div style={{display:"flex",flexDirection:"column",gap:3}}>
                             <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
+                            {producto.precioEspecial != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
+                              </span>
+                            )}
                             {producto.precioMayorista != null && (
                               <span style={{fontSize:"0.82rem"}}>
                                 <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
@@ -534,6 +549,12 @@ export default function ProductList() {
                             <span style={{fontWeight:700}}>
                               <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
                               ${Number(producto.precio).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioEspecial != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                              ${Number(producto.precioEspecial).toLocaleString("es-AR")}
                             </span>
                           )}
                           {producto.precioMayorista != null && (
@@ -644,7 +665,7 @@ export default function ProductList() {
                 )}
 
                 <div className="product-actions">
-                  {!soloStock && (
+                  {(user?.role !== "vendedor" || user?.permissions?.crearProductos) && (
                     <Link to={`/editar/${producto._id}`} className="btn-edit">
                       Editar
                     </Link>
@@ -737,6 +758,12 @@ export default function ProductList() {
                       {producto.categoria === "lenceria" ? (
                         (!producto.precio || producto.precio === 0) ? (
                           <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {producto.precioEspecial != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
+                              </span>
+                            )}
                             {producto.precioMayorista != null && (
                               <span style={{fontSize:"0.82rem"}}>
                                 <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
@@ -759,6 +786,12 @@ export default function ProductList() {
                         ) : (
                           <div style={{display:"flex",flexDirection:"column",gap:3}}>
                             <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
+                            {producto.precioEspecial != null && (
+                              <span style={{fontSize:"0.82rem"}}>
+                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
+                              </span>
+                            )}
                             {producto.precioMayorista != null && (
                               <span style={{fontSize:"0.82rem"}}>
                                 <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
@@ -785,6 +818,12 @@ export default function ProductList() {
                             <span style={{fontWeight:700}}>
                               <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
                               ${Number(producto.precio).toLocaleString("es-AR")}
+                            </span>
+                          )}
+                          {producto.precioEspecial != null && (
+                            <span style={{fontSize:"0.82rem"}}>
+                              <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
+                              ${Number(producto.precioEspecial).toLocaleString("es-AR")}
                             </span>
                           )}
                           {producto.precioMayorista != null && (
@@ -825,7 +864,7 @@ export default function ProductList() {
                         <button
                           className="stk-btn"
                           onClick={() => changeStockBy(producto._id, -10)}
-                          disabled={isSavingStock || stockValue <= 0}
+                          disabled={isSavingStock || stockValue <= 0 || user?.role === "vendedor"}
                           type="button"
                         >
                           -10
@@ -833,7 +872,7 @@ export default function ProductList() {
                         <button
                           className="stk-btn"
                           onClick={() => changeStockBy(producto._id, -1)}
-                          disabled={isSavingStock || stockValue <= 0}
+                          disabled={isSavingStock || stockValue <= 0 || user?.role === "vendedor"}
                           type="button"
                         >
                           -1
@@ -852,14 +891,14 @@ export default function ProductList() {
                               setStockDraft(producto._id, producto.stock ?? 0);
                           }}
                           onWheel={(e) => e.currentTarget.blur()}
-                          disabled={isSavingStock}
+                          disabled={isSavingStock || user?.role === "vendedor"}
                           aria-label="Stock"
                         />
 
                         <button
                           className="stk-btn"
                           onClick={() => changeStockBy(producto._id, +1)}
-                          disabled={isSavingStock}
+                          disabled={isSavingStock || user?.role === "vendedor"}
                           type="button"
                         >
                           +1
@@ -867,7 +906,7 @@ export default function ProductList() {
                         <button
                           className="stk-btn"
                           onClick={() => changeStockBy(producto._id, +10)}
-                          disabled={isSavingStock}
+                          disabled={isSavingStock || user?.role === "vendedor"}
                           type="button"
                         >
                           +10
@@ -883,11 +922,13 @@ export default function ProductList() {
 
                     <td className="td-actions">
                       <div className="actions-wrap">
-                        <Link to={`/editar/${producto._id}`} className="btn-edit">
-                          Editar
-                        </Link>
+                        {(user?.role !== "vendedor" || user?.permissions?.crearProductos) && (
+                          <Link to={`/editar/${producto._id}`} className="btn-edit">
+                            Editar
+                          </Link>
+                        )}
 
-                        {oculto ? (
+                        {!soloStock && oculto ? (
                           <button
                             className="btn-show"
                             onClick={() => setVisible(producto._id, true)}
@@ -910,14 +951,16 @@ export default function ProductList() {
                           </button>
                         )}
 
-                        <button
-                          className="btn-del"
-                          onClick={() => askDelete(producto._id, producto.nombre)}
-                          disabled={isDeleting}
-                          type="button"
-                        >
-                          {isDeleting ? "Eliminando…" : "Eliminar"}
-                        </button>
+                        {!soloStock && (
+                          <button
+                            className="btn-del"
+                            onClick={() => askDelete(producto._id, producto.nombre)}
+                            disabled={isDeleting}
+                            type="button"
+                          >
+                            {isDeleting ? "Eliminando…" : "Eliminar"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

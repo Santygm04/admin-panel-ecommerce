@@ -50,7 +50,7 @@ const fmtDT = (iso) => {
    DASHBOARD PRINCIPAL
 ══════════════════════════════════════════ */
 export default function DashBoard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [vista, setVista] = useState("stock");
   const location = useLocation();
 
@@ -81,8 +81,7 @@ export default function DashBoard() {
   }, [adminSecret]);
 
   const handleLogout = () => {
-    localStorage.removeItem("admin_token");
-    sessionStorage.removeItem("ADMIN_SECRET");
+    logout();
     window.location.href = "/login";
   };
 

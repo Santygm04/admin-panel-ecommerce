@@ -34,6 +34,7 @@ return data.user;
   const logout = () => {
     localStorage.removeItem(LS_KEY);
     localStorage.removeItem(LS_USER);
+    sessionStorage.removeItem("ADMIN_SECRET");
     setToken("");
     setUser(null);
   };

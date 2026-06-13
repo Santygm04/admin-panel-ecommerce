@@ -194,7 +194,10 @@ const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.sub
         tonosDisponibles: producto.tonosDisponibles || [],
       };
 
-      await axios.post(`${API}/productos`, body);
+      const token = localStorage.getItem("aesthetic:token");
+      await axios.post(`${API}/productos`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       toast.success("Producto creado correctamente");
       setProducto(PRODUCTO_INICIAL);
       setSelSizes([]);

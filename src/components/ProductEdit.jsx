@@ -29,7 +29,9 @@
 
   export default function EditProduct() {
     const { user } = useAuth();
-    const soloPrecios = user?.role === "vendedor";
+    const isVendedor  = user?.role === "vendedor";
+    const soloPrecios = isVendedor && !user?.permissions?.editarStockSolo;
+    const soloStock   = isVendedor && !!user?.permissions?.editarStockSolo;
     const { id }   = useParams();
     const nav      = useNavigate();
 
@@ -276,7 +278,27 @@ const removeImagenNueva = (idx) => {
           tonosDisponibles: producto.tonosDisponibles || [],
         };
 
-        const payload = soloPrecios
+        const isVendedor = user?.role === "vendedor";
+        const payload = isVendedor
+          ? {
+              nombre: body.nombre,
+              descripcion: body.descripcion,
+              categoria: body.categoria,
+              subcategoria: body.subcategoria,
+              imagenes: body.imagenes,
+              variants: body.variants,
+              destacado: body.destacado,
+              tags: body.tags,
+              cantidadTonos: body.cantidadTonos,
+              modoTonos: body.modoTonos,
+              tonosDisponibles: body.tonosDisponibles,
+              precio: body.precio,
+              precioEspecial: body.precioEspecial,
+              precioMayorista: body.precioMayorista,
+              precioMayorista2: body.precioMayorista2,
+              precioMayorista3: body.precioMayorista3,
+            }
+          : soloStock
           ? {
               precio: body.precio,
               precioEspecial: body.precioEspecial,
@@ -286,9 +308,14 @@ const removeImagenNueva = (idx) => {
               minimoMayorista: body.minimoMayorista,
               minimoMayorista2: body.minimoMayorista2,
               minimoMayorista3: body.minimoMayorista3,
+              stock: body.stock,
+              variants: body.variants,
             }
           : body;
-        await axios.put(`${API}/productos/${id}`, payload);
+        const token = localStorage.getItem("aesthetic:token");
+        await axios.put(`${API}/productos/${id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         toast.success("Producto actualizado");
         nav(-1);
       } catch (err) {
@@ -353,6 +380,7 @@ const removeImagenNueva = (idx) => {
     onChange={handleChange}
     placeholder="Ej: AE0042"
     style={{ textTransform: "uppercase" }}
+    disabled={isVendedor}
   />
   <small className="hint">
     Podés buscar este producto por código
@@ -415,7 +443,8 @@ const removeImagenNueva = (idx) => {
       </label>
       <input name="minimoMayorista" type="number" min="1" step="1"
         placeholder="2"
-        value={producto.minimoMayorista ?? ""} onChange={handleChange} />
+        value={producto.minimoMayorista ?? ""} onChange={handleChange}
+        disabled={isVendedor} />
       <small className="hint">Cantidad mínima (ej: 2)</small>
     </div>
 
@@ -438,7 +467,8 @@ const removeImagenNueva = (idx) => {
       </label>
       <input name="minimoMayorista2" type="number" min="1" step="1"
         placeholder="6"
-        value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
+        value={producto.minimoMayorista2 ?? ""} onChange={handleChange}
+        disabled={isVendedor} />
       <small className="hint">Cantidad mínima (ej: 6)</small>
     </div>
 
@@ -461,7 +491,8 @@ const removeImagenNueva = (idx) => {
       </label>
       <input name="minimoMayorista3" type="number" min="1" step="1"
         placeholder="12"
-        value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
+        value={producto.minimoMayorista3 ?? ""} onChange={handleChange}
+        disabled={isVendedor} />
       <small className="hint">Cantidad mínima (ej: 12)</small>
     </div>
 
@@ -493,7 +524,8 @@ const removeImagenNueva = (idx) => {
                 <label>Stock</label>
                 <input name="stock" type="number" inputMode="numeric" min="0" step="1"
                   value={producto.stock} onChange={handleChange}
-                  onWheel={(e) => e.currentTarget.blur()} />
+                  onWheel={(e) => e.currentTarget.blur()}
+                  disabled={isVendedor} />
                 <small className="hint">Las variantes son solo talle/color.</small>
               </div>
 
