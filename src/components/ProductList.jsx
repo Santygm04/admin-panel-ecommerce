@@ -836,7 +836,7 @@ export default function ProductList() {
                           )}
                           {producto.precioMayorista2 != null && (
                             <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                              <span style={{background:"#00ff37",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
                                 {producto.minimoMayorista2 ? `x${producto.minimoMayorista2}` : "Mayorista"}
                               </span>
                               ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
