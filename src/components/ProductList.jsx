@@ -794,7 +794,7 @@ export default function ProductList() {
                             )}
                             {producto.precioMayorista != null && (
                               <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
+                                <span style={{background:"#0dff00",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
                                 ${Number(producto.precioMayorista).toLocaleString("es-AR")}
                               </span>
                             )}
@@ -828,8 +828,8 @@ export default function ProductList() {
                           )}
                           {producto.precioMayorista != null && (
                             <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
-                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Especial"}
+                              <span style={{background:"#13ff02",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
+                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Mayorista"}
                               </span>
                               ${Number(producto.precioMayorista).toLocaleString("es-AR")}
                             </span>
