@@ -333,9 +333,6 @@ const removeImagenNueva = (idx) => {
       );
     }
 
-    console.log("subcategoria del producto:", JSON.stringify(producto.subcategoria));
-    console.log("opciones disponibles:", subcategorias);
-
     const isNuevoIngreso = (producto.tags || []).includes("nuevos-ingresos");
 
     return (

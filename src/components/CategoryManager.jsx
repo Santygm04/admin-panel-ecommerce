@@ -5,10 +5,9 @@ import "./CategoryManager.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
-const secret = () => import.meta.env.VITE_ADMIN_SECRET || "";
 const authHeader = () => {
   const t = localStorage.getItem("aesthetic:token") || "";
-  return t ? { Authorization: `Bearer ${t}` } : { "x-admin-secret": secret() };
+  return t ? { Authorization: `Bearer ${t}` } : {};
 };
 
 export default function CategoryManager() {
