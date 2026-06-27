@@ -224,7 +224,10 @@ export default function ProductList() {
     setSavingDel(sd);
 
     try {
-      await axios.delete(`${API}/productos/${id}`);
+      const token = localStorage.getItem("aesthetic:token");
+await axios.delete(`${API}/productos/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
       setProductos((prev) => prev.filter((p) => p._id !== id));
       showNotif("ok", "Producto eliminado");
     } catch (e) {
