@@ -85,6 +85,10 @@ export default function ErpView() {
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Alta de producto
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios' });
+
   // Detalle de venta
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -203,6 +207,40 @@ export default function ErpView() {
     }
   };
 
+  // ── Alta de producto ──
+  const openCreate = () => {
+    setCreateForm({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios' });
+    setCreatingProduct(true);
+  };
+
+  const saveCreate = async () => {
+    if (!createForm.name?.trim() || !createForm.sku?.trim()) {
+      toast.error('Nombre y SKU son obligatorios');
+      return;
+    }
+    setSavingProduct(true);
+    try {
+      await api('/api/integration/aesthetic/products', {
+        method: 'POST',
+        body: {
+          name: createForm.name.trim(),
+          sku: createForm.sku.trim().toUpperCase(),
+          price: Number(createForm.price) || 0,
+          costPrice: Number(createForm.costPrice) || 0,
+          stock: Number(createForm.stock) || 0,
+          category: createForm.category || 'Accesorios',
+        },
+      });
+      setCreatingProduct(false);
+      toast.success('Producto creado en el ERP');
+      refresh();
+    } catch (e) {
+      toast.error(e?.message || 'No se pudo crear el producto');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   // ── Detalle de venta ──
   const openOrder = async (id) => {
     setDetailLoading(true);
@@ -259,7 +297,7 @@ export default function ErpView() {
         </div>
       )}
 
-      {tab === 'resumen' && <SummaryTab summary={summary} loading={loading} />}
+      {tab === 'resumen' && <SummaryTab summary={summary} loading={loading} onGoTab={setTab} />}
       {tab === 'productos' && (
         <ProductsTab
           products={products}
@@ -268,6 +306,7 @@ export default function ErpView() {
           onPage={(p) => setProducts((s) => ({ ...s, page: p }))}
           onEdit={openEdit}
           onDelete={(p) => setDeletingProduct(p)}
+          onCreate={openCreate}
         />
       )}
       {tab === 'ventas' && (
@@ -314,6 +353,49 @@ export default function ErpView() {
         </div>
       </Modal>
 
+      {/* ── Modal crear producto ── */}
+      <Modal
+        open={creatingProduct}
+        title="Nuevo producto en el ERP"
+        subtitle="Se crea en la unidad Aesthetic habilitada (Santiago)"
+        onClose={() => setCreatingProduct(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCreatingProduct(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={saveCreate} loading={savingProduct}>Crear producto</Button>
+          </>
+        }
+      >
+        <div className="erp-edit-form">
+          <Field label="Nombre" required>
+            <Input value={createForm.name || ''} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: Labial mate rosa" />
+          </Field>
+          <div className="ui-grid ui-grid--2">
+            <Field label="SKU / Código interno" required>
+              <Input value={createForm.sku || ''} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} placeholder="AES-0001" />
+            </Field>
+            <Field label="Categoría">
+              <Select value={createForm.category || 'Accesorios'} onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}>
+                {['Accesorios', 'Bijouterie', 'Bodycare', 'Lencería', 'Maquillaje', 'Marroquinería', 'Peluquería', 'Pestañas', 'Skincare', 'Uñas'].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <div className="ui-grid ui-grid--2">
+            <Field label="Precio" required>
+              <Input type="number" min="0" value={createForm.price ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, price: e.target.value }))} />
+            </Field>
+            <Field label="Costo">
+              <Input type="number" min="0" value={createForm.costPrice ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, costPrice: e.target.value }))} />
+            </Field>
+          </div>
+          <Field label="Stock inicial">
+            <Input type="number" min="0" value={createForm.stock ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, stock: e.target.value }))} />
+          </Field>
+        </div>
+      </Modal>
+
       {/* ── Confirmar archivar ── */}
       <ConfirmDialog
         open={!!deletingProduct}
@@ -353,6 +435,21 @@ export default function ErpView() {
                 {(orderDetail.payments || []).map((p, i) => (
                   <span key={i}>{p.method}: {money(p.amount)}</span>
                 ))}
+              </div>
+              <div className="erp-detail-box">
+                <span className="erp-detail-label">Vendedor</span>
+                <strong>{orderDetail.sellerName || 'Integración ecommerce'}</strong>
+                <span>
+                  {new Date(orderDetail.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} hs
+                </span>
+              </div>
+              <div className="erp-detail-box">
+                <span className="erp-detail-label">Estado</span>
+                {(() => {
+                  const st = STATUS[orderDetail.status] || { lbl: orderDetail.status || '—', tone: 'neutral' };
+                  return <Badge tone={st.tone} dot>{st.lbl}</Badge>;
+                })()}
+                <span>Origen: <b>{orderDetail.origen === 'ecommerce' ? 'Online' : 'Local'}</b></span>
               </div>
             </div>
 
@@ -408,7 +505,7 @@ export default function ErpView() {
   );
 }
 
-function SummaryTab({ summary, loading }) {
+function SummaryTab({ summary, loading, onGoTab }) {
   if (loading) {
     return (
       <div className="ui-grid ui-grid--3">
@@ -438,8 +535,10 @@ function SummaryTab({ summary, loading }) {
           </div>
           <div className="ui-grid ui-grid--2 erp-kpis">
             <Kpi icon={<CoinsIcon size={18} />} tone="brand" label="Ventas hoy" value={moneyShort(s.salesToday)} sub={money(s.salesToday)} />
-            <Kpi icon={<ShoppingBagIcon size={18} />} tone="info" label="Órdenes hoy" value={String(s.ordersToday)} sub="completadas + pendientes" />
+            <Kpi icon={<CoinsIcon size={18} />} tone="gold" label="Ventas del mes" value={moneyShort(s.salesMonth)} sub={money(s.salesMonth)} />
+            <Kpi icon={<ShoppingBagIcon size={18} />} tone="info" label="Órdenes hoy" value={String(s.ordersToday)} sub={`${s.ordersMonth} en el mes`} />
             <Kpi icon={<TargetIcon size={18} />} tone="gold" label="Ticket promedio" value={moneyShort(s.avgTicket)} sub="hoy" />
+            <Kpi icon={<BoxesIcon size={18} />} tone="neutral" label="Productos" value={String(s.totalProducts ?? 0)} sub="activos" />
             <Kpi icon={<AlertIcon size={18} />} tone="danger" label="Stock crítico" value={String(s.criticalStock)} sub="≤ 5 unidades" />
           </div>
           {s.criticalProducts?.length > 0 && (
@@ -452,6 +551,11 @@ function SummaryTab({ summary, loading }) {
               ))}
             </div>
           )}
+          <div className="ui-row erp-quick-actions">
+            <Button size="sm" onClick={() => onGoTab('productos')}>Ver / gestionar productos</Button>
+            <Button size="sm" variant="secondary" onClick={() => onGoTab('ventas')}>Ver ventas</Button>
+            <Button size="sm" variant="secondary" onClick={() => onGoTab('stats')}>Ver stats</Button>
+          </div>
         </Card>
       ))}
     </div>
@@ -471,18 +575,22 @@ function Kpi({ icon, tone, label, value, sub }) {
   );
 }
 
-function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete }) {
+function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, onCreate }) {
   const pages = Math.max(1, Math.ceil(products.total / 20));
   return (
     <div className="erp-tab">
-      <Input
-        type="search"
-        placeholder="Buscar producto en el ERP…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        icon={<SearchIcon size={16} />}
-        style={{ maxWidth: 360 }}
-      />
+      <div className="ui-row erp-products-toolbar">
+        <Input
+          type="search"
+          placeholder="Buscar producto en el ERP…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          icon={<SearchIcon size={16} />}
+          style={{ maxWidth: 360 }}
+        />
+        <div className="ui-spacer" />
+        <Button size="sm" onClick={onCreate}>+ Nuevo producto</Button>
+      </div>
       {!products.items.length ? (
         <EmptyState icon={<BoxesIcon size={24} />} title="Sin productos" description="No se encontraron productos con los filtros actuales." />
       ) : (
@@ -550,7 +658,7 @@ function OrdersTab({ orders, onPage, onOpen }) {
         <table className="ui-table" role="table" aria-label="Ventas del ERP">
           <thead>
             <tr>
-              <th>#</th><th>Fecha</th><th>Cliente</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Detalle</th>
+              <th>#</th><th>Fecha y hora</th><th>Cliente</th><th>Vendedor</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Detalle</th>
             </tr>
           </thead>
           <tbody>
@@ -559,8 +667,9 @@ function OrdersTab({ orders, onPage, onOpen }) {
               return (
                 <tr key={o.id}>
                   <td>{o.orderNumber}</td>
-                  <td>{new Date(o.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>{new Date(o.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                   <td>{o.customerName}</td>
+                  <td>{o.sellerName || '—'}</td>
                   <td style={{ textTransform: 'capitalize' }}>{o.paymentMethod}</td>
                   <td>{o.itemCount}</td>
                   <td><Badge tone={st.tone} dot>{st.lbl}</Badge></td>

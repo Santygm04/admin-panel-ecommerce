@@ -161,7 +161,18 @@
 }
 
 .login-pwd-wrap { position: relative; }
-.login-pwd-wrap .ui-input { padding-right: 44px; }
+.login-pwd-wrap .ui-input { padding-left: 38px; padding-right: 44px; }
+.login-pwd-lock {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  color: var(--adm-muted);
+  pointer-events: none;
+  z-index: 1;
+}
 .login-pwd-toggle {
   position: absolute;
   right: 8px;

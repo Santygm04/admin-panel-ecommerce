@@ -256,3 +256,23 @@ h1, h2, h3, h4, p { margin: 0; }
   .ui-grid--2 { grid-template-columns: 1fr !important; }
   .layout-topbar { gap: 6px; }
 }
+
+/* -- Acciones rápidas / toolbars de ErpView -- */
+.erp-quick-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.erp-products-toolbar { display: flex; gap: 10px; align-items: center; }
+
+/* -- Mobile (refuerzo) -- */
+@media (max-width: 768px) {
+  .layout-content { padding: 12px 10px !important; }
+  .layout-topbar { gap: 8px; }
+  .layout-view-switch { gap: 4px; }
+  .erp-head { flex-direction: column; align-items: flex-start !important; gap: 6px; }
+  .erp-products-toolbar { flex-direction: column; align-items: stretch !important; }
+  .erp-products-toolbar .ui-input-wrap,
+  .erp-products-toolbar .ui-input { max-width: none !important; }
+  .erp-products-toolbar .ui-spacer { display: none; }
+  .ui-tabs { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .erp-kpis { gap: 8px; }
+  .erp-kpi { padding: 10px 12px; }
+  .ui-modal-panel { max-height: 90vh; overflow-y: auto; }
+}

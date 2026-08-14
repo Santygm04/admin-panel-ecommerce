@@ -97,13 +97,15 @@ export default function Login() {
 
           <Field label="Contraseña" htmlFor="login-password">
             <div className="login-pwd-wrap">
+              <span className="login-pwd-lock" aria-hidden="true">
+                <LockIcon size={16} />
+              </span>
               <Input
                 id="login-password"
                 type={showPwd ? "text" : "password"}
                 name="password"
                 placeholder="Tu contraseña"
                 autoComplete="current-password"
-                icon={<LockIcon size={16} />}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
