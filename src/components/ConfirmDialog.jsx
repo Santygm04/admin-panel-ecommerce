@@ -1,4 +1,4 @@
-import "./ConfirmDialog.css";
+import { Modal, Button } from "./ui";
 
 export default function ConfirmDialog({
   open,
@@ -9,22 +9,30 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   loading = false,
+  danger = true,
 }) {
-  if (!open) return null;
   return (
-    <div className="cd-backdrop" onClick={loading ? undefined : onCancel}>
-      <div className="cd-modal" onClick={(e) => e.stopPropagation()}>
-        <h3 className="cd-title">{title}</h3>
-        <p className="cd-message">{message}</p>
-        <div className="cd-actions">
-          <button className="cd-btn cd-cancel" onClick={onCancel} disabled={loading} type="button">
+    <Modal
+      open={open}
+      title={title}
+      onClose={loading ? undefined : onCancel}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} disabled={loading}>
             {cancelText}
-          </button>
-          <button className="cd-btn cd-confirm" onClick={onConfirm} disabled={loading} type="button">
-            {loading ? "Eliminando…" : confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button
+            variant={danger ? "danger" : "primary"}
+            onClick={onConfirm}
+            disabled={loading}
+            loading={loading}
+          >
+            {loading ? "Procesando…" : confirmText}
+          </Button>
+        </>
+      }
+    >
+      <p className="cd-message">{message}</p>
+    </Modal>
   );
 }

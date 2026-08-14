@@ -1,0 +1,123 @@
+/* =====================================================
+   ErpView.css — vista solo lectura del ERP (tokens DS)
+   ===================================================== */
+
+.erp-view { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.erp-head { display: flex; flex-direction: column; gap: var(--sp-1); }
+.erp-head svg { color: var(--adm-gold); }
+.erp-sub { font: var(--t-body); color: var(--adm-muted); }
+
+.erp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Resumen ── */
+.erp-summary { display: flex; flex-direction: column; gap: var(--sp-4); }
+.erp-unit-card { display: flex; flex-direction: column; gap: var(--sp-4); }
+.erp-unit-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.erp-unit-head h3 { font: var(--t-h2); color: var(--adm-ink); }
+
+.erp-kpis { margin-top: var(--sp-1); }
+.erp-kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--adm-surface-2);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+}
+.erp-kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.erp-kpi > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.erp-kpi-label { font: var(--t-caption); color: var(--adm-muted); font-weight: 600; }
+.erp-kpi strong { font: var(--t-h2); color: var(--adm-ink); }
+.erp-kpi small { font: var(--t-caption); color: var(--adm-muted-2); }
+
+.erp-kpi--brand .erp-kpi-icon { background: var(--adm-brand-soft); color: var(--adm-brand); }
+.erp-kpi--info .erp-kpi-icon { background: var(--adm-info-soft); color: var(--adm-info); }
+.erp-kpi--gold .erp-kpi-icon { background: var(--adm-gold-soft); color: var(--adm-gold); }
+.erp-kpi--danger .erp-kpi-icon { background: var(--adm-danger-soft); color: var(--adm-danger); }
+
+.erp-critical { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.erp-critical-title {
+  font: var(--t-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-muted);
+  margin-right: var(--sp-1);
+}
+.erp-critical-chip {
+  background: var(--adm-danger-soft);
+  color: var(--adm-danger);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  font: var(--t-caption);
+  font-weight: 600;
+}
+.erp-critical-chip b { font-weight: 800; }
+
+/* ── Tablas ── */
+.erp-tab { display: flex; flex-direction: column; gap: var(--sp-3); }
+.erp-mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+.erp-pager { justify-content: center; }
+
+/* ── Stats ── */
+.erp-chart-card { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.erp-chart-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
+.erp-chart-head h3 { font: var(--t-h2); color: var(--adm-ink); }
+.erp-chart { width: 100%; height: 220px; }
+
+.erp-tip {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: var(--t-small);
+}
+.erp-tip-label { color: var(--adm-muted); font-weight: 700; }
+.erp-tip-row { display: flex; align-items: center; gap: 6px; color: var(--adm-ink-2); }
+.erp-tip-row i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.erp-tip-row b { color: var(--adm-ink); }
+
+.erp-top { display: flex; flex-direction: column; gap: 6px; }
+.erp-top-title {
+  font: var(--t-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-muted);
+}
+.erp-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font: var(--t-small);
+  color: var(--adm-ink-2);
+  border-bottom: 1px solid var(--adm-border-soft);
+  padding-bottom: 4px;
+}
+.erp-top-row b { color: var(--adm-brand); }
+
+@media (max-width: 900px) {
+  .erp-kpis { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .erp-kpis { grid-template-columns: 1fr; }
+}

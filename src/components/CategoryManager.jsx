@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { Badge, Button, Card, EmptyState, Field, Input, Skeleton } from "./ui";
+import { FolderIcon, PlusIcon, EditIcon, TrashIcon } from "./ui/icons";
+import ConfirmDialog from "./ConfirmDialog";
 import "./CategoryManager.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
@@ -15,6 +18,9 @@ export default function CategoryManager() {
   const [loading, setLoading] = useState(true);
   const [form, setForm]       = useState({ nombre: "", slug: "", subcategorias: "", orden: 0 });
   const [editing, setEditing] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [counts, setCounts] = useState({});
 
   const fetchCats = async () => {
     try {
@@ -28,6 +34,27 @@ export default function CategoryManager() {
   };
 
   useEffect(() => { fetchCats(); }, []);
+
+  useEffect(() => {
+    let active = true;
+    axios.get(`${API}/productos`, { params: { limit: 500 }, headers: authHeader() })
+      .then(({ data }) => {
+        if (!active) return;
+        const items = Array.isArray(data) ? data : data.items || [];
+        const map = {};
+        for (const p of items) {
+          if (p.categoria) map[p.categoria] = (map[p.categoria] || 0) + 1;
+        }
+        setCounts(map);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const totalProductos = useMemo(
+    () => Object.values(counts).reduce((a, b) => a + b, 0),
+    [counts]
+  );
 
   const resetForm = () => {
     setForm({ nombre: "", slug: "", subcategorias: "", orden: 0 });
@@ -72,108 +99,109 @@ export default function CategoryManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar esta categoría?")) return;
+  const confirmDelete = async () => {
+    setDeleting(true);
     try {
-      await axios.delete(`${API}/categories/${id}`, {
+      await axios.delete(`${API}/categories/${confirmId}`, {
         headers: authHeader(),
       });
-      toast.success("Eliminada");
+      toast.success("Categoría eliminada");
       fetchCats();
     } catch {
       toast.error("Error al eliminar");
+    } finally {
+      setDeleting(false);
+      setConfirmId(null);
     }
   };
 
   return (
     <div className="cm-wrap">
-      <h2 className="cm-title">
-        {editing ? "✏️ Editar categoría" : "🗂️ Nueva categoría"}
-      </h2>
-      <p className="cm-subtitle">
-        Las categorías se guardan en la base de datos y se usan dinámicamente en el sitio.
-      </p>
+      <div className="cm-head">
+        <div>
+          <h2 className="ui-page-title">{editing ? "Editar categoría" : "Categorías"}</h2>
+          <p className="cm-subtitle">
+            Las categorías se guardan en la base de datos y se usan dinámicamente en el sitio.
+          </p>
+        </div>
+        <Badge tone="neutral">{totalProductos} productos en total</Badge>
+      </div>
 
-      {/* ── FORMULARIO ── */}
-      <form className="cm-form" onSubmit={handleSave}>
-        <div className="cm-form-grid">
-          <div className="cm-field">
-            <label className="cm-label">Nombre</label>
-            <input
-              className="cm-input"
-              value={form.nombre}
-              required
-              onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-              placeholder="Ej: Lencería"
-            />
+      <Card pad className="cm-form-card">
+        <form className="cm-form" onSubmit={handleSave} noValidate>
+          <div className="cm-form-grid">
+            <Field label="Nombre" required>
+              <Input
+                value={form.nombre}
+                required
+                onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                placeholder="Ej: Lencería"
+              />
+            </Field>
+            <Field label="Slug" hint="URL amigable" required>
+              <Input
+                value={form.slug}
+                required
+                onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                placeholder="Ej: lenceria"
+              />
+            </Field>
           </div>
-          <div className="cm-field">
-            <label className="cm-label">Slug <span>(URL amigable)</span></label>
-            <input
-              className="cm-input"
-              value={form.slug}
-              required
-              onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
-              placeholder="Ej: lenceria"
+
+          <Field label="Subcategorías" hint="Separadas por coma">
+            <Input
+              value={form.subcategorias}
+              onChange={e => setForm(f => ({ ...f, subcategorias: e.target.value }))}
+              placeholder="Ej: conjuntos, tops, vedetinas"
             />
+          </Field>
+
+          <Field label="Orden" hint="Menor número → aparece primero">
+            <Input
+              type="number"
+              value={form.orden}
+              min={0}
+              onChange={e => setForm(f => ({ ...f, orden: e.target.value }))}
+              style={{ maxWidth: 140 }}
+            />
+          </Field>
+
+          <div className="ui-row">
+            <Button type="submit">
+              {editing ? "Guardar cambios" : <><PlusIcon size={15} /> Crear categoría</>}
+            </Button>
+            {editing && (
+              <Button variant="secondary" onClick={resetForm}>Cancelar</Button>
+            )}
           </div>
-        </div>
+        </form>
+      </Card>
 
-        <div className="cm-field cm-input-full">
-          <label className="cm-label">
-            Subcategorías <span>(separadas por coma)</span>
-          </label>
-          <input
-            className="cm-input"
-            value={form.subcategorias}
-            onChange={e => setForm(f => ({ ...f, subcategorias: e.target.value }))}
-            placeholder="Ej: conjuntos, tops, vedetinas"
-          />
-        </div>
-
-        <div className="cm-orden-row">
-          <label className="cm-label">Orden</label>
-          <input
-            className="cm-input-sm"
-            type="number"
-            value={form.orden}
-            min={0}
-            onChange={e => setForm(f => ({ ...f, orden: e.target.value }))}
-          />
-          <span style={{ fontSize: "0.78rem", color: "#aaa" }}>
-            Menor número → aparece primero
-          </span>
-        </div>
-
-        <div className="cm-form-actions">
-          <button type="submit" className="cm-btn-primary">
-            {editing ? "Guardar cambios" : "Crear categoría"}
-          </button>
-          {editing && (
-            <button type="button" className="cm-btn-cancel" onClick={resetForm}>
-              Cancelar
-            </button>
-          )}
-        </div>
-      </form>
-
-      {/* ── LISTA ── */}
       <h3 className="cm-list-title">Categorías existentes</h3>
 
       {loading ? (
-        <p className="cm-loading">Cargando…</p>
+        <div className="ui-stack">
+          <Skeleton variant="block" />
+          <Skeleton variant="block" />
+          <Skeleton variant="block" />
+        </div>
       ) : cats.length === 0 ? (
-        <p className="cm-empty">No hay categorías todavía. Creá la primera arriba.</p>
+        <EmptyState
+          icon={<FolderIcon size={24} />}
+          title="No hay categorías todavía"
+          description="Creá la primera con el formulario de arriba."
+        />
       ) : (
         <div className="cm-list">
           {cats.map(cat => (
-            <div key={cat._id} className="cm-card">
+            <Card key={cat._id} className="cm-card" pad>
               <div className="cm-card-body">
-                <div>
+                <div className="cm-card-head">
                   <span className="cm-card-name">{cat.nombre}</span>
                   <span className="cm-card-slug">/{cat.slug}</span>
-                  {cat.orden != null && (
-                    <span className="cm-card-orden">orden {cat.orden}</span>
+                  {cat.orden != null && <span className="cm-card-orden">orden {cat.orden}</span>}
+                  {counts[cat.slug] > 0 && (
+                    <Badge tone="brand">{counts[cat.slug]} producto{counts[cat.slug] !== 1 ? "s" : ""}</Badge>
                   )}
                 </div>
                 {cat.subcategorias?.length > 0 && (
@@ -184,18 +212,29 @@ export default function CategoryManager() {
                   </div>
                 )}
               </div>
-              <div className="cm-card-actions">
-                <button className="cm-btn-edit" onClick={() => handleEdit(cat)}>
-                  Editar
-                </button>
-                <button className="cm-btn-delete" onClick={() => handleDelete(cat._id)}>
-                  Eliminar
-                </button>
+              <div className="ui-row cm-card-actions">
+                <Button size="sm" variant="secondary" onClick={() => handleEdit(cat)}>
+                  <EditIcon size={14} /> Editar
+                </Button>
+                <Button size="sm" variant="danger-ghost" onClick={() => setConfirmId(cat._id)}>
+                  <TrashIcon size={14} /> Eliminar
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmId)}
+        title="Eliminar categoría"
+        message="¿Eliminar esta categoría? Los productos que la usan quedarán sin categoría."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmId(null)}
+        loading={deleting}
+      />
     </div>
   );
 }

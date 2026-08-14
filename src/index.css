@@ -1,13 +1,222 @@
+/* =========================================================
+   AESTHETIC Admin — Design System base
+   Fuente única de tokens (dark por defecto)
+   ========================================================= */
+
+:root {
+  /* ── Brand ── */
+  --adm-brand:        #ff5aa8;
+  --adm-brand-600:    #f13a8e;
+  --adm-brand-700:    #e11a8a;
+  --adm-brand-soft:   rgba(255, 90, 168, 0.14);
+  --adm-brand-tint:   rgba(255, 90, 168, 0.06);
+  --adm-gold:         #e8c56a;
+  --adm-gold-soft:    rgba(232, 197, 106, 0.15);
+
+  /* ── Surfaces ── */
+  --adm-bg:           #131019;
+  --adm-surface:      #1c1726;
+  --adm-surface-2:    #221c2f;
+  --adm-surface-3:    #2a2340;
+
+  /* ── Borders ── */
+  --adm-border:        #332b49;
+  --adm-border-soft:   #2a2340;
+  --adm-border-strong: #453a61;
+
+  /* ── Ink ── */
+  --adm-ink:           #f2eef8;
+  --adm-ink-2:         #d6cfe4;
+  --adm-muted:         #a89fbb;
+  --adm-muted-2:       #7c7491;
+
+  /* ── Status ── */
+  --adm-success:       #34d399;
+  --adm-success-soft:  rgba(52, 211, 153, 0.14);
+  --adm-danger:        #f87171;
+  --adm-danger-soft:   rgba(248, 113, 113, 0.14);
+  --adm-warning:       #fbbf24;
+  --adm-warning-soft:  rgba(251, 191, 36, 0.14);
+  --adm-info:          #60a5fa;
+  --adm-info-soft:     rgba(96, 165, 250, 0.14);
+
+  /* ── Shadows ── */
+  --shadow-xs:     0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md:     0 4px 12px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg:     0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-brand:  0 8px 24px rgba(255, 90, 168, 0.28);
+  --shadow-modal:  0 24px 64px rgba(0, 0, 0, 0.6);
+
+  /* ── Radius ── */
+  --r-xs:   6px;
+  --r-sm:   8px;
+  --r-md:   10px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-2xl:  20px;
+  --r-pill: 999px;
+
+  /* ── Spacing (escala 4/8) ── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ── Motion ── */
+  --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast: 150ms;
+  --t-slow: 250ms;
+
+  /* ── Typography ── */
+  --font-sans:    'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Sora', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+
+  --t-display:      800 2rem/1.2 var(--font-display);
+  --t-h1:           700 1.5rem/1.25 var(--font-display);
+  --t-h2:           700 1.25rem/1.3 var(--font-display);
+  --t-body:         400 0.9375rem/1.5 var(--font-sans);
+  --t-body-strong:  600 0.9375rem/1.5 var(--font-sans);
+  --t-small:        400 0.8125rem/1.45 var(--font-sans);
+  --t-caption:      500 0.75rem/1.4 var(--font-sans);
+  --t-mono:         500 0.8125rem/1.45 var(--font-mono);
+
+  /* ── Aliases legacy (compat durante migración) ── */
+  --adm-r-sm:  var(--r-sm);
+  --adm-r-md:  var(--r-md);
+  --adm-r-lg:  var(--r-lg);
+  --adm-r-xl:  var(--r-xl);
+  --adm-shadow-xs:    var(--shadow-xs);
+  --adm-shadow-sm:    var(--shadow-sm);
+  --adm-shadow-md:    var(--shadow-md);
+  --adm-shadow-lg:    var(--shadow-lg);
+  --adm-shadow-brand: var(--shadow-brand);
+  --rose:   var(--adm-brand);
+  --rose-2: var(--adm-brand-600);
+  --line:   var(--adm-border);
+  --bg:     var(--adm-bg);
+  --ink:    var(--adm-ink);
+  --muted:  var(--adm-muted);
+  --radius: var(--r-lg);
+
+  color-scheme: dark;
+}
+
+/* ── Modo claro ── */
+:root[data-theme="light"] {
+  --adm-brand:        #db2777;
+  --adm-brand-600:    #be185d;
+  --adm-brand-700:    #9d174d;
+  --adm-brand-soft:   #fce7f3;
+  --adm-brand-tint:   #fdf2f8;
+  --adm-gold:         #a16207;
+  --adm-gold-soft:    #fef9c3;
+
+  --adm-bg:           #faf7fa;
+  --adm-surface:      #ffffff;
+  --adm-surface-2:    #fafafa;
+  --adm-surface-3:    #f3f4f6;
+
+  --adm-border:        #e5e7eb;
+  --adm-border-soft:   #f0f1f4;
+  --adm-border-strong: #d1d5db;
+
+  --adm-ink:           #1b1430;
+  --adm-ink-2:         #3d3450;
+  --adm-muted:         #6b7280;
+  --adm-muted-2:       #9ca3af;
+
+  --adm-success:       #059669;
+  --adm-success-soft:  #d1fae5;
+  --adm-danger:        #dc2626;
+  --adm-danger-soft:   #fee2e2;
+  --adm-warning:       #b45309;
+  --adm-warning-soft:  #fef3c7;
+  --adm-info:          #2563eb;
+  --adm-info-soft:     #dbeafe;
+
+  --shadow-xs:     0 1px 2px rgba(27, 20, 48, 0.04);
+  --shadow-sm:     0 1px 3px rgba(27, 20, 48, 0.06), 0 1px 2px rgba(27, 20, 48, 0.04);
+  --shadow-md:     0 4px 12px rgba(27, 20, 48, 0.06), 0 2px 4px rgba(27, 20, 48, 0.04);
+  --shadow-lg:     0 12px 32px rgba(27, 20, 48, 0.08), 0 4px 12px rgba(27, 20, 48, 0.04);
+  --shadow-brand:  0 8px 24px rgba(219, 39, 119, 0.22);
+  --shadow-modal:  0 24px 64px rgba(27, 20, 48, 0.18);
+
+  color-scheme: light;
+}
+
+/* ── Reset ── */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #fafafa;
+  font: var(--t-body);
+  color: var(--adm-ink);
+  background: var(--adm-bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background var(--t-slow) var(--ease), color var(--t-slow) var(--ease);
 }
 
-a {
-  color: inherit;
+img, svg, video { display: block; max-width: 100%; }
+
+a { color: inherit; text-decoration: none; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+button { cursor: pointer; }
+
+h1, h2, h3, h4, p { margin: 0; }
+
+/* ── Focus visible global ── */
+:focus-visible {
+  outline: 2px solid var(--adm-brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
 }
 
-* {
-  box-sizing: border-box;
+/* ── Selección ── */
+::selection { background: var(--adm-brand-soft); color: var(--adm-ink); }
+
+/* ── Scrollbars ── */
+* { scrollbar-width: thin; scrollbar-color: var(--adm-border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--adm-border-strong); border-radius: var(--r-pill); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
+
+/* ── Toastify re-tematizado ── */
+.Toastify__toast {
+  border-radius: var(--r-md);
+  font: var(--t-body-strong);
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+  border: 1px solid var(--adm-border);
+  box-shadow: var(--shadow-md);
+}
+.Toastify__toast-body { gap: var(--sp-2); }
+.Toastify__toast--success { border-color: var(--adm-success); }
+.Toastify__toast--error { border-color: var(--adm-danger); }
+.Toastify__toast--warning { border-color: var(--adm-warning); }
+.Toastify__toast--info { border-color: var(--adm-info); }
+.Toastify__progress-bar { background: var(--adm-brand); }

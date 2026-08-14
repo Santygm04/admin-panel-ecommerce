@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
+import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
+import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 const API = API_BASE ? `${API_BASE}/api` : "/api";
@@ -41,6 +44,35 @@ function parsePromoInput(input, basePrice) {
   return { mode: "invalid", price: null, pct: null };
 }
 
+/* ===== Tag de precio por tier (consistente card/tabla) ===== */
+function PriceTag({ label, tone = "neutral" }) {
+  return <span className={`price-tag price-tag--${tone}`}>{label}</span>;
+}
+
+function PriceTiers({ producto }) {
+  const isLenceria = producto.categoria === "lenceria";
+  const hasUnit = Number(producto.precio) > 0;
+  const tiers = [
+    { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
+    { show: producto.precioEspecial != null, tone: "gold", label: "Esp", value: producto.precioEspecial },
+    { show: producto.precioMayorista != null, tone: "info", label: `x${producto.minimoMayorista || 2}`, value: producto.precioMayorista },
+    { show: producto.precioMayorista2 != null, tone: "success", label: `x${producto.minimoMayorista2 || 6}`, value: producto.precioMayorista2 },
+    { show: producto.precioMayorista3 != null, tone: "brand", label: `x${producto.minimoMayorista3 || 12}`, value: producto.precioMayorista3 },
+  ];
+  const visible = tiers.filter((t) => t.show);
+  if (!visible.length) return <span className="pl-muted">Sin precios</span>;
+  return (
+    <div className="price-tiers">
+      {visible.map((t) => (
+        <span key={t.label} className={`price-row ${t.tone === "neutral" ? "price-row--main" : ""}`}>
+          <PriceTag label={t.label} tone={t.tone} />
+          ${Number(t.value).toLocaleString("es-AR")}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function ProductList() {
   const { user } = useAuth();
   const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
@@ -50,7 +82,6 @@ export default function ProductList() {
 
   const [saving, setSaving] = useState(new Set());
   const [drafts, setDrafts] = useState({});
-  const [notif, setNotif] = useState(null);
 
   const [stockDrafts, setStockDrafts] = useState({});
   const [savingStock, setSavingStock] = useState(new Set());
@@ -60,22 +91,6 @@ export default function ProductList() {
   const [savingDel, setSavingDel] = useState(new Set());
   const [confirmData, setConfirmData] = useState(null);
 
-  const categoriasValidas = [
-    "mujer",
-    "niñas",
-    "maquillaje",
-    "skincare",
-    "bodycare",
-    "bijouterie",
-    "marroquineria",
-    "pestañas",
-    "peluquería",
-    "promos",
-    "nuevos-ingresos",
-    "uñas",
-    "lenceria",
-  ];
-
   useEffect(() => {
     const ctrl = new AbortController();
 
@@ -83,6 +98,7 @@ export default function ProductList() {
       try {
         const { data } = await axios.get(`${API}/productos`, {
           params: { limit: 500, q, admin: true },
+          headers: { Authorization: `Bearer ${localStorage.getItem("aesthetic:token")}` },
           signal: ctrl.signal,
         });
 
@@ -113,6 +129,7 @@ export default function ProductList() {
         });
       } catch (err) {
         if (err.name !== "CanceledError") {
+          toast.error("No se pudieron cargar los productos. Reintentá en unos segundos.");
           console.error("Error al obtener productos", err);
         }
       }
@@ -130,13 +147,12 @@ export default function ProductList() {
   }, [productos, categoriaFiltro]);
 
   const categoriasUnicas = useMemo(() => {
-  return [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort();
-}, [productos]);
+    return [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort();
+  }, [productos]);
 
   const showNotif = (type, text) => {
-    setNotif({ type, text });
-    clearTimeout(showNotif._t);
-    showNotif._t = setTimeout(() => setNotif(null), 2200);
+    if (type === "ok") toast.success(text);
+    else toast.error(text);
   };
 
   const setStockDraft = (id, value) => {
@@ -225,9 +241,9 @@ export default function ProductList() {
 
     try {
       const token = localStorage.getItem("aesthetic:token");
-await axios.delete(`${API}/productos/${id}`, {
-  headers: { Authorization: `Bearer ${token}` },
-});
+      await axios.delete(`${API}/productos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setProductos((prev) => prev.filter((p) => p._id !== id));
       showNotif("ok", "Producto eliminado");
     } catch (e) {
@@ -278,7 +294,7 @@ await axios.delete(`${API}/productos/${id}`, {
 
     return (
       <div className="promo-wrap">
-        <label className="promo-row">
+        <label className="ui-check">
           <input
             type="checkbox"
             checked={!!d.promoActivo}
@@ -295,25 +311,23 @@ await axios.delete(`${API}/productos/${id}`, {
           <span>Promo activa</span>
         </label>
 
-        <div className="promo-row">
-          <input
-            type="text"
-            inputMode="decimal"
-            className="promo-input"
-            placeholder="$ o %"
-            value={d.precioPromoInput ?? ""}
-            onChange={(e) =>
-              setDrafts((prev) => ({
-                ...prev,
-                [producto._id]: {
-                  ...prev[producto._id],
-                  precioPromoInput: e.target.value,
-                },
-              }))
-            }
-            disabled={!d.promoActivo}
-          />
-        </div>
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder="$ o %"
+          value={d.precioPromoInput ?? ""}
+          onChange={(e) =>
+            setDrafts((prev) => ({
+              ...prev,
+              [producto._id]: {
+                ...prev[producto._id],
+                precioPromoInput: e.target.value,
+              },
+            }))
+          }
+          disabled={!d.promoActivo}
+          className="promo-input"
+        />
 
         {d.promoActivo && (
           <div className={`promo-preview ${previewOk ? "ok" : "err"}`}>
@@ -327,8 +341,9 @@ await axios.delete(`${API}/productos/${id}`, {
           </div>
         )}
 
-        <button
-          className="promo-save"
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={() => {
             const id = producto._id;
             const cur = drafts[id] || {};
@@ -382,28 +397,101 @@ await axios.delete(`${API}/productos/${id}`, {
               });
           }}
           disabled={saving.has(producto._id) || !promoCambia(producto)}
-          type="button"
+          loading={saving.has(producto._id)}
         >
           {saving.has(producto._id) ? "Guardando…" : "Guardar promo"}
-        </button>
+        </Button>
+      </div>
+    );
+  };
+
+  const StockControls = ({ producto, compact = false }) => {
+    const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
+    const isSavingStock = savingStock.has(producto._id);
+    const esVendedor = user?.role === "vendedor";
+    const minus10Disabled = compact
+      ? isSavingStock || stockValue <= 0 || esVendedor
+      : isSavingStock || stockValue <= 0 || soloStock;
+    const minus1Disabled = compact
+      ? isSavingStock || stockValue <= 0 || esVendedor
+      : isSavingStock || stockValue <= 0;
+    const editDisabled = compact
+      ? isSavingStock || esVendedor
+      : isSavingStock || soloStock;
+    const plusDisabled = compact
+      ? isSavingStock || esVendedor
+      : isSavingStock || soloStock;
+    return (
+      <div className={`stock-actions ${compact ? "stock-actions--compact" : ""}`}>
+        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -10)}
+          disabled={minus10Disabled}>-10</Button>
+        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -1)}
+          disabled={minus1Disabled}>-1</Button>
+        <input
+          type="number"
+          min="0"
+          className="stock-input"
+          value={stockValue}
+          onChange={(e) => setStockDraft(producto._id, e.target.value)}
+          onBlur={() => commitStock(producto._id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitStock(producto._id);
+            if (e.key === "Escape")
+              setStockDraft(producto._id, producto.stock ?? 0);
+          }}
+          onWheel={(e) => e.currentTarget.blur()}
+          disabled={editDisabled}
+          aria-label="Stock"
+        />
+        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +1)}
+          disabled={plusDisabled}>+1</Button>
+        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +10)}
+          disabled={plusDisabled}>+10</Button>
+        {isSavingStock && <span className="stock-saving">Guardando…</span>}
+      </div>
+    );
+  };
+
+  const RowActions = ({ producto, oculto, puedeOcultar }) => {
+    const isSavingVis = savingVis.has(producto._id);
+    const isDeleting = savingDel.has(producto._id);
+    return (
+      <div className="pl-actions">
+        {(user?.role !== "vendedor" || user?.permissions?.crearProductos) && (
+          <Link to={`/editar/${producto._id}`} className="ui-btn ui-btn--sm ui-btn--secondary" title="Editar">
+            <EditIcon size={15} /> Editar
+          </Link>
+        )}
+        {!soloStock && oculto ? (
+          <Button size="sm" variant="secondary" onClick={() => setVisible(producto._id, true)}
+            disabled={isSavingVis} title="Mostrar producto">
+            <EyeIcon size={15} /> {isSavingVis ? "Mostrando…" : "Mostrar"}
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={() => setVisible(producto._id, false)}
+            disabled={isSavingVis || !puedeOcultar}
+            title={puedeOcultar ? "Ocultar (sin stock)" : "Solo cuando stock = 0"}>
+            <EyeOffIcon size={15} /> {isSavingVis ? "Ocultando…" : "Ocultar"}
+          </Button>
+        )}
+        {!soloStock && (
+          <Button size="sm" variant="danger-ghost" onClick={() => askDelete(producto._id, producto.nombre)}
+            disabled={isDeleting} title="Eliminar producto">
+            <TrashIcon size={15} /> {isDeleting ? "Eliminando…" : "Eliminar"}
+          </Button>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="stock-container">
-      {notif && (
-        <div className={`toast ${notif.type === "ok" ? "ok" : "err"}`}>
-          {notif.text}
-        </div>
-      )}
-
+    <div className="pl-container">
       <ConfirmDialog
         open={!!confirmData}
         title="Eliminar producto"
         message={
           confirmData
-            ? `¿Eliminar definitivamente “${confirmData.nombre}”? Esta acción no se puede deshacer.`
+            ? `¿Eliminar definitivamente "${confirmData.nombre}"? Esta acción no se puede deshacer.`
             : ""
         }
         confirmText="Eliminar"
@@ -413,27 +501,28 @@ await axios.delete(`${API}/productos/${id}`, {
         loading={confirmData ? savingDel.has(confirmData.id) : false}
       />
 
-      <div className="stock-header">
-        <div className="stock-header-top">
-          <h2>📦 Control de Stock</h2>
-          <span className="stock-count">
-            {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? "s" : ""}
-          </span>
+      <div className="pl-header">
+        <div className="pl-header-top">
+          <div className="ui-row">
+            <BoxesIcon size={22} />
+            <h2 className="ui-page-title">Control de Stock</h2>
+          </div>
+          <Badge tone="neutral">{productosFiltrados.length} producto{productosFiltrados.length !== 1 ? "s" : ""}</Badge>
         </div>
 
-        <div className="stock-filters">
-          <input
+        <div className="pl-filters">
+          <Input
             type="search"
             placeholder="Buscar productos…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="stock-search"
+            icon={<SearchIcon size={16} />}
+            aria-label="Buscar productos"
           />
-
-          <select
+          <Select
             value={categoriaFiltro}
             onChange={(e) => setCategoriaFiltro(e.target.value)}
-            className="stock-select"
+            aria-label="Filtrar por categoría"
           >
             <option value="">Todas las categorías</option>
             {categoriasUnicas.map((cat) => (
@@ -443,535 +532,146 @@ await axios.delete(`${API}/productos/${id}`, {
                   : cat.charAt(0).toUpperCase() + cat.slice(1)}
               </option>
             ))}
-          </select>
-
+          </Select>
           {categoriaFiltro && (
-            <button
-              className="btn-reset"
-              onClick={() => setCategoriaFiltro("")}
-              type="button"
-            >
+            <Button size="sm" variant="ghost" onClick={() => setCategoriaFiltro("")}>
               Limpiar filtro
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {/* ===== MOBILE CARDS ===== */}
-      <div className="product-cards">
+      <div className="pl-cards">
         {productosFiltrados.length === 0 ? (
-          <div className="empty-state">No hay productos en esta categoría.</div>
+          <EmptyState
+            icon={<BoxesIcon size={24} />}
+            title="No hay productos"
+            description={q ? `Sin resultados para "${q}".` : "No hay productos en esta categoría."}
+          />
         ) : (
           productosFiltrados.map((producto) => {
             const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
-            const isSavingStock = savingStock.has(producto._id);
-
             const oculto = producto.visible === false;
             const puedeOcultar = !oculto && Number(stockValue) <= 0;
-            const isSavingVis = savingVis.has(producto._id);
-            const isDeleting = savingDel.has(producto._id);
+            const sinStock = Number(stockValue) <= 0;
 
             return (
-              <article className="product-card" key={producto._id}>
-                <div className="product-card-main">
+              <Card key={producto._id} className="pl-card">
+                <div className="pl-card-main">
                   <img
-  src={producto.imagenes?.[0] || producto.imagen}
-  alt={producto.nombre}
-  className="product-card-thumb"
-/>
-
-                  <div className="product-card-info">
-                    <div className="product-card-title-row">
+                    src={producto.imagenes?.[0] || producto.imagen}
+                    alt={producto.nombre}
+                    className="pl-card-thumb"
+                    loading="lazy"
+                  />
+                  <div className="pl-card-info">
+                    <div className="pl-card-title-row">
                       <h3>{producto.nombre}</h3>
-                      {oculto && <span className="badge-hidden">Oculto</span>}
+                      <div className="ui-row">
+                        {oculto && <Badge tone="neutral" outline>Oculto</Badge>}
+                        {sinStock && <Badge tone="danger">Sin stock</Badge>}
+                        {producto.syncToERP
+                          ? <Badge tone="brand">En ERP</Badge>
+                          : <Badge tone="neutral" outline>Solo tienda</Badge>}
+                      </div>
                     </div>
-
-                    <div className="product-card-price">
-                      {producto.categoria === "lenceria" ? (
-                        /* LENCERÍA: sin precio unitario → mostrar tiers x2/x6/x12 */
-                        (!producto.precio || producto.precio === 0) ? (
-                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            {producto.precioEspecial != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
-                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista2 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
-                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista3 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
-                            {producto.precioEspecial != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
-                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista2 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
-                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista3 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      ) : (
-                        /* OTRAS CATEGORÍAS: unitario + especial + mayorista */
-                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                          {producto.precio > 0 && (
-                            <span style={{fontWeight:700}}>
-                              <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
-                              ${Number(producto.precio).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioEspecial != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                              ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
-                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Especial"}
-                              </span>
-                              ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista2 != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
-                                {producto.minimoMayorista2 ? `x${producto.minimoMayorista2}` : "Mayorista"}
-                              </span>
-                              ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista3 != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                              ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="product-card-meta">
-                      <span>
-                        <b>Categoría:</b>{" "}
+                    <PriceTiers producto={producto} />
+                    <div className="pl-card-meta">
+                      <span><b>Categoría:</b>{" "}
                         {producto.categoria === "nuevos-ingresos"
                           ? "Nuevos ingresos"
-                          : producto.categoria?.charAt(0).toUpperCase() +
-                            (producto.categoria?.slice(1) || "")}
+                          : producto.categoria?.charAt(0).toUpperCase() + (producto.categoria?.slice(1) || "")}
                       </span>
-                      <span>
-                        <b>Subcategoría:</b> {producto.subcategoria || "—"}
-                      </span>
-                      <span>
-                        <b>Destacado:</b> {producto.destacado ? "⭐ Sí" : "—"}
-                      </span>
+                      <span><b>Subcategoría:</b> {producto.subcategoria || "—"}</span>
+                      <span><b>Destacado:</b> {producto.destacado ? "Sí" : "—"}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="product-block">
+                <div className="pl-block">
                   <h4>Stock</h4>
-                  <div className="stock-actions stock-actions-mobile">
-                    <button
-                      className="stk-btn"
-                      onClick={() => changeStockBy(producto._id, -10)}
-                      disabled={isSavingStock || stockValue <= 0 || soloStock}
-                      type="button"
-                    >
-                      -10
-                    </button>
-                    <button
-                      className="stk-btn"
-                      onClick={() => changeStockBy(producto._id, -1)}
-                      disabled={isSavingStock || stockValue <= 0}
-                      type="button"
-                    >
-                      -1
-                    </button>
-
-                    <input
-                      type="number"
-                      min="0"
-                      className="stock-input"
-                      value={stockValue}
-                      onChange={(e) => setStockDraft(producto._id, e.target.value)}
-                      onBlur={() => commitStock(producto._id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitStock(producto._id);
-                        if (e.key === "Escape")
-                          setStockDraft(producto._id, producto.stock ?? 0);
-                      }}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      disabled={isSavingStock || soloStock}
-                      aria-label="Stock"
-                    />
-
-                    <button
-                      className="stk-btn"
-                      onClick={() => changeStockBy(producto._id, +1)}
-                      disabled={isSavingStock || soloStock}
-                      type="button"
-                    >
-                      +1
-                    </button>
-                    <button
-                      className="stk-btn"
-                      onClick={() => changeStockBy(producto._id, +10)}
-                      disabled={isSavingStock || soloStock}
-                      type="button"
-                    >
-                      +10
-                    </button>
-                  </div>
+                  <StockControls producto={producto} />
                 </div>
 
                 {!soloStock && (
-                  <div className="product-block">
+                  <div className="pl-block">
                     <h4>Promoción</h4>
                     {renderPromoEditor(producto)}
                   </div>
                 )}
 
-                <div className="product-actions">
-                  {(user?.role !== "vendedor" || user?.permissions?.crearProductos) && (
-                    <Link to={`/editar/${producto._id}`} className="btn-edit">
-                      Editar
-                    </Link>
-                  )}
-
-                  {!soloStock && oculto ? (
-                    <button
-                      className="btn-show"
-                      onClick={() => setVisible(producto._id, true)}
-                      disabled={isSavingVis}
-                      type="button"
-                    >
-                      {isSavingVis ? "Mostrando…" : "Mostrar"}
-                    </button>
-                  ) : (
-                    <button
-                      className="btn-hide"
-                      onClick={() => setVisible(producto._id, false)}
-                      disabled={isSavingVis || !puedeOcultar}
-                      title={puedeOcultar ? "Ocultar (sin stock)" : "Solo cuando stock = 0"}
-                      type="button"
-                    >
-                      {isSavingVis ? "Ocultando…" : "Ocultar"}
-                    </button>
-                  )}
-
-                  {!soloStock && (
-                    <button
-                      className="btn-del"
-                      onClick={() => askDelete(producto._id, producto.nombre)}
-                      disabled={isDeleting}
-                      type="button"
-                    >
-                      {isDeleting ? "Eliminando…" : "Eliminar"}
-                    </button>
-                  )}
-                </div>
-              </article>
+                <RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} />
+              </Card>
             );
           })
         )}
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
-      <div className="stock-table-wrap">
-        <table className="stock-table">
+      <div className="ui-table-wrap">
+        <table className="ui-table pl-table" role="table" aria-label="Productos">
           <thead>
             <tr>
               <th>Imagen</th>
               <th>Nombre</th>
               <th>Precio</th>
-              <th className="col-categoria">Categoría</th>
-              <th className="col-subcat">Subcategoría</th>
+              <th>Categoría</th>
+              <th>Subcategoría</th>
               <th>Stock</th>
-              <th className="col-dest">Destacado</th>
-              <th className="col-promo">Promo</th>
-              <th className="col-actions">Acciones</th>
+              <th>Destacado</th>
+              <th>Promo</th>
+              <th>Acciones</th>
             </tr>
           </thead>
-
           <tbody>
-            {productosFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan="9">No hay productos en esta categoría.</td>
-              </tr>
-            ) : (
-              productosFiltrados.map((producto) => {
-                const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
-                const isSavingStock = savingStock.has(producto._id);
+            {productosFiltrados.map((producto) => {
+              const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
+              const oculto = producto.visible === false;
+              const puedeOcultar = !oculto && Number(stockValue) <= 0;
 
-                const oculto = producto.visible === false;
-                const puedeOcultar = !oculto && Number(stockValue) <= 0;
-                const isSavingVis = savingVis.has(producto._id);
-                const isDeleting = savingDel.has(producto._id);
-
-                return (
-                  <tr key={producto._id}>
-                    <td>
-                      <img
-  src={producto.imagenes?.[0] || producto.imagen}
-  alt={producto.nombre}
-  className="thumb"
-/>
-                    </td>
-                    <td className="td-ellipsis">
-                      {producto.nombre}
-                      {oculto && <span className="badge-hidden">Oculto</span>}
-                    </td>
-                   <td>
-                      {producto.categoria === "lenceria" ? (
-                        (!producto.precio || producto.precio === 0) ? (
-                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            {producto.precioEspecial != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#0ea5e9",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
-                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista2 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
-                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista3 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            <span style={{fontWeight:700}}>${Number(producto.precio).toLocaleString("es-AR")}</span>
-                            {producto.precioEspecial != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                                ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#0dff00",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista||2}</span>
-                                ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista2 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#84e070",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista2||6}</span>
-                                ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                            {producto.precioMayorista3 != null && (
-                              <span style={{fontSize:"0.82rem"}}>
-                                <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                                ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      ) : (
-                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                          {producto.precio > 0 && (
-                            <span style={{fontWeight:700}}>
-                              <span style={{background:"#f3f4f6",color:"#374151",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x1</span>
-                              ${Number(producto.precio).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioEspecial != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#f59e0b",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>Esp</span>
-                              ${Number(producto.precioEspecial).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#13ff02",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
-                                {producto.minimoMayorista ? `x${producto.minimoMayorista}` : "Mayorista"}
-                              </span>
-                              ${Number(producto.precioMayorista).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista2 != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#00ff37",color:"#1a1a1a",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>
-                                {producto.minimoMayorista2 ? `x${producto.minimoMayorista2}` : "Mayorista"}
-                              </span>
-                              ${Number(producto.precioMayorista2).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                          {producto.precioMayorista3 != null && (
-                            <span style={{fontSize:"0.82rem"}}>
-                              <span style={{background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700,fontSize:"0.7rem",marginRight:4}}>x{producto.minimoMayorista3||12}</span>
-                              ${Number(producto.precioMayorista3).toLocaleString("es-AR")}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="col-categoria">
-                      {producto.categoria === "nuevos-ingresos"
-                        ? "Nuevos ingresos"
-                        : producto.categoria?.charAt(0).toUpperCase() +
-                          (producto.categoria?.slice(1) || "")}
-                    </td>
-                    <td className="col-subcat">{producto.subcategoria || "—"}</td>
-
-                    <td>
-                      <div className="stock-actions">
-                        <button
-                          className="stk-btn"
-                          onClick={() => changeStockBy(producto._id, -10)}
-                          disabled={isSavingStock || stockValue <= 0 || user?.role === "vendedor"}
-                          type="button"
-                        >
-                          -10
-                        </button>
-                        <button
-                          className="stk-btn"
-                          onClick={() => changeStockBy(producto._id, -1)}
-                          disabled={isSavingStock || stockValue <= 0 || user?.role === "vendedor"}
-                          type="button"
-                        >
-                          -1
-                        </button>
-
-                        <input
-                          type="number"
-                          min="0"
-                          className="stock-input"
-                          value={stockValue}
-                          onChange={(e) => setStockDraft(producto._id, e.target.value)}
-                          onBlur={() => commitStock(producto._id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") commitStock(producto._id);
-                            if (e.key === "Escape")
-                              setStockDraft(producto._id, producto.stock ?? 0);
-                          }}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          disabled={isSavingStock || user?.role === "vendedor"}
-                          aria-label="Stock"
-                        />
-
-                        <button
-                          className="stk-btn"
-                          onClick={() => changeStockBy(producto._id, +1)}
-                          disabled={isSavingStock || user?.role === "vendedor"}
-                          type="button"
-                        >
-                          +1
-                        </button>
-                        <button
-                          className="stk-btn"
-                          onClick={() => changeStockBy(producto._id, +10)}
-                          disabled={isSavingStock || user?.role === "vendedor"}
-                          type="button"
-                        >
-                          +10
-                        </button>
-                      </div>
-                    </td>
-
-                    <td className="col-dest" style={{ textAlign: "center" }}>
-                      {producto.destacado ? "⭐" : "—"}
-                    </td>
-
-                    <td className="promo-td col-promo">{renderPromoEditor(producto)}</td>
-
-                    <td className="td-actions">
-                      <div className="actions-wrap">
-                        {(user?.role !== "vendedor" || user?.permissions?.crearProductos) && (
-                          <Link to={`/editar/${producto._id}`} className="btn-edit">
-                            Editar
-                          </Link>
-                        )}
-
-                        {!soloStock && oculto ? (
-                          <button
-                            className="btn-show"
-                            onClick={() => setVisible(producto._id, true)}
-                            disabled={isSavingVis}
-                            type="button"
-                          >
-                            {isSavingVis ? "Mostrando…" : "Mostrar"}
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-hide"
-                            onClick={() => setVisible(producto._id, false)}
-                            disabled={isSavingVis || !puedeOcultar}
-                            title={
-                              puedeOcultar ? "Ocultar (sin stock)" : "Solo cuando stock = 0"
-                            }
-                            type="button"
-                          >
-                            {isSavingVis ? "Ocultando…" : "Ocultar"}
-                          </button>
-                        )}
-
-                        {!soloStock && (
-                          <button
-                            className="btn-del"
-                            onClick={() => askDelete(producto._id, producto.nombre)}
-                            disabled={isDeleting}
-                            type="button"
-                          >
-                            {isDeleting ? "Eliminando…" : "Eliminar"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+              return (
+                <tr key={producto._id}>
+                  <td>
+                    <img
+                      src={producto.imagenes?.[0] || producto.imagen}
+                      alt={producto.nombre}
+                      className="pl-thumb"
+                      loading="lazy"
+                    />
+                  </td>
+                  <td className="pl-ellipsis">
+                    {producto.nombre}
+                    {oculto && <Badge tone="neutral" outline className="pl-inline-badge">Oculto</Badge>}
+                    {producto.syncToERP
+                      ? <Badge tone="brand" className="pl-inline-badge">En ERP</Badge>
+                      : <Badge tone="neutral" outline className="pl-inline-badge">Solo tienda</Badge>}
+                  </td>
+                  <td><PriceTiers producto={producto} /></td>
+                  <td>
+                    {producto.categoria === "nuevos-ingresos"
+                      ? "Nuevos ingresos"
+                      : producto.categoria?.charAt(0).toUpperCase() + (producto.categoria?.slice(1) || "")}
+                  </td>
+                  <td>{producto.subcategoria || "—"}</td>
+                  <td><StockControls producto={producto} compact /></td>
+                  <td style={{ textAlign: "center" }}>
+                    {producto.destacado ? <Badge tone="gold">★</Badge> : "—"}
+                  </td>
+                  <td className="pl-promo-td">{renderPromoEditor(producto)}</td>
+                  <td><RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} /></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        {productosFiltrados.length === 0 && (
+          <EmptyState
+            icon={<BoxesIcon size={24} />}
+            title="No hay productos"
+            description={q ? `Sin resultados para "${q}".` : "No hay productos en esta categoría."}
+          />
+        )}
       </div>
     </div>
   );
