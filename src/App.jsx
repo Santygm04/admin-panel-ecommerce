@@ -5,7 +5,6 @@ import ProtectedRoute from "./components/ProtectRoute";
 import Layout from "./components/Layout";
 
 import ProductForm from "./components/ProductForm";
-import ProductList from "./components/ProductList";
 import ProductEdit from "./components/ProductEdit";
 import DashBoard from "./components/DashBoard";
 import Login from "./components/Login";
@@ -47,7 +46,8 @@ function AppRoutes() {
       >
         <Route path="/dashboard" element={<DashBoard />} />
         <Route path="/crear" element={<ProductForm />} />
-        <Route path="/listar" element={<ProductList />} />
+        {/* "Productos" se gestiona desde el Panel (tab stock): redirigimos */}
+        <Route path="/listar" element={<Navigate to="/dashboard?tab=stock" replace />} />
         <Route path="/editar/:id" element={<ProductEdit />} />
         <Route path="/orders" element={<AdminOrders />} />
         <Route path="/erp" element={<ErpView />} />

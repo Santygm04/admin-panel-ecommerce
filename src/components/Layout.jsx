@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
+  LayoutDashboard, ReceiptText, Upload, FolderOpen,
   BarChart3, LockKeyhole, Users, Store,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -52,7 +52,6 @@ export default function Layout({ children }) {
   const nav = [
     { to: '/dashboard', label: 'Panel', icon: <LayoutDashboard size={18} />, show: true },
     { to: '/orders', label: 'Órdenes', icon: <ReceiptText size={18} />, show: can('verOrdenes'), badge: pendingCount },
-    { to: '/listar', label: 'Productos', icon: <Package size={18} />, show: can('verOrdenes') },
     { to: '/crear', label: 'Subir producto', icon: <Upload size={18} />, show: can('crearProductos') },
     { to: '/dashboard?tab=categorias', label: 'Categorías', icon: <FolderOpen size={18} />, show: can('editarCategorias') },
     { to: '/dashboard?tab=estadisticas', label: 'Estadísticas', icon: <BarChart3 size={18} />, show: can('verEstadisticas') },
