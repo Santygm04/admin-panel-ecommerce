@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider } from "./components/AuthContext";
+import { AuthProvider, useAuth } from "./components/AuthContext";
 import ProtectedRoute from "./components/ProtectRoute";
 import Layout from "./components/Layout";
 
@@ -13,37 +13,57 @@ import AdminOrders from "./components/AdminOrders";
 import ErpView from "./components/ErpView";
 import { ToastContainer } from "react-toastify";
 
+// Splash de sesión: se muestra mientras se valida el token guardado
+function SessionSplash() {
+  return (
+    <div className="session-splash" role="status" aria-label="Cargando sesión">
+      <div className="session-splash-logo">
+        <img src={new URL("./assets/logo-aesthetic.png", import.meta.url).href} alt="" />
+      </div>
+      <div className="session-splash-spinner" />
+      <p>Cargando tu sesión…</p>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  const { bootstrapping } = useAuth();
+  if (bootstrapping) return <SessionSplash />;
+  return (
+    <Routes>
+      {/* Entrada */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
+
+      {/* Privadas con layout */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Outlet />
+            </Layout>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/dashboard" element={<DashBoard />} />
+        <Route path="/crear" element={<ProductForm />} />
+        <Route path="/listar" element={<ProductList />} />
+        <Route path="/editar/:id" element={<ProductEdit />} />
+        <Route path="/orders" element={<AdminOrders />} />
+        <Route path="/erp" element={<ErpView />} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          {/* Entrada */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-
-          {/* Privadas con layout */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Outlet />
-                </Layout>
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<DashBoard />} />
-            <Route path="/crear" element={<ProductForm />} />
-            <Route path="/listar" element={<ProductList />} />
-            <Route path="/editar/:id" element={<ProductEdit />} />
-            <Route path="/orders" element={<AdminOrders />} />
-            <Route path="/erp" element={<ErpView />} />
-          </Route>
-
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-
+        <AppRoutes />
         <ToastContainer
           position="top-right"
           autoClose={4000}

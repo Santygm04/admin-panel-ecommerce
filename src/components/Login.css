@@ -161,6 +161,7 @@
 }
 
 .login-pwd-wrap { position: relative; }
+.login-pwd-wrap .ui-input { padding-right: 44px; }
 .login-pwd-toggle {
   position: absolute;
   right: 8px;
@@ -173,6 +174,8 @@
   border-radius: var(--r-sm);
   display: grid;
   place-items: center;
+  cursor: pointer;
+  z-index: 2;
   transition: color var(--t-fast) var(--ease);
 }
 .login-pwd-toggle:hover { color: var(--adm-brand); }

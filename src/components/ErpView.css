@@ -121,3 +121,29 @@
 @media (max-width: 520px) {
   .erp-kpis { grid-template-columns: 1fr; }
 }
+
+/* -- Edición de productos + detalle de ventas -- */
+.erp-edit-form { display: flex; flex-direction: column; gap: 14px; }
+
+.ui-check-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--adm-text, #f3eefc); cursor: pointer; }
+.ui-check-row input { width: 16px; height: 16px; accent-color: var(--adm-brand, #ff5aa8); }
+
+.erp-order-detail { display: flex; flex-direction: column; gap: 12px; }
+.erp-detail-box {
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--adm-surface-2, rgba(255,255,255,0.04));
+  border: 1px solid var(--adm-border, #332b49);
+  border-radius: var(--r-xl, 12px);
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  color: var(--adm-muted, #a89fbb);
+}
+.erp-detail-box strong { color: var(--adm-text, #f3eefc); }
+.erp-detail-label {
+  display: flex; align-items: center; gap: 6px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.7rem; font-weight: 700;
+  color: var(--adm-brand, #ff5aa8);
+  margin-bottom: 2px;
+}
+.erp-detail-notes { font-size: 0.85rem; color: var(--adm-muted, #a89fbb); border-top: 1px dashed var(--adm-border, #332b49); padding-top: 10px; }

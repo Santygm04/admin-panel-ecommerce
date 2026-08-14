@@ -12,6 +12,9 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(LS_USER) || "null"); } catch { return null; }
   });
 
+  // Loader de sesión: true mientras se valida el token guardado al arrancar
+  const [bootstrapping, setBootstrapping] = useState(() => !!localStorage.getItem(LS_KEY));
+
   // ADMIN_SECRET eliminado del frontend — se usa solo JWT
 
   const isAuthenticated = !!token;
@@ -82,7 +85,11 @@ return data.user;
   // opcional: ping /me para validar token cuando cambia
   useEffect(() => {
     let ignore = false;
-    if (!token) return;
+    if (!token) {
+      setBootstrapping(false);
+      return;
+    }
+    setBootstrapping(true);
     (async () => {
       try {
         const r = await fetch(`${API_URL}/api/auth/me`, {
@@ -93,6 +100,8 @@ return data.user;
         if (!ignore && d?.user) setUser((u) => ({ ...u, ...d.user }));
       } catch {
         if (!ignore) logout();
+      } finally {
+        if (!ignore) setBootstrapping(false);
       }
     })();
     return () => { ignore = true; };
@@ -142,8 +151,8 @@ return data.user;
   };
 
   const value = useMemo(
-    () => ({ token, user, isAuthenticated, login, logout, changePassword, updateProfile, getUsers, createUser, updateUser, deleteUser }),
-    [token, user, isAuthenticated]
+    () => ({ token, user, isAuthenticated, bootstrapping, login, logout, changePassword, updateProfile, getUsers, createUser, updateUser, deleteUser }),
+    [token, user, isAuthenticated, bootstrapping]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,16 +1,21 @@
-// ErpView.jsx — Vista SOLO LECTURA del ERP Aesthetic (Santiago / La Banda).
+// ErpView.jsx — Vista del ERP Aesthetic (Santiago) desde el panel.
 // Consume el proxy del backend Aesthetic (/api/integration/aesthetic/*).
-// Nada acá permite editar: es consulta.
+// - Resumen / Productos / Ventas / Stats: solo lectura.
+// - Productos: EDITABLES (nombre, precio, costo, stock, activo) + archivar.
+// - Ventas: detalle completo de cada venta online.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Badge, Button, Card, EmptyState, Input, Select, Tabs } from './ui';
+import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Tabs } from './ui';
 import { useTheme } from '../theme/ThemeContext';
 import {
   StoreIcon, SearchIcon, AlertIcon, CoinsIcon, ShoppingBagIcon, TargetIcon, BoxesIcon,
+  EditIcon, TrashIcon, EyeIcon, TruckIcon, CheckCircleIcon,
 } from './ui/icons';
+import ConfirmDialog from './ConfirmDialog';
 import './ErpView.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -65,67 +70,80 @@ export default function ErpView() {
   const [units, setUnits] = useState([]);
   const [unitId, setUnitId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [summary, setSummary] = useState([]);
   const [products, setProducts] = useState({ items: [], total: 0, page: 1 });
   const [orders, setOrders] = useState({ items: [], total: 0, page: 1 });
   const [stats, setStats] = useState([]);
   const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
+
+  // Edición / eliminación de productos
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Detalle de venta
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const token = localStorage.getItem('aesthetic:token') || '';
 
-  const get = useCallback(async (path) => {
+  const api = useCallback(async (path, { method = 'GET', body } = {}) => {
     const res = await fetch(`${API_URL}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.message || `Error ${res.status}`);
+    if (!res.ok) throw new Error(data?.message || 'Error');
     return data;
   }, [token]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      setError('');
       try {
-        const u = await get('/api/integration/aesthetic/units');
+        const u = await api('/api/integration/aesthetic/units');
         setUnits(u.units || []);
       } catch (e) {
-        setError(
-          'No se pudo conectar con el ERP. Verificá que el backend de Aesthetic desplegado tenga la vista ERP (rutas /api/integration/aesthetic).'
-        );
+        setError('No se pudo conectar con el ERP. ¿Está la integración habilitada?');
       } finally {
         setLoading(false);
       }
     })();
-  }, [get]);
+  }, [api]);
 
   const loadTab = useCallback(async () => {
     if (!token) return;
     try {
       setError('');
       if (tab === 'resumen') {
-        const d = await get(`/api/integration/aesthetic/summary${unitId ? `?unitId=${unitId}` : ''}`);
+        const d = await api(`/api/integration/aesthetic/summary${unitId ? `?unitId=${unitId}` : ''}`);
         setSummary(d.units || []);
       } else if (tab === 'productos') {
-        const d = await get(
+        const d = await api(
           `/api/integration/aesthetic/products?page=${products.page}&limit=20&search=${encodeURIComponent(search)}${unitId ? `&unitId=${unitId}` : ''}`
         );
         setProducts((p) => ({ ...p, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'ventas') {
-        const d = await get(
+        const d = await api(
           `/api/integration/aesthetic/orders?page=${orders.page}&limit=20${unitId ? `&unitId=${unitId}` : ''}`
         );
         setOrders((o) => ({ ...o, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'stats') {
-        const d = await get(`/api/integration/aesthetic/stats?days=30${unitId ? `&unitId=${unitId}` : ''}`);
+        const d = await api(`/api/integration/aesthetic/stats?days=30${unitId ? `&unitId=${unitId}` : ''}`);
         setStats(d.units || []);
       }
     } catch (e) {
       setError(e?.message || 'No se pudieron cargar los datos del ERP');
     }
-  }, [tab, unitId, products.page, orders.page, search, get, token]);
+  }, [tab, unitId, products.page, orders.page, search, api, token]);
 
   useEffect(() => {
     if (units.length || loading === false) loadTab();
@@ -134,6 +152,72 @@ export default function ErpView() {
 
   const refresh = () => loadTab();
 
+  // ── Edición de producto ──
+  const openEdit = (p) => {
+    setEditingProduct(p);
+    setEditForm({
+      name: p.name || '',
+      price: p.price ?? 0,
+      costPrice: p.cost ?? 0,
+      stock: p.stock ?? 0,
+      active: p.active !== false,
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingProduct) return;
+    setSavingProduct(true);
+    try {
+      await api(`/api/integration/aesthetic/products/${editingProduct.id}`, {
+        method: 'PUT',
+        body: {
+          name: editForm.name,
+          price: Number(editForm.price) || 0,
+          costPrice: Number(editForm.costPrice) || 0,
+          stock: Number(editForm.stock) || 0,
+          active: !!editForm.active,
+        },
+      });
+      setEditingProduct(null);
+      toast.success('Producto actualizado en el ERP');
+      refresh();
+    } catch (e) {
+      toast.error(e?.message || 'No se pudo guardar el producto');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingProduct) return;
+    setDeleting(true);
+    try {
+      await api(`/api/integration/aesthetic/products/${deletingProduct.id}`, { method: 'DELETE' });
+      setDeletingProduct(null);
+      toast.success('Producto archivado en el ERP');
+      refresh();
+    } catch (e) {
+      toast.error(e?.message || 'No se pudo eliminar el producto');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ── Detalle de venta ──
+  const openOrder = async (id) => {
+    setDetailLoading(true);
+    setOrderDetail({ id });
+    try {
+      const d = await api(`/api/integration/aesthetic/orders/${id}`);
+      setOrderDetail(d.order || null);
+    } catch (e) {
+      setOrderDetail(null);
+      toast.error(e?.message || 'No se pudo cargar la venta');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const unitOptions = units.map((u) => ({ value: u.id, label: u.name }));
 
   return (
@@ -141,9 +225,9 @@ export default function ErpView() {
       <div className="erp-head">
         <div className="ui-row">
           <StoreIcon size={22} />
-          <h2 className="ui-page-title">ERP Aesthetic — Solo lectura</h2>
+          <h2 className="ui-page-title">ERP Aesthetic</h2>
         </div>
-        <p className="erp-sub">Datos del software de Santiago (La Banda / Santiago). No se puede editar desde acá.</p>
+        <p className="erp-sub">Datos de Santiago. Productos editables; ventas y stats en consulta.</p>
       </div>
 
       <div className="erp-toolbar">
@@ -182,12 +266,144 @@ export default function ErpView() {
           search={search}
           setSearch={setSearch}
           onPage={(p) => setProducts((s) => ({ ...s, page: p }))}
+          onEdit={openEdit}
+          onDelete={(p) => setDeletingProduct(p)}
         />
       )}
       {tab === 'ventas' && (
-        <OrdersTab orders={orders} onPage={(p) => setOrders((s) => ({ ...s, page: p }))} />
+        <OrdersTab orders={orders} onPage={(p) => setOrders((s) => ({ ...s, page: p }))} onOpen={openOrder} />
       )}
       {tab === 'stats' && <StatsTab stats={stats} />}
+
+      {/* ── Modal editar producto ── */}
+      <Modal
+        open={!!editingProduct}
+        title={editingProduct ? `Editar ${editingProduct.name}` : 'Editar producto'}
+        subtitle="Los cambios se aplican en el ERP de Santiago"
+        onClose={() => setEditingProduct(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditingProduct(null)}>Cancelar</Button>
+            <Button variant="primary" onClick={saveEdit} loading={savingProduct}>Guardar cambios</Button>
+          </>
+        }
+      >
+        <div className="erp-edit-form">
+          <Field label="Nombre" required>
+            <Input value={editForm.name || ''} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+          </Field>
+          <div className="ui-grid ui-grid--2">
+            <Field label="Precio" required>
+              <Input type="number" min="0" value={editForm.price ?? 0} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} />
+            </Field>
+            <Field label="Costo">
+              <Input type="number" min="0" value={editForm.costPrice ?? 0} onChange={(e) => setEditForm((f) => ({ ...f, costPrice: e.target.value }))} />
+            </Field>
+          </div>
+          <Field label="Stock" hint="Solo aplica a productos sin variantes (las variantes se gestionan en el ERP)">
+            <Input type="number" min="0" value={editForm.stock ?? 0} onChange={(e) => setEditForm((f) => ({ ...f, stock: e.target.value }))} />
+          </Field>
+          <label className="ui-check-row">
+            <input
+              type="checkbox"
+              checked={!!editForm.active}
+              onChange={(e) => setEditForm((f) => ({ ...f, active: e.target.checked }))}
+            />
+            <span>Producto activo (visible en el ERP)</span>
+          </label>
+        </div>
+      </Modal>
+
+      {/* ── Confirmar archivar ── */}
+      <ConfirmDialog
+        open={!!deletingProduct}
+        title="Eliminar producto del ERP"
+        message={`¿Eliminás "${deletingProduct?.name}" del ERP de Santiago? Queda archivado (se puede reactivar desde el ERP).`}
+        confirmText="Eliminar"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeletingProduct(null)}
+        loading={deleting}
+      />
+
+      {/* ── Modal detalle de venta ── */}
+      <Modal
+        open={!!orderDetail}
+        title={`Venta #${orderDetail?.orderNumber ?? '—'}`}
+        subtitle={orderDetail ? new Date(orderDetail.createdAt).toLocaleString('es-AR') : ''}
+        wide
+        onClose={() => setOrderDetail(null)}
+        footer={<Button variant="secondary" onClick={() => setOrderDetail(null)}>Cerrar</Button>}
+      >
+        {detailLoading ? (
+          <div className="ui-skeleton ui-skeleton--block" style={{ height: 180 }} />
+        ) : orderDetail ? (
+          <div className="erp-order-detail">
+            <div className="ui-grid ui-grid--2">
+              <div className="erp-detail-box">
+                <span className="erp-detail-label">Cliente</span>
+                <strong>{orderDetail.customer?.name || orderDetail.customerName}</strong>
+                {orderDetail.customer?.phone && <span>📞 {orderDetail.customer.phone}</span>}
+                {orderDetail.customer?.email && <span>✉️ {orderDetail.customer.email}</span>}
+                {orderDetail.customer?.dni && <span>🪪 DNI {orderDetail.customer.dni}</span>}
+              </div>
+              <div className="erp-detail-box">
+                <span className="erp-detail-label">Pago</span>
+                <strong style={{ textTransform: 'capitalize' }}>{orderDetail.paymentMethod}</strong>
+                <span>Total: <b>{money(orderDetail.total)}</b></span>
+                {(orderDetail.payments || []).map((p, i) => (
+                  <span key={i}>{p.method}: {money(p.amount)}</span>
+                ))}
+              </div>
+            </div>
+
+            {orderDetail.shipping && (orderDetail.shipping.method || orderDetail.shipping.address) && (
+              <div className="erp-detail-box">
+                <span className="erp-detail-label"><TruckIcon size={14} /> Envío</span>
+                {orderDetail.shipping.method && <span>Método: <b>{orderDetail.shipping.method}</b></span>}
+                {orderDetail.shipping.company && <span>Transporte: {orderDetail.shipping.company}</span>}
+                {orderDetail.shipping.trackingNumber && <span>Tracking: <b>{orderDetail.shipping.trackingNumber}</b></span>}
+                {orderDetail.shipping.address && (
+                  <span>
+                    Dirección: {[
+                      orderDetail.shipping.address.calle,
+                      orderDetail.shipping.address.numero,
+                      orderDetail.shipping.address.piso,
+                      orderDetail.shipping.address.ciudad,
+                      orderDetail.shipping.address.provincia,
+                      orderDetail.shipping.address.cp,
+                    ].filter(Boolean).join(' ')}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="ui-table-wrap" style={{ marginTop: 12 }}>
+              <table className="ui-table">
+                <thead>
+                  <tr><th>Producto</th><th>SKU</th><th>Cant.</th><th>Precio</th><th style={{ textAlign: 'right' }}>Subtotal</th></tr>
+                </thead>
+                <tbody>
+                  {(orderDetail.items || []).map((it, i) => (
+                    <tr key={i}>
+                      <td>{it.productName}{it.variantDetail ? ` (${it.variantDetail})` : ''}</td>
+                      <td className="erp-mono">{it.productSku || '—'}</td>
+                      <td>{it.quantity}</td>
+                      <td>{money(it.unitPrice)}</td>
+                      <td style={{ textAlign: 'right' }}>{money(it.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {orderDetail.notes && (
+              <p className="erp-detail-notes">📝 {orderDetail.notes}</p>
+            )}
+          </div>
+        ) : (
+          <EmptyState icon={<StoreIcon size={24} />} title="Venta no encontrada" description="No se pudo cargar el detalle." />
+        )}
+      </Modal>
     </div>
   );
 }
@@ -255,7 +471,7 @@ function Kpi({ icon, tone, label, value, sub }) {
   );
 }
 
-function ProductsTab({ products, search, setSearch, onPage }) {
+function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete }) {
   const pages = Math.max(1, Math.ceil(products.total / 20));
   return (
     <div className="erp-tab">
@@ -274,7 +490,7 @@ function ProductsTab({ products, search, setSearch, onPage }) {
           <table className="ui-table" role="table" aria-label="Productos del ERP">
             <thead>
               <tr>
-                <th>Producto</th><th>SKU</th><th>Unidad</th><th>Precio</th><th>Stock</th><th>Tienda</th>
+                <th>Producto</th><th>SKU</th><th>Unidad</th><th>Precio</th><th>Stock</th><th>Tienda</th><th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -292,6 +508,16 @@ function ProductsTab({ products, search, setSearch, onPage }) {
                     )}
                   </td>
                   <td>{p.onlineSynced ? <Badge tone="brand">Tienda</Badge> : '—'}</td>
+                  <td>
+                    <div className="ui-row" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                      <Button size="sm" variant="secondary" onClick={() => onEdit(p)} title="Editar">
+                        <EditIcon size={14} /> Editar
+                      </Button>
+                      <Button size="sm" variant="danger-ghost" onClick={() => onDelete(p)} title="Eliminar">
+                        <TrashIcon size={14} />
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -313,7 +539,7 @@ function ProductsTab({ products, search, setSearch, onPage }) {
   );
 }
 
-function OrdersTab({ orders, onPage }) {
+function OrdersTab({ orders, onPage, onOpen }) {
   const pages = Math.max(1, Math.ceil(orders.total / 20));
   if (!orders.items.length) {
     return <EmptyState icon={<ShoppingBagIcon size={24} />} title="Sin ventas" description="No hay ventas registradas en el rango actual." />;
@@ -324,7 +550,7 @@ function OrdersTab({ orders, onPage }) {
         <table className="ui-table" role="table" aria-label="Ventas del ERP">
           <thead>
             <tr>
-              <th>#</th><th>Fecha</th><th>Cliente</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th>
+              <th>#</th><th>Fecha</th><th>Cliente</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Detalle</th>
             </tr>
           </thead>
           <tbody>
@@ -340,6 +566,13 @@ function OrdersTab({ orders, onPage }) {
                   <td><Badge tone={st.tone} dot>{st.lbl}</Badge></td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(o.total)}</td>
                   <td>{o.origen === 'ecommerce' ? <Badge tone="brand">Online</Badge> : <Badge tone="neutral" outline>Local</Badge>}</td>
+                  <td>
+                    <div className="ui-row" style={{ justifyContent: 'flex-end' }}>
+                      <Button size="sm" variant="ghost" onClick={() => onOpen(o.id)} title="Ver detalle">
+                        <EyeIcon size={14} /> Ver
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
