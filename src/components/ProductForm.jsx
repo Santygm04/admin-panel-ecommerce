@@ -104,8 +104,10 @@ export default function ProductForm({ onCreated }) {
   };
 
   const uploadImages = async () => {
-    if (!imagenFiles.length) return [];
-    const urls = await Promise.all(imagenFiles.map(async (file) => {
+    if (!imagenFiles.length) return { urls: [], failed: 0 };
+    // Sube cada imagen por separado: si Cloudinary falla (p. ej. upload
+    // preset inexistente → 401), NO se aborta la creación del producto.
+    const results = await Promise.allSettled(imagenFiles.map(async (file) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
@@ -116,7 +118,9 @@ export default function ProductForm({ onCreated }) {
       );
       return res.data.secure_url;
     }));
-    return urls;
+    const urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    const failed = results.filter((r) => r.status === "rejected").length;
+    return { urls, failed };
   };
 
   const addVariant = () =>
@@ -173,7 +177,13 @@ export default function ProductForm({ onCreated }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const imagenes = await uploadImages();
+      const { urls: imagenes, failed } = await uploadImages();
+      if (failed > 0) {
+        toast.warn(
+          `${failed} imagen(es) no se pudieron subir a Cloudinary (preset "aesthetic" no autorizado). ` +
+          'El producto se guarda igual sin esas fotos.'
+        );
+      }
 
       const cleanVariants = (producto.variants || [])
         .filter(v => v.size || v.color)
@@ -208,7 +218,7 @@ export default function ProductForm({ onCreated }) {
       await axios.post(`${API}/productos`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Producto creado correctamente");
+      toast.success("Producto creado correctamente", { autoClose: 6000 });
       setProducto(PRODUCTO_INICIAL);
       setSelSizes([]);
       setSelColors([]);
@@ -217,7 +227,7 @@ export default function ProductForm({ onCreated }) {
       if (onCreated) onCreated();
     } catch (err) {
       console.error(err?.response?.data || err);
-      toast.error(err?.response?.data?.message || "Error al crear producto");
+      toast.error(err?.response?.data?.message || "Error al crear producto", { autoClose: 8000 });
     } finally {
       setSubmitting(false);
     }

@@ -77,6 +77,7 @@ export default function ErpView() {
   const [orders, setOrders] = useState({ items: [], total: 0, page: 1 });
   const [stats, setStats] = useState([]);
   const [search, setSearch] = useState('');
+  const [categories, setCategories] = useState([]);
 
   // Edición / eliminación de productos
   const [editingProduct, setEditingProduct] = useState(null);
@@ -115,6 +116,9 @@ export default function ErpView() {
       try {
         const u = await api('/api/integration/aesthetic/units');
         setUnits(u.units || []);
+        api('/api/integration/aesthetic/categories')
+          .then((d) => setCategories(d.categories || []))
+          .catch(() => {});
       } catch (e) {
         setError('No se pudo conectar con el ERP. ¿Está la integración habilitada?');
       } finally {
@@ -209,7 +213,7 @@ export default function ErpView() {
 
   // ── Alta de producto ──
   const openCreate = () => {
-    setCreateForm({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios' });
+    setCreateForm({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios', subcategory: '', description: '', minStock: 5 });
     setCreatingProduct(true);
   };
 
@@ -229,6 +233,9 @@ export default function ErpView() {
           costPrice: Number(createForm.costPrice) || 0,
           stock: Number(createForm.stock) || 0,
           category: createForm.category || 'Accesorios',
+          subcategory: createForm.subcategory?.trim() || '',
+          description: createForm.description?.trim() || '',
+          minStock: Number(createForm.minStock) || 5,
         },
       });
       setCreatingProduct(false);
@@ -376,22 +383,37 @@ export default function ErpView() {
             </Field>
             <Field label="Categoría">
               <Select value={createForm.category || 'Accesorios'} onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}>
-                {['Accesorios', 'Bijouterie', 'Bodycare', 'Lencería', 'Maquillaje', 'Marroquinería', 'Peluquería', 'Pestañas', 'Skincare', 'Uñas'].map((c) => (
+                {(categories.length ? categories.map((c) => c.name) : ['Accesorios', 'Bijouterie', 'Bodycare', 'Lencería', 'Maquillaje', 'Marroquinería', 'Peluquería', 'Pestañas', 'Skincare', 'Uñas']).map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
             </Field>
           </div>
-          <div className="ui-grid ui-grid--2">
+          <Field label="Subcategoría">
+            <Input value={createForm.subcategory || ''} onChange={(e) => setCreateForm((f) => ({ ...f, subcategory: e.target.value }))} placeholder="Opcional" />
+          </Field>
+          <Field label="Descripción">
+            <textarea
+              rows={3}
+              value={createForm.description || ''}
+              onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Descripción del producto (opcional)"
+              className="ui-textarea"
+            />
+          </Field>
+          <div className="ui-grid ui-grid--3">
             <Field label="Precio" required>
               <Input type="number" min="0" value={createForm.price ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, price: e.target.value }))} />
             </Field>
             <Field label="Costo">
               <Input type="number" min="0" value={createForm.costPrice ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, costPrice: e.target.value }))} />
             </Field>
+            <Field label="Stock inicial">
+              <Input type="number" min="0" value={createForm.stock ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, stock: e.target.value }))} />
+            </Field>
           </div>
-          <Field label="Stock inicial">
-            <Input type="number" min="0" value={createForm.stock ?? 0} onChange={(e) => setCreateForm((f) => ({ ...f, stock: e.target.value }))} />
+          <Field label="Stock mínimo" hint="Alerta de reposición en el ERP">
+            <Input type="number" min="0" value={createForm.minStock ?? 5} onChange={(e) => setCreateForm((f) => ({ ...f, minStock: e.target.value }))} />
           </Field>
         </div>
       </Modal>
@@ -537,10 +559,38 @@ function SummaryTab({ summary, loading, onGoTab }) {
             <Kpi icon={<CoinsIcon size={18} />} tone="brand" label="Ventas hoy" value={moneyShort(s.salesToday)} sub={money(s.salesToday)} />
             <Kpi icon={<CoinsIcon size={18} />} tone="gold" label="Ventas del mes" value={moneyShort(s.salesMonth)} sub={money(s.salesMonth)} />
             <Kpi icon={<ShoppingBagIcon size={18} />} tone="info" label="Órdenes hoy" value={String(s.ordersToday)} sub={`${s.ordersMonth} en el mes`} />
-            <Kpi icon={<TargetIcon size={18} />} tone="gold" label="Ticket promedio" value={moneyShort(s.avgTicket)} sub="hoy" />
-            <Kpi icon={<BoxesIcon size={18} />} tone="neutral" label="Productos" value={String(s.totalProducts ?? 0)} sub="activos" />
-            <Kpi icon={<AlertIcon size={18} />} tone="danger" label="Stock crítico" value={String(s.criticalStock)} sub="≤ 5 unidades" />
+            <Kpi icon={<TargetIcon size={18} />} tone="gold" label="Ticket promedio" value={moneyShort(s.avgTicket)} sub={`mes: ${moneyShort(s.avgTicketMonth)}`} />
+            <Kpi icon={<BoxesIcon size={18} />} tone="neutral" label="Productos" value={String(s.totalProducts ?? 0)} sub={`${s.syncedProducts ?? 0} en tienda`} />
+            <Kpi icon={<AlertIcon size={18} />} tone="danger" label="Stock crítico" value={String(s.criticalStock)} sub="≤ stock mínimo" />
           </div>
+
+          <div className="erp-origin-split">
+            <div className="erp-origin-head">
+              <span className="erp-origin-title">Origen de ventas de hoy</span>
+              <span className="erp-origin-total">{money(s.salesToday)}</span>
+            </div>
+            {(() => {
+              const total = Math.max(Number(s.salesToday) || 0, 1);
+              const online = Number(s.onlineSalesToday) || 0;
+              const pct = Math.round((online / total) * 100);
+              return (
+                <>
+                  <div className="erp-origin-bar">
+                    <div className="erp-origin-bar--online" style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="erp-origin-row">
+                    <span>🏪 Local: <b>{money(s.localSalesToday)}</b> ({s.ordersToday - (s.onlineOrdersToday || 0)} ventas)</span>
+                    <span>🌐 Online: <b>{money(online)}</b> ({s.onlineOrdersToday || 0} ventas)</span>
+                  </div>
+                  <div className="erp-origin-row erp-origin-row--muted">
+                    <span>Unidades hoy: <b>{s.unitsToday ?? 0}</b></span>
+                    <span>Online del mes: <b>{money(s.onlineSalesMonth)}</b> · Local: <b>{money(s.localSalesMonth)}</b></span>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
           {s.criticalProducts?.length > 0 && (
             <div className="erp-critical">
               <span className="erp-critical-title">Productos con stock crítico</span>
@@ -705,6 +755,11 @@ function StatsTab({ stats }) {
     return <EmptyState icon={<StoreIcon size={24} />} title="Sin estadísticas" description="No hay series para mostrar todavía." />;
   }
 
+  const PAY_LABELS = {
+    efectivo: 'Efectivo', transferencia: 'Transferencia', debito: 'Débito', credito: 'Crédito',
+    mercadopago: 'MercadoPago', qr: 'QR', cuenta_corriente: 'Cta. corriente', mixto: 'Mixto',
+  };
+
   return (
     <div className="erp-tab">
       <div className="ui-grid ui-grid--2">
@@ -714,6 +769,12 @@ function StatsTab({ stats }) {
             Ventas: r.total,
           }));
           const color = idx % 2 === 0 ? colors.brand : colors.gold;
+          const byOrigin = s.byOrigin || [];
+          const originTotal = Math.max(byOrigin.reduce((acc, o) => acc + (o.total || 0), 0), 1);
+          const onlineRow = byOrigin.find((o) => o.origin === 'online');
+          const localRow = byOrigin.find((o) => o.origin === 'local');
+          const payTotal = Math.max((s.byPayment || []).reduce((acc, p) => acc + (p.total || 0), 0), 1);
+
           return (
             <Card key={s.unit.id} pad className="erp-chart-card">
               <div className="erp-chart-head">
@@ -731,6 +792,40 @@ function StatsTab({ stats }) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+
+              <div className="erp-breakdowns">
+                <div className="erp-breakdown">
+                  <span className="erp-breakdown-title">Origen</span>
+                  <div className="erp-breakdown-bar">
+                    <div style={{ width: `${((localRow?.total || 0) / originTotal) * 100}%`, background: colors.brand }} title="Local" />
+                    <div style={{ width: `${((onlineRow?.total || 0) / originTotal) * 100}%`, background: colors.gold }} title="Online" />
+                  </div>
+                  <div className="erp-breakdown-row">
+                    <span>🏪 Local: <b>{money(localRow?.total)}</b></span>
+                    <span>🌐 Online: <b>{money(onlineRow?.total)}</b></span>
+                  </div>
+                </div>
+
+                {(s.byPayment || []).length > 0 && (
+                  <div className="erp-breakdown">
+                    <span className="erp-breakdown-title">Métodos de pago</span>
+                    <div className="erp-breakdown-bars">
+                      {s.byPayment.slice(0, 5).map((p, i) => (
+                        <div key={p.method} className="erp-breakdown-row erp-breakdown-row--bar">
+                          <span className="erp-breakdown-label">{PAY_LABELS[p.method] || p.method}</span>
+                          <div className="erp-breakdown-track">
+                            <div
+                              style={{ width: `${((p.total || 0) / payTotal) * 100}%`, background: [colors.brand, colors.gold, '#7fd0c5', '#9a8df0', '#f0a98d'][i % 5] }}
+                            />
+                          </div>
+                          <b>{money(p.total)}</b>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {s.topProducts?.length > 0 && (
                 <div className="erp-top">
                   <span className="erp-top-title">Top productos</span>

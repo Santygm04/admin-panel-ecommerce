@@ -68,6 +68,102 @@
 }
 .erp-critical-chip b { font-weight: 800; }
 
+/* ── Split online/local del resumen ── */
+.erp-origin-split {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--sp-3);
+}
+.erp-origin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.erp-origin-title {
+  font: var(--t-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-muted);
+}
+.erp-origin-total { font: var(--t-h2); color: var(--adm-ink); }
+.erp-origin-bar {
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: var(--adm-surface-2, #efe8fa);
+  overflow: hidden;
+  display: flex;
+}
+.erp-origin-bar--online {
+  background: var(--adm-info, #5b9dff);
+  border-radius: var(--r-pill);
+  transition: width 0.4s ease;
+}
+.erp-origin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font: var(--t-body);
+  color: var(--adm-muted);
+}
+.erp-origin-row b { color: var(--adm-ink); }
+.erp-origin-row--muted { font: var(--t-caption); color: var(--adm-muted-2); }
+.erp-origin-row--muted b { color: var(--adm-muted); }
+
+/* ── Desgloses de stats (origen + métodos de pago) ── */
+.erp-breakdowns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.erp-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.erp-breakdown-title {
+  font: var(--t-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--adm-muted);
+}
+.erp-breakdown-bar {
+  display: flex;
+  height: 10px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--adm-surface-2, #efe8fa);
+}
+.erp-breakdown-bar > div { transition: width 0.4s ease; }
+.erp-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font: var(--t-caption);
+  color: var(--adm-muted);
+}
+.erp-breakdown-row b { color: var(--adm-ink); }
+.erp-breakdown-bars { display: flex; flex-direction: column; gap: 6px; }
+.erp-breakdown-row--bar { display: grid; grid-template-columns: 96px 1fr auto; gap: var(--sp-2); }
+.erp-breakdown-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-breakdown-track {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--adm-surface-2, #efe8fa);
+  overflow: hidden;
+}
+.erp-breakdown-track > div { height: 100%; border-radius: var(--r-pill); transition: width 0.4s ease; }
+
 /* ── Tablas ── */
 .erp-tab { display: flex; flex-direction: column; gap: var(--sp-3); }
 .erp-mono { font-family: var(--font-mono); font-size: 0.8125rem; }
@@ -122,7 +218,7 @@
   .erp-kpis { grid-template-columns: 1fr; }
 }
 
-/* -- Edici�n de productos + detalle de ventas -- */
+/* -- Edici�n de productos + detalle de ventas -- */
 .erp-edit-form { display: flex; flex-direction: column; gap: 14px; }
 
 .ui-check-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--adm-text, #f3eefc); cursor: pointer; }

@@ -194,8 +194,10 @@ export default function EditProduct() {
   };
 
   const uploadImagesIfNeeded = async () => {
-    if (!imagenFiles.length) return null;
-    const urls = await Promise.all(imagenFiles.map(async (file) => {
+    if (!imagenFiles.length) return { urls: [], failed: 0 };
+    // Sube cada imagen por separado: si Cloudinary falla (upload preset
+    // inexistente → 401), la edición continúa sin esas imágenes.
+    const results = await Promise.allSettled(imagenFiles.map(async (file) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
@@ -206,7 +208,9 @@ export default function EditProduct() {
       );
       return res.data.secure_url;
     }));
-    return urls;
+    const urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    const failed = results.filter((r) => r.status === "rejected").length;
+    return { urls, failed };
   };
 
   const handleSubmit = async (e) => {
@@ -214,7 +218,13 @@ export default function EditProduct() {
     setSubmitting(true);
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
-      const nuevas = await uploadImagesIfNeeded();
+      const { urls: nuevas, failed } = await uploadImagesIfNeeded();
+      if (failed > 0) {
+        toast.warn(
+          `${failed} imagen(es) no se pudieron subir a Cloudinary (preset "aesthetic" no autorizado). ` +
+          'Se guarda el resto de los cambios.'
+        );
+      }
       const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
       const safeNum = (s) => {
@@ -300,7 +310,7 @@ export default function EditProduct() {
       nav(-1);
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Error al actualizar");
+      toast.error(err?.response?.data?.message || "Error al actualizar", { autoClose: 8000 });
     } finally {
       setSubmitting(false);
     }

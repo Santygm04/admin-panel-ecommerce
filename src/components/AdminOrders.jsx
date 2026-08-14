@@ -509,6 +509,9 @@ export default function AdminOrders() {
                     <div>
                       <div className="ao-card-num">{num(o)}</div>
                       {o.shippingTicket && <span className="ao-card-ticket">{o.shippingTicket}</span>}
+                      {o.hasLocalProducts && (
+                        <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
+                      )}
                     </div>
                     <div className="ao-card-right">
                       <StatusBadge s={o.status} />
@@ -574,6 +577,9 @@ export default function AdminOrders() {
                       <td>
                         <div className="ao-cell-num">{num(o)}</div>
                         {o.shippingTicket && <span className="ao-card-ticket">{o.shippingTicket}</span>}
+                        {o.hasLocalProducts && (
+                          <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
+                        )}
                         <div className="ao-cell-id">
                           <span>…{shrt(o._id)}</span>
                           <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(o._id)} title="Copiar ID">
