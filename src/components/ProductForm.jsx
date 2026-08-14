@@ -111,7 +111,7 @@ export default function ProductForm({ onCreated }) {
       formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
       formData.append("folder", "productos");
       const res = await axios.post(
-        "https://api.cloudinary.com/v1_1/dl2vebaou/image/upload",
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dl2vebaou"}/image/upload`,
         formData
       );
       return res.data.secure_url;
