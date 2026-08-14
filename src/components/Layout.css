@@ -198,6 +198,25 @@
   margin: 0 auto;
 }
 
+/* ── Botón de actualizar global ── */
+.layout-refresh-btn {
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-2);
+  color: var(--adm-muted);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+.layout-refresh-btn:hover {
+  border-color: var(--adm-brand);
+  background: var(--adm-brand-soft);
+  color: var(--adm-brand);
+}
+
 /* ── Selector de vista (Tienda Online / ERP) ── */
 .layout-view-switch {
   display: flex;

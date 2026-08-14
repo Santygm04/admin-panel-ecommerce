@@ -436,8 +436,8 @@ export default function AdminOrders() {
             <input type="checkbox" checked={autoR} onChange={(e) => setAutoR(e.target.checked)} />
             Auto-refrescar
           </label>
-          <Button size="sm" variant="ghost" onClick={fetch_} title="Actualizar">
-            <RefreshIcon size={15} />
+          <Button size="sm" variant="secondary" onClick={fetch_} title="Actualizar órdenes">
+            <RefreshIcon size={15} /> Actualizar
           </Button>
           <Button size="sm" variant="danger-ghost" onClick={logout}>
             <LogoutIcon size={15} /> Salir

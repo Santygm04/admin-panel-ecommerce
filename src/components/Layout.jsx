@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, ReceiptText, Upload, FolderOpen,
-  BarChart3, LockKeyhole, Users, Store,
+  LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
+  BarChart3, LockKeyhole, Users, Store, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';
@@ -167,6 +167,15 @@ export default function Layout({ children }) {
             </button>
           </div>
           <ThemeToggle />
+          <button
+            type="button"
+            className="layout-refresh-btn"
+            onClick={() => window.location.reload()}
+            title="Actualizar página"
+            aria-label="Actualizar página"
+          >
+            <RefreshCw size={16} />
+          </button>
         </header>
         <main className="layout-content">{children}</main>
       </div>
