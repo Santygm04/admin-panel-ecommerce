@@ -151,8 +151,11 @@ export default function ProductList() {
   }, [productos]);
 
   const showNotif = (type, text) => {
-    if (type === "ok") toast.success(text);
-    else toast.error(text);
+    if (type === "ok") {
+      toast.success(text, { autoClose: 6000 });
+    } else {
+      toast.error(text, { autoClose: 15000, closeOnClick: false });
+    }
   };
 
   const setStockDraft = (id, value) => {
@@ -239,6 +242,7 @@ export default function ProductList() {
     sd.add(id);
     setSavingDel(sd);
 
+    let deleted = false;
     try {
       const token = localStorage.getItem("aesthetic:token");
       await axios.delete(`${API}/productos/${id}`, {
@@ -246,14 +250,18 @@ export default function ProductList() {
       });
       setProductos((prev) => prev.filter((p) => p._id !== id));
       showNotif("ok", "Producto eliminado");
+      deleted = true;
     } catch (e) {
       console.error("DELETE error:", e?.response?.status, e?.response?.data);
-      showNotif("err", e?.response?.data?.message || "No se pudo eliminar");
+      const message = e?.response?.status === 429
+        ? "El servidor limitó temporalmente las operaciones. Esperá unos segundos y volvé a intentar."
+        : e?.response?.data?.message || "No se pudo eliminar";
+      showNotif("err", message);
     } finally {
       const sd2 = new Set(sd);
       sd2.delete(id);
       setSavingDel(sd2);
-      setConfirmData(null);
+      if (deleted) setConfirmData(null);
     }
   };
 
