@@ -152,9 +152,9 @@ export default function ProductList() {
 
   const showNotif = (type, text) => {
     if (type === "ok") {
-      toast.success(text, { autoClose: 6000 });
+      toast.success(text);
     } else {
-      toast.error(text, { autoClose: 15000, closeOnClick: false });
+      toast.error(text);
     }
   };
 

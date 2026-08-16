@@ -310,7 +310,7 @@ export default function EditProduct() {
       nav(-1);
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Error al actualizar", { autoClose: 8000 });
+      toast.error(err?.response?.data?.message || "Error al actualizar");
     } finally {
       setSubmitting(false);
     }

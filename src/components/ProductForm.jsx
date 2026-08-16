@@ -218,7 +218,7 @@ export default function ProductForm({ onCreated }) {
       await axios.post(`${API}/productos`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Producto creado correctamente", { autoClose: 6000 });
+      toast.success("Producto creado correctamente");
       setProducto(PRODUCTO_INICIAL);
       setSelSizes([]);
       setSelColors([]);
@@ -227,7 +227,7 @@ export default function ProductForm({ onCreated }) {
       if (onCreated) onCreated();
     } catch (err) {
       console.error(err?.response?.data || err);
-      toast.error(err?.response?.data?.message || "Error al crear producto", { autoClose: 8000 });
+      toast.error(err?.response?.data?.message || "Error al crear producto");
     } finally {
       setSubmitting(false);
     }
