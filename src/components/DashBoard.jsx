@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -17,8 +17,8 @@ import {
   CoinsIcon, CheckCircleIcon, PercentIcon, TargetIcon,
 } from "./ui/icons";
 import "./DashBoard.css";
+import { API_URL } from "../utils/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const SHOW_ADVANCED_DEFAULT =
   String(import.meta.env.VITE_STATS_SHOW_ADVANCED ?? "true").toLowerCase() === "true";
 
@@ -99,17 +99,15 @@ function StatsSection() {
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(SHOW_ADVANCED_DEFAULT);
 
-  const esRef = useRef(null);
-  const pollRef = useRef(null);
-  const adminSecret = useMemo(() => sessionStorage.getItem("ADMIN_SECRET") || "", []);
+  const token = localStorage.getItem("aesthetic:token") || "";
 
   async function refetchSummary(r = range, snap = useSnapshots) {
-    if (!adminSecret) return;
+    if (!token) return;
     const base = snap ? "/api/payments/stats/snapshot/summary" : "/api/payments/stats/summary";
     try {
       setError("");
       const res = await fetch(`${API_URL}${base}?range=${r}`, {
-        headers: { "x-admin-secret": adminSecret },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
       if (!res.ok) { setError(d?.message || "Error en estadísticas"); setStats(null); return; }
@@ -117,41 +115,16 @@ function StatsSection() {
     } catch { setError("No se pudieron cargar estadísticas"); }
   }
 
-  useEffect(() => { refetchSummary(range, useSnapshots); }, [range, adminSecret, useSnapshots]); // eslint-disable-line
+  useEffect(() => { refetchSummary(range, useSnapshots); }, [range, token, useSnapshots]); // eslint-disable-line
 
   useEffect(() => {
-    if (!adminSecret) return;
-    esRef.current?.close();
-    pollRef.current && clearInterval(pollRef.current);
-    esRef.current = pollRef.current = null;
+    if (!token) return;
     setLive(false);
     if (useSnapshots) return;
-
-    const enc = encodeURIComponent(adminSecret);
-    const url = `${API_URL}/api/payments/stats/stream?range=${range}&admin_secret=${enc}`;
-    const startPoll = () => {
-      if (pollRef.current) return;
-      pollRef.current = setInterval(() => refetchSummary(range, false), 30000);
-    };
-
-    try {
-      const es = new EventSource(url);
-      esRef.current = es;
-      const onMsg = (e) => {
-        try { const d = JSON.parse(e.data); if (d?.totals) { setStats(d); setLive(true); } } catch {}
-      };
-      es.addEventListener("stats", onMsg);
-      es.onmessage = onMsg;
-      es.onopen = () => { setLive(true); setError(""); };
-      es.onerror = () => { setLive(false); startPoll(); };
-    } catch { startPoll(); }
-
-    return () => {
-      esRef.current?.close();
-      pollRef.current && clearInterval(pollRef.current);
-      esRef.current = pollRef.current = null;
-    };
-  }, [range, adminSecret, useSnapshots]); // eslint-disable-line
+    setLive(true);
+    const id = setInterval(() => refetchSummary(range, false), 30000);
+    return () => clearInterval(id);
+  }, [range, token, useSnapshots]); // eslint-disable-line
 
   const data = stats?.seriesByDay || [];
   const totals = stats?.totals || {};
@@ -203,12 +176,6 @@ function StatsSection() {
         </div>
       )}
 
-      {!adminSecret && (
-        <div className="ui-banner ui-banner--info">
-          Necesitás iniciar sesión en <b>Órdenes</b> para guardar el <code>ADMIN_SECRET</code>.{" "}
-          <Link to="/orders">Ir a Órdenes →</Link>
-        </div>
-      )}
       {error && (
         <div className="ui-banner ui-banner--danger" role="alert">{error}</div>
       )}

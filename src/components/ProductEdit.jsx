@@ -7,12 +7,12 @@ import { useAuth } from "./AuthContext";
 import { Button, Field, Input, Select, Textarea, Skeleton } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
+import { API_URL } from "../utils/api";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-const API = API_BASE ? `${API_BASE}/api` : "/api";
+const API = `${API_URL}/api`;
 
 export default function EditProduct() {
   const { user } = useAuth();

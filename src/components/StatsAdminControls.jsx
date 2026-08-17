@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { Button, Field, Input } from "./ui";
+import { API_URL } from "../utils/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function StatsAdminControls({ onAfterAction, className = "" }) {
   const [days, setDays] = useState(30);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ text: "", ok: false });
 
-  const adminSecret = sessionStorage.getItem("ADMIN_SECRET") || "";
+  const token = localStorage.getItem("aesthetic:token") || "";
 
   async function call(method, path, body) {
-    if (!adminSecret) {
-      setMsg({ text: "Falta ADMIN_SECRET en sessionStorage (loggate en Órdenes)", ok: false });
+    if (!token) {
+      setMsg({ text: "Sesión de administrador no disponible", ok: false });
       return null;
     }
 
@@ -24,7 +24,7 @@ export default function StatsAdminControls({ onAfterAction, className = "" }) {
         method,
         headers: {
           "Content-Type": "application/json",
-          "x-admin-secret": adminSecret,
+          Authorization: `Bearer ${token}`,
         },
         body: body ? JSON.stringify(body) : undefined,
       });

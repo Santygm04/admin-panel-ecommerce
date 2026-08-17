@@ -1,8 +1,8 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { API_URL } from "../utils/api";
 
 const AuthContext = createContext();
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const LS_KEY = "aesthetic:token";
 const LS_USER = "aesthetic:user";
 
@@ -37,7 +37,6 @@ return data.user;
   const logout = () => {
     localStorage.removeItem(LS_KEY);
     localStorage.removeItem(LS_USER);
-    sessionStorage.removeItem("ADMIN_SECRET");
     setToken("");
     setUser(null);
   };
@@ -107,7 +106,7 @@ return data.user;
     return () => { ignore = true; };
   }, [token]);
 
-  const API_URL_CTX = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const API_URL_CTX = API_URL;
 
   const getUsers = async () => {
     const res = await fetch(`${API_URL_CTX}/api/auth/users`, {

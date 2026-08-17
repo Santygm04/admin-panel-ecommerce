@@ -5,9 +5,9 @@ import { Badge, Button, Card, EmptyState, Field, Input, Skeleton } from "./ui";
 import { FolderIcon, PlusIcon, EditIcon, TrashIcon } from "./ui/icons";
 import ConfirmDialog from "./ConfirmDialog";
 import "./CategoryManager.css";
+import { API_URL } from "../utils/api";
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-const API = API_BASE ? `${API_BASE}/api` : "/api";
+const API = `${API_URL}/api`;
 const authHeader = () => {
   const t = localStorage.getItem("aesthetic:token") || "";
   return t ? { Authorization: `Bearer ${t}` } : {};

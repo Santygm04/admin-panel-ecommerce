@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
+import { API_URL } from "../utils/api";
 
 // Subcategorías con precio unitario "desde 2 unidades"
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -23,8 +24,7 @@ const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
 
 const label = (k) => k.charAt(0).toUpperCase() + k.slice(1);
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-const API = API_BASE ? `${API_BASE}/api` : "/api";
+const API = `${API_URL}/api`;
 
 export default function ProductForm({ onCreated }) {
   const nav = useNavigate();

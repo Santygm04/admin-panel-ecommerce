@@ -17,8 +17,8 @@ import {
 } from './ui/icons';
 import ConfirmDialog from './ConfirmDialog';
 import './ErpView.css';
+import { API_URL } from '../utils/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 const money = (n) =>
   Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });

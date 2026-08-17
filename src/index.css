@@ -221,7 +221,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .Toastify__toast--info { border-color: var(--adm-info); }
 .Toastify__progress-bar { background: var(--adm-brand); }
 
-/* -- Splash de sesión (loader al validar token) -- */
+/* -- Splash de sesiï¿½n (loader al validar token) -- */
 .session-splash {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
@@ -239,7 +239,7 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 @keyframes sess-spin { to { transform: rotate(360deg); } }
 
-/* -- Responsive móvil global -- */
+/* -- Responsive mï¿½vil global -- */
 @media (max-width: 768px) {
   .ui-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .ui-table { min-width: 640px; }
@@ -257,7 +257,7 @@ h1, h2, h3, h4, p { margin: 0; }
   .layout-topbar { gap: 6px; }
 }
 
-/* -- Acciones rápidas / toolbars de ErpView -- */
+/* -- Acciones rï¿½pidas / toolbars de ErpView -- */
 .erp-quick-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
 .erp-products-toolbar { display: flex; gap: 10px; align-items: center; }
 
@@ -274,5 +274,6 @@ h1, h2, h3, h4, p { margin: 0; }
   .ui-tabs { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   .erp-kpis { gap: 8px; }
   .erp-kpi { padding: 10px 12px; }
-  .ui-modal-panel { max-height: 90vh; overflow-y: auto; }
+  .ui-modal { max-height: calc(100dvh - 24px); overflow: hidden; }
+  .ui-modal-body { min-height: 0; }
 }

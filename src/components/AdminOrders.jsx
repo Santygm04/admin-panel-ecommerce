@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, EmptyState, Input, Modal, Tabs } from "./ui";
 import {
   EyeIcon, CheckIcon, XIcon, TrashIcon, TruckIcon, RefreshIcon, SearchIcon,
-  CopyIcon, WhatsAppIcon, ShoppingBagIcon, LockIcon, InboxIcon, LogoutIcon,
+  CopyIcon, WhatsAppIcon, ShoppingBagIcon, InboxIcon,
 } from "./ui/icons";
 import "./AdminOrders.css";
+import { API_URL } from "../utils/api";
 
-const API_URL  = import.meta.env.VITE_API_URL  || "http://localhost:4000";
 const ADMIN_WA = (import.meta.env.VITE_ADMIN_PHONE || "").replace(/\D/g, "");
 
 const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
@@ -173,8 +173,7 @@ function TrackModal({ order, onClose, onConfirm }) {
 }
 
 export default function AdminOrders() {
-  const [secret, setSecret] = useState(() => sessionStorage.getItem("ADMIN_SECRET") || "");
-  const [iSec,   setISec]   = useState("");
+  const token = localStorage.getItem("aesthetic:token") || "";
   const [orders, setOrders] = useState([]);
   const [tab,    setTab]    = useState("pending");
   const [load,   setLoad]   = useState(false);
@@ -193,12 +192,12 @@ export default function AdminOrders() {
   const setErr = (text) => setMsg({ text, ok: false });
 
   const fetch_ = async () => {
-    if (!secret) return;
+    if (!token) return;
     setLoad(true);
     try {
       const u = new URL(`${API_URL}/api/payments/orders`);
       if (tab) u.searchParams.set("status", tab);
-      const r = await fetch(u, { headers: { "x-admin-secret": secret } });
+      const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
       setOrders(d.orders || []); setMsg({ text: "", ok: false });
@@ -212,21 +211,11 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetch_();
-    if (!secret || !autoR) return;
+    if (!token || !autoR) return;
     const id = setInterval(fetch_, 10000);
     return () => clearInterval(id);
     // eslint-disable-next-line
-  }, [secret, tab, autoR]);
-
-  const login = (e) => {
-    e.preventDefault(); if (!iSec.trim()) return;
-    sessionStorage.setItem("ADMIN_SECRET", iSec.trim());
-    setSecret(iSec.trim()); setISec(""); setTimeout(fetch_, 150);
-  };
-  const logout = () => {
-    sessionStorage.removeItem("ADMIN_SECRET");
-    setSecret(""); setOrders([]); setDetail(null);
-  };
+  }, [token, tab, autoR]);
 
   const openAct  = (type, order) => setActM({ open: true, type, order, loading: false });
   const closeAct = () => setActM({ open: false, type: null, order: null, loading: false });
@@ -234,14 +223,14 @@ export default function AdminOrders() {
   const closeDel = () => setDelM({ open: false, order: null, loading: false });
 
   const doAction = async () => {
-    if (!secret || !actM.order) return;
+    if (!token || !actM.order) return;
     const { type, order } = actM;
     setActM(m => ({ ...m, loading: true }));
     try {
       const ep = type === "confirm"
         ? `${API_URL}/api/payments/order/${order._id}/confirm`
         : `${API_URL}/api/payments/order/${order._id}/reject`;
-      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: "{}" });
+      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}" });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
       if (type === "confirm") {
@@ -260,12 +249,12 @@ export default function AdminOrders() {
   };
 
   const doDelPerm = async () => {
-    if (!secret || !delM.order) return;
+    if (!token || !delM.order) return;
     setDelM(m => ({ ...m, loading: true }));
     try {
       const r = await fetch(`${API_URL}/api/payments/order/${delM.order._id}/permanent`, {
         method: "DELETE",
-        headers: { "x-admin-secret": secret },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
@@ -277,10 +266,10 @@ export default function AdminOrders() {
   };
 
   const doDel = async () => {
-    if (!secret || !delM.order) return;
+    if (!token || !delM.order) return;
     setDelM(m => ({ ...m, loading: true }));
     try {
-      const r = await fetch(`${API_URL}/api/payments/order/${delM.order._id}`, { method: "DELETE", headers: { "x-admin-secret": secret } });
+      const r = await fetch(`${API_URL}/api/payments/order/${delM.order._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
       setOrders(a => a.map(o => o._id === delM.order._id ? { ...o, status: "deleted" } : o));
@@ -297,7 +286,7 @@ export default function AdminOrders() {
     try {
       setLoad(true);
       const r = await fetch(`${API_URL}/api/payments/order/${order._id}/ship`, {
-        method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ trackingNumber: tn || undefined, company: co || undefined, method: mt }),
       });
       const d = await r.json();
@@ -312,7 +301,7 @@ export default function AdminOrders() {
   const doDeliv = async (order) => {
     try {
       setLoad(true);
-      const r = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`, { method: "POST", headers: { "x-admin-secret": secret } });
+      const r = await fetch(`${API_URL}/api/payments/order/${order._id}/delivered`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
       setOk("Pedido entregado");
@@ -385,38 +374,6 @@ export default function AdminOrders() {
     );
   };
 
-  /* ── LOGIN (clave de admin) ── */
-  if (!secret) {
-    return (
-      <div className="ao-login-page">
-        <Card pad className="ao-login-card">
-          <div className="ao-login-head">
-            <span className="ao-login-icon"><LockIcon size={22} /></span>
-            <h2 className="ui-card-title">Órdenes</h2>
-            <p className="ui-card-sub">Ingresá tu clave de administradora para ver y gestionar los pedidos.</p>
-          </div>
-          <form onSubmit={login} className="ui-stack">
-            <Input
-              type="password"
-              placeholder="Clave de administrador"
-              value={iSec}
-              onChange={(e) => setISec(e.target.value)}
-              autoFocus
-            />
-            <Button type="submit" loading={load} disabled={!iSec.trim()}>
-              Entrar al panel
-            </Button>
-          </form>
-          {msg.text && (
-            <div className={`ui-banner ${msg.ok ? "ui-banner--success" : "ui-banner--danger"}`} role="alert">
-              {msg.text}
-            </div>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
   /* ── MAIN ── */
   return (
     <div className="ao-page">
@@ -438,9 +395,6 @@ export default function AdminOrders() {
           </label>
           <Button size="sm" variant="secondary" onClick={fetch_} title="Actualizar órdenes">
             <RefreshIcon size={15} /> Actualizar
-          </Button>
-          <Button size="sm" variant="danger-ghost" onClick={logout}>
-            <LogoutIcon size={15} /> Salir
           </Button>
         </div>
       </div>
@@ -555,7 +509,7 @@ export default function AdminOrders() {
           </div>
 
           {/* TABLA DESKTOP */}
-          <div className="ui-table-wrap">
+          <div className="ui-table-wrap ao-table-wrap">
             <table className="ui-table ao-table" role="table" aria-label="Órdenes">
               <thead>
                 <tr>

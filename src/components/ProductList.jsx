@@ -7,9 +7,9 @@ import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
 import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
 import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
+import { API_URL } from "../utils/api";
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-const API = API_BASE ? `${API_BASE}/api` : "/api";
+const API = `${API_URL}/api`;
 
 /* ===== Helpers promo ===== */
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -625,7 +625,7 @@ export default function ProductList() {
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
-      <div className="ui-table-wrap">
+      <div className="ui-table-wrap pl-table-wrap">
         <table className="ui-table pl-table" role="table" aria-label="Productos">
           <thead>
             <tr>

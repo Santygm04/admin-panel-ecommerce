@@ -248,7 +248,11 @@
   box-shadow: var(--shadow-xs);
 }
 @media (max-width: 640px) {
-  .layout-view-btn { padding: 6px 8px; }
+  .layout-topbar-title { min-width: 0; flex: 1; }
+  .layout-topbar-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layout-view-switch { order: 3; width: 100%; }
+  .layout-view-btn { flex: 1; min-height: 44px; padding: 6px 8px; }
+  .layout-refresh-btn, .layout-menu-open { width: 44px; height: 44px; flex-shrink: 0; }
 }
 
 .layout-backdrop {

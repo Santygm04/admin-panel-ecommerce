@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
@@ -8,25 +8,25 @@ import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';
 import { PackageIcon, LogoutIcon, XIcon, MenuIcon } from './ui/icons';
 import './Layout.css';
+import { API_URL } from '../utils/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const adminSecret = useMemo(() => sessionStorage.getItem('ADMIN_SECRET') || '', []);
+  const token = localStorage.getItem('aesthetic:token') || '';
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (!adminSecret) return;
+    if (!token) return;
     let abort = false;
     const fetchCount = async () => {
       try {
         const url = new URL(`${API_URL}/api/payments/orders`);
         url.searchParams.set('status', 'pending');
-        const res = await fetch(url, { headers: { 'x-admin-secret': adminSecret } });
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error();
         if (!abort) setPendingCount((data.orders || []).length);
@@ -40,7 +40,7 @@ export default function Layout({ children }) {
       abort = true;
       clearInterval(id);
     };
-  }, [adminSecret]);
+  }, [token]);
 
   const handleLogout = () => {
     logout();

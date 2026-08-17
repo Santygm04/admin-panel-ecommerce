@@ -134,7 +134,10 @@
 }
 .pf-var-del:hover { background: var(--adm-danger-soft); color: var(--adm-danger); }
 @media (max-width: 520px) {
-  .pf-var-row { grid-template-columns: 1fr 1fr 84px 28px; gap: 6px; }
+  .pf-var-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pf-var-row--head { display: none; }
+  .pf-var-row:not(.pf-var-row--head) > :nth-child(3) { grid-column: 1; }
+  .pf-var-row:not(.pf-var-row--head) > :nth-child(4) { grid-column: 2; justify-self: end; }
 }
 
 /* ── Dropzone ── */
@@ -175,8 +178,8 @@
   position: absolute;
   top: -6px;
   right: -6px;
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: var(--adm-danger);
