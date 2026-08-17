@@ -27,6 +27,7 @@
 .price-tiers { display: flex; flex-direction: column; gap: 4px; font: var(--t-small); color: var(--adm-ink-2); }
 .price-row { display: flex; align-items: center; gap: 6px; }
 .price-row--main { font-weight: 700; color: var(--adm-ink); }
+.price-row-detail { color: var(--adm-muted); font-size: 0.72em; }
 
 .price-tag {
   display: inline-block;

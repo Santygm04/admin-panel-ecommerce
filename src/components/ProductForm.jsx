@@ -43,7 +43,7 @@ export default function ProductForm({ onCreated }) {
     variants: [],
     unidadesPorCaja: "",
     cantidadTonos: "",
-    minimoMayorista: "",
+    minimoMayorista: "30000",
     minimoMayorista2: "",
     minimoMayorista3: "",
     precioMayorista2: "",
@@ -76,12 +76,17 @@ export default function ProductForm({ onCreated }) {
       return;
     }
 
-    const nextVal = value;
-    setProducto((prev) => ({ ...prev, [name]: nextVal }));
-
     if (name === "categoria") {
-      setProducto((prev) => ({ ...prev, [name]: value, subcategoria: "" }));
+      setProducto((prev) => ({
+        ...prev,
+        [name]: value,
+        subcategoria: "",
+        minimoMayorista: value === "lenceria" ? "" : (prev.minimoMayorista || "30000"),
+      }));
+      return;
     }
+
+    setProducto((prev) => ({ ...prev, [name]: value }));
   };
 
   const [categoriasDB, setCategoriasDB] = useState([]);
@@ -204,6 +209,7 @@ export default function ProductForm({ onCreated }) {
         subcategoria: (producto.subcategoria || "").toLowerCase(),
         variants: cleanVariants,
         unidadesPorCaja: producto.unidadesPorCaja !== "" ? Number(producto.unidadesPorCaja) : null,
+        minimoMayorista: producto.minimoMayorista !== "" ? Number(producto.minimoMayorista) : null,
         minimoMayorista2: producto.minimoMayorista2 !== "" ? Number(producto.minimoMayorista2) : null,
         precioMayorista2: producto.precioMayorista2 !== "" ? Number(producto.precioMayorista2) : null,
         minimoMayorista3: producto.minimoMayorista3 !== "" ? Number(producto.minimoMayorista3) : null,
@@ -292,12 +298,20 @@ export default function ProductForm({ onCreated }) {
           </Field>
 
           {producto.categoria !== "lenceria" && (
-            <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
-              hint="Compra mínima $30.000">
-              <Input name="precioMayorista" type="text" inputMode="decimal"
-                placeholder="Ej: 900"
-                value={producto.precioMayorista ?? ""} onChange={handleChange} />
-            </Field>
+            <>
+              <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
+                hint="Precio por unidad al alcanzar el mínimo">
+                <Input name="precioMayorista" type="text" inputMode="decimal"
+                  placeholder="Ej: 900"
+                  value={producto.precioMayorista ?? ""} onChange={handleChange} />
+              </Field>
+              <Field label="Mínimo mayorista ($)"
+                hint="Subtotal mínimo de compra para activar el precio mayorista">
+                <Input name="minimoMayorista" type="number" min="0" step="1"
+                  placeholder="30000"
+                  value={producto.minimoMayorista ?? ""} onChange={handleChange} />
+              </Field>
+            </>
           )}
 
           {producto.categoria === "lenceria" && (

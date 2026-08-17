@@ -50,12 +50,19 @@ function PriceTag({ label, tone = "neutral" }) {
 }
 
 function PriceTiers({ producto }) {
-  const isLenceria = producto.categoria === "lenceria";
+  const isLenceria = String(producto.categoria || "").toLowerCase() === "lenceria";
+  const minimoMayorista = Number(producto.minimoMayorista) || 0;
   const hasUnit = Number(producto.precio) > 0;
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
     { show: producto.precioEspecial != null, tone: "gold", label: "Esp", value: producto.precioEspecial },
-    { show: producto.precioMayorista != null, tone: "info", label: `x${producto.minimoMayorista || 2}`, value: producto.precioMayorista },
+    {
+      show: producto.precioMayorista != null,
+      tone: "info",
+      label: isLenceria ? `x${minimoMayorista || 2}` : "M",
+      detail: isLenceria ? null : `mín. $${money(minimoMayorista || 30000)}`,
+      value: producto.precioMayorista,
+    },
     { show: producto.precioMayorista2 != null, tone: "success", label: `x${producto.minimoMayorista2 || 6}`, value: producto.precioMayorista2 },
     { show: producto.precioMayorista3 != null, tone: "brand", label: `x${producto.minimoMayorista3 || 12}`, value: producto.precioMayorista3 },
   ];
@@ -67,6 +74,7 @@ function PriceTiers({ producto }) {
         <span key={t.label} className={`price-row ${t.tone === "neutral" ? "price-row--main" : ""}`}>
           <PriceTag label={t.label} tone={t.tone} />
           ${Number(t.value).toLocaleString("es-AR")}
+          {t.detail && <span className="price-row-detail">{t.detail}</span>}
         </span>
       ))}
     </div>

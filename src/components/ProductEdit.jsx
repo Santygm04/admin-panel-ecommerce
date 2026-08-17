@@ -394,12 +394,21 @@ export default function EditProduct() {
           </Field>
 
           {producto.categoria !== "lenceria" && (
-            <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
-              hint="Compra mínima $30.000">
-              <Input name="precioMayorista" type="text" inputMode="decimal"
-                placeholder="Ej: 900"
-                value={producto.precioMayorista ?? ""} onChange={handleChange} />
-            </Field>
+            <>
+              <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
+                hint="Precio por unidad al alcanzar el mínimo">
+                <Input name="precioMayorista" type="text" inputMode="decimal"
+                  placeholder="Ej: 900"
+                  value={producto.precioMayorista ?? ""} onChange={handleChange} />
+              </Field>
+              <Field label="Mínimo mayorista ($)"
+                hint="Subtotal mínimo de compra para activar el precio mayorista">
+                <Input name="minimoMayorista" type="number" min="0" step="1"
+                  placeholder="30000"
+                  value={producto.minimoMayorista ?? ""} onChange={handleChange}
+                  disabled={isVendedor} />
+              </Field>
+            </>
           )}
 
           {producto.categoria === "lenceria" && (
