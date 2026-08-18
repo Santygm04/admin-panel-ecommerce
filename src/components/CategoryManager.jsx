@@ -9,7 +9,7 @@ import { API_URL } from "../utils/api";
 
 const API = `${API_URL}/api`;
 const authHeader = () => {
-  const t = localStorage.getItem("aesthetic:token") || "";
+  const t = sessionStorage.getItem("aesthetic:token") || "";
   return t ? { Authorization: `Bearer ${t}` } : {};
 };
 

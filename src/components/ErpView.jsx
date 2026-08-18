@@ -94,7 +94,7 @@ export default function ErpView() {
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const token = localStorage.getItem('aesthetic:token') || '';
+  const token = sessionStorage.getItem('aesthetic:token') || '';
 
   const api = useCallback(async (path, { method = 'GET', body } = {}) => {
     const res = await fetch(`${API_URL}${path}`, {

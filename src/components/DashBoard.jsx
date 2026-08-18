@@ -99,7 +99,7 @@ function StatsSection() {
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(SHOW_ADVANCED_DEFAULT);
 
-  const token = localStorage.getItem("aesthetic:token") || "";
+  const token = sessionStorage.getItem("aesthetic:token") || "";
 
   async function refetchSummary(r = range, snap = useSnapshots) {
     if (!token) return;

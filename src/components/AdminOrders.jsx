@@ -173,7 +173,7 @@ function TrackModal({ order, onClose, onConfirm }) {
 }
 
 export default function AdminOrders() {
-  const token = localStorage.getItem("aesthetic:token") || "";
+  const token = sessionStorage.getItem("aesthetic:token") || "";
   const [orders, setOrders] = useState([]);
   const [tab,    setTab]    = useState("pending");
   const [load,   setLoad]   = useState(false);

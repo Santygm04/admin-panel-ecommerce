@@ -44,7 +44,7 @@ export default function EditProduct() {
           axios.get(`${API}/categories`),
           axios.get(`${API}/productos/${id}`, {
             params: { admin: true },
-            headers: { Authorization: `Bearer ${localStorage.getItem("aesthetic:token")}` },
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("aesthetic:token") || ""}` },
           }),
         ]);
 
@@ -302,7 +302,7 @@ export default function EditProduct() {
           }
         : body;
 
-      const token = localStorage.getItem("aesthetic:token");
+      const token = sessionStorage.getItem("aesthetic:token");
       await axios.put(`${API}/productos/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });

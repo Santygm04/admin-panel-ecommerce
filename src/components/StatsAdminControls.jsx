@@ -8,7 +8,7 @@ export default function StatsAdminControls({ onAfterAction, className = "" }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ text: "", ok: false });
 
-  const token = localStorage.getItem("aesthetic:token") || "";
+  const token = sessionStorage.getItem("aesthetic:token") || "";
 
   async function call(method, path, body) {
     if (!token) {

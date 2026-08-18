@@ -16,7 +16,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const token = localStorage.getItem('aesthetic:token') || '';
+  const token = sessionStorage.getItem('aesthetic:token') || '';
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {

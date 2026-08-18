@@ -7,13 +7,13 @@ const LS_KEY = "aesthetic:token";
 const LS_USER = "aesthetic:user";
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem(LS_KEY) || "");
+  const [token, setToken] = useState(() => sessionStorage.getItem(LS_KEY) || "");
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LS_USER) || "null"); } catch { return null; }
+    try { return JSON.parse(sessionStorage.getItem(LS_USER) || "null"); } catch { return null; }
   });
 
   // Loader de sesión: true mientras se valida el token guardado al arrancar
-  const [bootstrapping, setBootstrapping] = useState(() => !!localStorage.getItem(LS_KEY));
+  const [bootstrapping, setBootstrapping] = useState(() => !!sessionStorage.getItem(LS_KEY));
 
   // ADMIN_SECRET eliminado del frontend — se usa solo JWT
 
@@ -27,16 +27,16 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || "No se pudo iniciar sesión");
-   localStorage.setItem(LS_KEY, data.token);
-localStorage.setItem(LS_USER, JSON.stringify(data.user));
+   sessionStorage.setItem(LS_KEY, data.token);
+ sessionStorage.setItem(LS_USER, JSON.stringify(data.user));
 setToken(data.token);
 setUser(data.user);
 return data.user;
   };
 
   const logout = () => {
-    localStorage.removeItem(LS_KEY);
-    localStorage.removeItem(LS_USER);
+    sessionStorage.removeItem(LS_KEY);
+    sessionStorage.removeItem(LS_USER);
     setToken("");
     setUser(null);
   };
@@ -71,11 +71,11 @@ return data.user;
 
     // si viene un token nuevo, reemplazarlo
     if (data.token) {
-      localStorage.setItem(LS_KEY, data.token);
+      sessionStorage.setItem(LS_KEY, data.token);
       setToken(data.token);
     }
     if (data.user) {
-      localStorage.setItem(LS_USER, JSON.stringify(data.user));
+      sessionStorage.setItem(LS_USER, JSON.stringify(data.user));
       setUser(data.user);
     }
     return data.user;

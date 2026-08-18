@@ -220,7 +220,7 @@ export default function ProductForm({ onCreated }) {
         syncToERP: !!producto.syncToERP,
       };
 
-      const token = localStorage.getItem("aesthetic:token");
+      const token = sessionStorage.getItem("aesthetic:token");
       await axios.post(`${API}/productos`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
