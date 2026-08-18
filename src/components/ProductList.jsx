@@ -7,7 +7,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
 import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
 import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
-import { API_URL } from "../utils/api";
+import { API_URL, authHeaders } from "../utils/api";
 
 const API = `${API_URL}/api`;
 
@@ -106,7 +106,7 @@ export default function ProductList() {
       try {
         const { data } = await axios.get(`${API}/productos`, {
           params: { limit: 500, q, admin: true },
-          headers: { Authorization: `Bearer ${localStorage.getItem("aesthetic:token")}` },
+          headers: { Authorization: `Bearer ${sessionStorage.getItem("aesthetic:token") || ""}` },
           signal: ctrl.signal,
         });
 
@@ -181,7 +181,7 @@ export default function ProductList() {
     setSavingStock(s);
 
     try {
-      const token = localStorage.getItem("aesthetic:token");
+      const token = sessionStorage.getItem("aesthetic:token");
       const { data } = await axios.put(`${API}/productos/${id}`, { stock: current }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -215,11 +215,15 @@ export default function ProductList() {
     try {
       let resp;
       try {
-        resp = await axios.patch(`${API}/productos/${id}/visible`, { visible });
-      } catch (err) {
-        const status = err?.response?.status;
-        if (status === 404 || status === 405) {
-          resp = await axios.put(`${API}/productos/${id}`, { visible });
+          resp = await axios.patch(`${API}/productos/${id}/visible`, { visible }, {
+            headers: authHeaders(),
+          });
+        } catch (err) {
+          const status = err?.response?.status;
+          if (status === 404 || status === 405) {
+            resp = await axios.put(`${API}/productos/${id}`, { visible }, {
+              headers: authHeaders(),
+            });
         } else {
           throw err;
         }
@@ -252,7 +256,7 @@ export default function ProductList() {
 
     let deleted = false;
     try {
-      const token = localStorage.getItem("aesthetic:token");
+      const token = sessionStorage.getItem("aesthetic:token");
       await axios.delete(`${API}/productos/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -386,7 +390,7 @@ export default function ProductList() {
             setSaving(s);
 
             axios
-              .put(`${API}/productos/${id}`, body)
+              .put(`${API}/productos/${id}`, body, { headers: authHeaders() })
               .then(({ data }) => {
                 setProductos((prev) =>
                   prev.map((x) => (x._id === id ? { ...x, ...data } : x))
