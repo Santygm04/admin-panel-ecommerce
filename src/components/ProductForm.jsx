@@ -176,14 +176,11 @@ export default function ProductForm({ onCreated }) {
     setSubmitting(true);
     try {
       const { urls: imagenes, failed, failures } = await uploadImages();
-      if (failed > 0) {
-        const details = failures.map(({ name, message }) => `${name}: ${message}`).join(" | ");
-        toast.warn(
-          `Producto creado, pero ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
-          `${details} El resto de los datos se guardó correctamente.`,
-          { autoClose: 9000 }
-        );
-      }
+      const imageWarning = failed > 0
+        ? `Producto creado, pero ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+          `${failures.map(({ name, message }) => `${name}: ${message}`).join(" | ")} ` +
+          "El resto de los datos se guardó correctamente."
+        : "";
 
       const cleanVariants = (producto.variants || [])
         .filter(v => v.size || v.color)
@@ -219,13 +216,14 @@ export default function ProductForm({ onCreated }) {
       await axios.post(`${API}/productos`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Producto creado correctamente");
       setProducto(PRODUCTO_INICIAL);
       setSelSizes([]);
       setSelColors([]);
       setImagenFiles([]);
       setPreviewUrls([]);
       if (onCreated) onCreated();
+      if (imageWarning) toast.warn(imageWarning, { autoClose: 9000 });
+      else toast.success("Producto creado correctamente");
       nav("/dashboard?tab=stock", { replace: true });
     } catch (err) {
       console.error(err?.response?.data || err);

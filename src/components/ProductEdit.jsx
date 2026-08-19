@@ -212,14 +212,11 @@ export default function EditProduct() {
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
       const { urls: nuevas, failed, failures } = await uploadImagesIfNeeded();
-      if (failed > 0) {
-        const details = failures.map(({ name, message }) => `${name}: ${message}`).join(" | ");
-        toast.warn(
-          `${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
-          `${details} El resto de los cambios se guardó correctamente.`,
-          { autoClose: 9000 }
-        );
-      }
+      const imageWarning = failed > 0
+        ? `${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+          `${failures.map(({ name, message }) => `${name}: ${message}`).join(" | ")} ` +
+          "El resto de los cambios se guardó correctamente."
+        : "";
       const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
       const safeNum = (s) => {
@@ -301,7 +298,8 @@ export default function EditProduct() {
       await axios.put(`${API}/productos/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Producto actualizado");
+      if (imageWarning) toast.warn(imageWarning, { autoClose: 9000 });
+      else toast.success("Producto actualizado");
       nav(-1);
     } catch (err) {
       console.error(err);
