@@ -8,6 +8,7 @@ import { Button, Field, Input, Select, Textarea, Skeleton } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
+import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -195,22 +196,14 @@ export default function EditProduct() {
 
   const uploadImagesIfNeeded = async () => {
     if (!imagenFiles.length) return { urls: [], failed: 0 };
-    // Sube cada imagen por separado: si Cloudinary falla (upload preset
-    // inexistente → 401), la edición continúa sin esas imágenes.
-    const results = await Promise.allSettled(imagenFiles.map(async (file) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
-      formData.append("folder", "productos");
-      const res = await axios.post(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dl2vebaou"}/image/upload`,
-        formData
-      );
-      return res.data.secure_url;
-    }));
+    const results = await Promise.allSettled(imagenFiles.map(uploadCloudinaryImage));
     const urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
-    const failed = results.filter((r) => r.status === "rejected").length;
-    return { urls, failed };
+    const failures = results
+      .map((result, index) => result.status === "rejected"
+        ? { name: imagenFiles[index].name, message: cloudinaryErrorMessage(result.reason) }
+        : null)
+      .filter(Boolean);
+    return { urls, failed: failures.length, failures };
   };
 
   const handleSubmit = async (e) => {
@@ -218,11 +211,13 @@ export default function EditProduct() {
     setSubmitting(true);
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
-      const { urls: nuevas, failed } = await uploadImagesIfNeeded();
+      const { urls: nuevas, failed, failures } = await uploadImagesIfNeeded();
       if (failed > 0) {
+        const details = failures.map(({ name, message }) => `${name}: ${message}`).join(" | ");
         toast.warn(
-          `${failed} imagen(es) no se pudieron subir a Cloudinary (preset "aesthetic" no autorizado). ` +
-          'Se guarda el resto de los cambios.'
+          `${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+          `${details} El resto de los cambios se guardó correctamente.`,
+          { autoClose: 9000 }
         );
       }
       const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);

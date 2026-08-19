@@ -66,10 +66,10 @@ function App() {
         <AppRoutes />
         <ToastContainer
           position="top-right"
-          autoClose={false}
+          autoClose={5500}
           hideProgressBar={false}
           newestOnTop
-          closeOnClick={false}
+          closeOnClick
           pauseOnFocusLoss
           pauseOnHover
           theme="dark"

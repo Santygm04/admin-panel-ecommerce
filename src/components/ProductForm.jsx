@@ -7,6 +7,7 @@ import { Button, Field, Input, Select, Textarea } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
+import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 
 // Subcategorías con precio unitario "desde 2 unidades"
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -110,22 +111,14 @@ export default function ProductForm({ onCreated }) {
 
   const uploadImages = async () => {
     if (!imagenFiles.length) return { urls: [], failed: 0 };
-    // Sube cada imagen por separado: si Cloudinary falla (p. ej. upload
-    // preset inexistente → 401), NO se aborta la creación del producto.
-    const results = await Promise.allSettled(imagenFiles.map(async (file) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "aesthetic");
-      formData.append("folder", "productos");
-      const res = await axios.post(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dl2vebaou"}/image/upload`,
-        formData
-      );
-      return res.data.secure_url;
-    }));
+    const results = await Promise.allSettled(imagenFiles.map(uploadCloudinaryImage));
     const urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
-    const failed = results.filter((r) => r.status === "rejected").length;
-    return { urls, failed };
+    const failures = results
+      .map((result, index) => result.status === "rejected"
+        ? { name: imagenFiles[index].name, message: cloudinaryErrorMessage(result.reason) }
+        : null)
+      .filter(Boolean);
+    return { urls, failed: failures.length, failures };
   };
 
   const addVariant = () =>
@@ -182,11 +175,13 @@ export default function ProductForm({ onCreated }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { urls: imagenes, failed } = await uploadImages();
+      const { urls: imagenes, failed, failures } = await uploadImages();
       if (failed > 0) {
+        const details = failures.map(({ name, message }) => `${name}: ${message}`).join(" | ");
         toast.warn(
-          `${failed} imagen(es) no se pudieron subir a Cloudinary (preset "aesthetic" no autorizado). ` +
-          'El producto se guarda igual sin esas fotos.'
+          `Producto creado, pero ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+          `${details} El resto de los datos se guardó correctamente.`,
+          { autoClose: 9000 }
         );
       }
 
@@ -231,6 +226,7 @@ export default function ProductForm({ onCreated }) {
       setImagenFiles([]);
       setPreviewUrls([]);
       if (onCreated) onCreated();
+      nav("/dashboard?tab=stock", { replace: true });
     } catch (err) {
       console.error(err?.response?.data || err);
       toast.error(err?.response?.data?.message || "Error al crear producto");
