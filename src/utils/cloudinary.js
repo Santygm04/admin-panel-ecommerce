@@ -41,6 +41,9 @@ export function cloudinaryErrorMessage(error) {
   if (/too large|file size|maximum|exceeds/i.test(message)) {
     return `La imagen supera el tamaño máximo permitido. ${detail}`;
   }
+  if (/network error|failed to fetch|network request failed/i.test(message) && !error?.response) {
+    return "No se pudo conectar con Cloudinary. Verificá tu conexión o la política de seguridad del dominio. " + detail;
+  }
 
   return detail;
 }
