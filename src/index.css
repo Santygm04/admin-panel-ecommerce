@@ -199,7 +199,6 @@ h1, h2, h3, h4, p { margin: 0; }
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
@@ -219,10 +218,17 @@ h1, h2, h3, h4, p { margin: 0; }
 .Toastify__toast--error { border-color: var(--adm-danger); }
 .Toastify__toast--warning { border-color: var(--adm-warning); }
 .Toastify__toast--info { border-color: var(--adm-info); }
+.Toastify__progress-bar--wrp {
+  top: 0 !important;
+  bottom: auto !important;
+  height: 3px !important;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  z-index: 2;
+}
 .Toastify__progress-bar {
   top: 0 !important;
   bottom: auto !important;
-  height: 3px;
+  height: 100% !important;
   background: var(--adm-brand);
   transform-origin: left;
 }

@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import ProtectedRoute from "./components/ProtectRoute";
 import Layout from "./components/Layout";
@@ -10,7 +9,6 @@ import DashBoard from "./components/DashBoard";
 import Login from "./components/Login";
 import AdminOrders from "./components/AdminOrders";
 import ErpView from "./components/ErpView";
-import { ToastContainer } from "react-toastify";
 
 // Splash de sesión: se muestra mientras se valida el token guardado
 function SessionSplash() {
@@ -64,16 +62,6 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
-        <ToastContainer
-          position="top-right"
-          autoClose={8000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick={false}
-          pauseOnFocusLoss
-          pauseOnHover
-          theme="dark"
-        />
       </BrowserRouter>
     </AuthProvider>
   );

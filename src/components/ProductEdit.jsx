@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 import { Button, Field, Input, Select, Textarea, Skeleton } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
+import { notify } from "../utils/toast";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -91,7 +91,7 @@ export default function EditProduct() {
           }))
         );
       } catch (e) {
-        toast.error("No se pudo cargar el producto");
+        notify.error("No se pudo cargar el producto");
         nav(-1);
       } finally {
         setLoading(false);
@@ -148,7 +148,7 @@ export default function EditProduct() {
 
   const addBulk = () => {
     if (!selSizes.length && !selColors.length) {
-      toast.warn("Elegí al menos un talle o un color"); return;
+      notify.warning("Elegí al menos un talle o un color"); return;
     }
     setVariantes((list) => {
       const next = [...list];
@@ -298,12 +298,12 @@ export default function EditProduct() {
       await axios.put(`${API}/productos/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (imageWarning) toast.warn(imageWarning, { autoClose: 9000 });
-      else toast.success("Producto actualizado");
+      if (imageWarning) notify.warning(imageWarning);
+      else notify.success("Producto actualizado");
       nav(-1);
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Error al actualizar");
+      notify.error(err?.response?.data?.message || "Error al actualizar");
     } finally {
       setSubmitting(false);
     }

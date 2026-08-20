@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
 import axios from "axios";
 import { Badge, Button, Card, EmptyState, Field, Input, Skeleton } from "./ui";
 import { FolderIcon, PlusIcon, EditIcon, TrashIcon } from "./ui/icons";
 import ConfirmDialog from "./ConfirmDialog";
 import "./CategoryManager.css";
 import { API_URL } from "../utils/api";
+import { notify } from "../utils/toast";
 
 const API = `${API_URL}/api`;
 const authHeader = () => {
@@ -27,7 +27,7 @@ export default function CategoryManager() {
       const { data } = await axios.get(`${API}/categories`);
       setCats(data.categories || []);
     } catch {
-      toast.error("No se pudieron cargar las categorías");
+      notify.error("No se pudieron cargar las categorías");
     } finally {
       setLoading(false);
     }
@@ -74,17 +74,17 @@ export default function CategoryManager() {
         await axios.put(`${API}/categories/${editing}`, payload, {
           headers: authHeader(),
         });
-        toast.success("Categoría actualizada");
+        notify.success("Categoría actualizada");
       } else {
         await axios.post(`${API}/categories`, payload, {
           headers: authHeader(),
         });
-        toast.success("Categoría creada");
+        notify.success("Categoría creada");
       }
       resetForm();
       fetchCats();
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Error al guardar");
+      notify.error(err?.response?.data?.message || "Error al guardar");
     }
   };
 
@@ -105,10 +105,10 @@ export default function CategoryManager() {
       await axios.delete(`${API}/categories/${confirmId}`, {
         headers: authHeader(),
       });
-      toast.success("Categoría eliminada");
+      notify.success("Categoría eliminada");
       fetchCats();
     } catch {
-      toast.error("Error al eliminar");
+      notify.error("Error al eliminar");
     } finally {
       setDeleting(false);
       setConfirmId(null);

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 import { Button, Field, Input, ThemeToggle } from "./ui";
 import { LockIcon, UsersIcon, EyeIcon, EyeOffIcon } from "./ui/icons";
 import "./Login.css";
+import { notify } from "../utils/toast";
 
 export default function Login() {
   const [form, setForm] = useState({ usuario: "", password: "" });
@@ -26,7 +26,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(form.usuario, form.password);
-      toast.success(`¡Bienvenida, ${niceName(form.usuario)}!`);
+      notify.success(`¡Bienvenida, ${niceName(form.usuario)}!`);
       setTimeout(() => navigate("/dashboard"), 600);
     } catch (err) {
       setMsg(err?.message || "Credenciales inválidas");

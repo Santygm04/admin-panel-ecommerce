@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { toast } from "react-toastify";
 import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
 import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
 import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
+import { notify } from "../utils/toast";
 
 const API = `${API_URL}/api`;
 
@@ -137,7 +137,7 @@ export default function ProductList() {
         });
       } catch (err) {
         if (err.name !== "CanceledError") {
-          toast.error("No se pudieron cargar los productos. Reintentá en unos segundos.");
+          notify.error("No se pudieron cargar los productos. Reintentá en unos segundos.");
           console.error("Error al obtener productos", err);
         }
       }
@@ -160,9 +160,9 @@ export default function ProductList() {
 
   const showNotif = (type, text) => {
     if (type === "ok") {
-      toast.success(text);
+      notify.success(text);
     } else {
-      toast.error(text);
+      notify.error(text);
     }
   };
 

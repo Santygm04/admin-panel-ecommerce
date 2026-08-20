@@ -5,7 +5,7 @@
 // - Ventas: detalle completo de cada venta online.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { notify } from '../utils/toast';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -187,10 +187,10 @@ export default function ErpView() {
         },
       });
       setEditingProduct(null);
-      toast.success('Producto actualizado en el ERP');
+      notify.success('Producto actualizado en el ERP');
       refresh();
     } catch (e) {
-      toast.error(e?.message || 'No se pudo guardar el producto');
+      notify.error(e?.message || 'No se pudo guardar el producto');
     } finally {
       setSavingProduct(false);
     }
@@ -202,10 +202,10 @@ export default function ErpView() {
     try {
       await api(`/api/integration/aesthetic/products/${deletingProduct.id}`, { method: 'DELETE' });
       setDeletingProduct(null);
-      toast.success('Producto archivado en el ERP');
+      notify.success('Producto archivado en el ERP');
       refresh();
     } catch (e) {
-      toast.error(e?.message || 'No se pudo eliminar el producto');
+      notify.error(e?.message || 'No se pudo eliminar el producto');
     } finally {
       setDeleting(false);
     }
@@ -219,7 +219,7 @@ export default function ErpView() {
 
   const saveCreate = async () => {
     if (!createForm.name?.trim() || !createForm.sku?.trim()) {
-      toast.error('Nombre y SKU son obligatorios');
+      notify.error('Nombre y SKU son obligatorios');
       return;
     }
     setSavingProduct(true);
@@ -239,10 +239,10 @@ export default function ErpView() {
         },
       });
       setCreatingProduct(false);
-      toast.success('Producto creado en el ERP');
+      notify.success('Producto creado en el ERP');
       refresh();
     } catch (e) {
-      toast.error(e?.message || 'No se pudo crear el producto');
+      notify.error(e?.message || 'No se pudo crear el producto');
     } finally {
       setSavingProduct(false);
     }
@@ -257,7 +257,7 @@ export default function ErpView() {
       setOrderDetail(d.order || null);
     } catch (e) {
       setOrderDetail(null);
-      toast.error(e?.message || 'No se pudo cargar la venta');
+      notify.error(e?.message || 'No se pudo cargar la venta');
     } finally {
       setDetailLoading(false);
     }

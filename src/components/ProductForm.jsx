@@ -2,12 +2,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { toast } from "react-toastify";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
+import { notify } from "../utils/toast";
 
 // Subcategorías con precio unitario "desde 2 unidades"
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -140,7 +140,7 @@ export default function ProductForm({ onCreated }) {
 
   const addBulk = () => {
     if (!selSizes.length && !selColors.length) {
-      toast.warn("Elegí al menos un talle o un color"); return;
+      notify.warning("Elegí al menos un talle o un color"); return;
     }
     setProducto((p) => {
       const list = [...(p.variants || [])];
@@ -222,12 +222,12 @@ export default function ProductForm({ onCreated }) {
       setImagenFiles([]);
       setPreviewUrls([]);
       if (onCreated) onCreated();
-      if (imageWarning) toast.warn(imageWarning, { autoClose: 9000 });
-      else toast.success("Producto creado correctamente");
+      if (imageWarning) notify.warning(imageWarning);
+      else notify.success("Producto creado correctamente");
       nav("/dashboard?tab=stock", { replace: true });
     } catch (err) {
       console.error(err?.response?.data || err);
-      toast.error(err?.response?.data?.message || "Error al crear producto");
+      notify.error(err?.response?.data?.message || "Error al crear producto");
     } finally {
       setSubmitting(false);
     }
