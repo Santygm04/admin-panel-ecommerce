@@ -219,7 +219,13 @@ h1, h2, h3, h4, p { margin: 0; }
 .Toastify__toast--error { border-color: var(--adm-danger); }
 .Toastify__toast--warning { border-color: var(--adm-warning); }
 .Toastify__toast--info { border-color: var(--adm-info); }
-.Toastify__progress-bar { background: var(--adm-brand); }
+.Toastify__progress-bar {
+  top: 0 !important;
+  bottom: auto !important;
+  height: 3px;
+  background: var(--adm-brand);
+  transform-origin: left;
+}
 
 /* -- Splash de sesi�n (loader al validar token) -- */
 .session-splash {
