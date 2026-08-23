@@ -199,7 +199,7 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
           <Field label="Fecha de finalización" required>
             <Input type="datetime-local" value={form.endAt} required onChange={(event) => setField("endAt", event.target.value)} />
           </Field>
-          <Field label="Prioridad" hint="Las promociones con mayor número aparecen primero.">
+          <Field label="Prioridad" hint="Las promociones con menor número aparecen primero.">
             <Input type="number" min="0" max="9999" value={form.priority} onChange={(event) => setField("priority", event.target.value)} />
           </Field>
           <Field label="Estado">
