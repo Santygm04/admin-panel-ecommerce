@@ -51,6 +51,8 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
   const [productResults, setProductResults] = useState([]);
   const [productCache, setProductCache] = useState({});
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,6 +67,24 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
     }, {});
     setProductCache(selected);
   }, [open, initial]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const controller = new AbortController();
+    setLoadingCategories(true);
+    fetch(`${API_URL}/api/categories`, { signal: controller.signal })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!controller.signal.aborted) setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      })
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setCategories([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingCategories(false);
+      });
+    return () => controller.abort();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -270,8 +290,17 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
               </Select>
             </Field>
           ) : form.destinationType === "category" ? (
-            <Field label="Slug de categoría" required>
-              <Input value={form.destinationValue} placeholder="skincare" onChange={(event) => setField("destinationValue", event.target.value.toLowerCase())} />
+            <Field label="Categoría de destino" required>
+              <Select value={form.destinationValue} required onChange={(event) => setField("destinationValue", event.target.value)}>
+                <option value="">{loadingCategories ? "Cargando categorías…" : "Seleccionar categoría"}</option>
+                {form.destinationValue && !categories.some((category) => category.slug === form.destinationValue) && (
+                  <option value={form.destinationValue}>{form.destinationValue}</option>
+                )}
+                {categories.map((category) => (
+                  <option value={category.slug} key={category._id || category.slug}>{category.nombre}</option>
+                ))}
+              </Select>
+              {!loadingCategories && categories.length === 0 && <span className="promotion-category-status">No hay categorías disponibles.</span>}
             </Field>
           ) : form.destinationType === "url" ? (
             <Field label="URL de destino" required>

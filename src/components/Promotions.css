@@ -32,6 +32,7 @@
 .promotion-destination-help__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
 .promotion-destination-help__options strong { color: var(--adm-ink-2); }
 .promotion-destination-help code { padding: 1px 5px; border-radius: 4px; background: var(--adm-surface-2); color: var(--adm-brand); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.promotion-category-status { color: var(--adm-muted); font: var(--t-caption); }
 .promotion-color-field { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; }
 .promotion-color-field input[type="color"] { width: 56px; padding: 4px; cursor: pointer; }
 
