@@ -112,6 +112,8 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
   const toggleProduct = (product) => {
     const id = String(product._id);
     setProductCache((current) => ({ ...current, [id]: product }));
+    setProductQuery("");
+    setProductResults([]);
     setForm((current) => ({
       ...current,
       productIds: current.productIds.includes(id)
