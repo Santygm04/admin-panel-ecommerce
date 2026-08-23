@@ -68,6 +68,11 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
 
   useEffect(() => {
     if (!open) return undefined;
+    if (!productQuery.trim()) {
+      setProductResults([]);
+      setLoadingProducts(false);
+      return undefined;
+    }
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoadingProducts(true);
@@ -211,26 +216,28 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
               onChange={(event) => setProductQuery(event.target.value)}
               icon={<Search size={16} />}
             />
-            <div className="promotion-product-results" role="listbox" aria-label="Productos encontrados">
-              {loadingProducts && <span className="promotion-search-status">Buscando…</span>}
-              {!loadingProducts && productResults.length === 0 && <span className="promotion-search-status">No hay coincidencias.</span>}
-              {productResults.map((product) => {
-                const selected = form.productIds.includes(String(product._id));
-                return (
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    className={`promotion-product-option ${selected ? "is-selected" : ""}`}
-                    key={product._id}
-                    onClick={() => toggleProduct(product)}
-                  >
-                    <span>{productLabel(product)}</span>
-                    <span>{selected ? "Seleccionado" : "Agregar"}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {productQuery.trim() && (
+              <div className="promotion-product-results" role="listbox" aria-label="Productos encontrados">
+                {loadingProducts && <span className="promotion-search-status">Buscando…</span>}
+                {!loadingProducts && productResults.length === 0 && <span className="promotion-search-status">No hay coincidencias.</span>}
+                {productResults.map((product) => {
+                  const selected = form.productIds.includes(String(product._id));
+                  return (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={`promotion-product-option ${selected ? "is-selected" : ""}`}
+                      key={product._id}
+                      onClick={() => toggleProduct(product)}
+                    >
+                      <span>{productLabel(product)}</span>
+                      <span>{selected ? "Seleccionado" : "Agregar"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {selectedProducts.length > 0 && (
             <div className="promotion-selected-products">
