@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, Megaphone, Power, Plus, Search, Trash2 } from "lucide-react";
+import { Edit3, Info, Megaphone, Power, Plus, Search, Trash2 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton, Table, TBody, Td, Th, THead, Textarea } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
@@ -281,6 +281,18 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
             <div className="promotion-destination-note">La cinta resolverá el destino con los productos seleccionados.</div>
           )}
         </div>
+
+        <aside className="promotion-destination-help" aria-label="Ayuda sobre destinos de promoción">
+          <div className="promotion-destination-help__title"><Info size={16} /> ¿A dónde llegará el cliente?</div>
+          <p>Elegí el destino según lo que quieras promocionar cuando hagan click en la cinta.</p>
+          <div className="promotion-destination-help__options">
+            <span><strong>Automático:</strong> decide según los productos asociados.</span>
+            <span><strong>Producto:</strong> abre un producto puntual.</span>
+            <span><strong>Listado:</strong> muestra todos los productos asociados.</span>
+            <span><strong>Categoría:</strong> lleva a una categoría, por ejemplo <code>skincare</code>.</span>
+            <span><strong>URL:</strong> abre una página interna o un enlace externo.</span>
+          </div>
+        </aside>
 
         <div className="promotion-form-grid promotion-form-grid--colors">
           <Field label="Color de fondo">
