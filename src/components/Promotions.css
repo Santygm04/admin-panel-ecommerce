@@ -1,0 +1,41 @@
+.promotions-page { max-width: 1440px; }
+.promotions-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); margin-bottom: var(--sp-6); }
+.promotions-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: var(--adm-brand); font: var(--t-caption); font-weight: 800; letter-spacing: .08em; margin-bottom: var(--sp-2); }
+.promotions-error { justify-content: space-between; margin-bottom: var(--sp-4); }
+.promotions-loading { display: grid; gap: var(--sp-4); }
+.promotion-message { display: flex; flex-direction: column; gap: 3px; min-width: 220px; max-width: 360px; }
+.promotion-message strong { color: var(--adm-ink); font-weight: 600; line-height: 1.35; }
+.promotion-message small, .promotion-dates { color: var(--adm-muted); font: var(--t-small); }
+.promotion-message small { font-size: .72rem; }
+.promotion-swatch { width: 28px; height: 6px; border-radius: var(--r-pill); border: 1px solid var(--adm-border); margin-bottom: 3px; }
+.promotion-dates { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.promotion-form { display: flex; flex-direction: column; gap: var(--sp-5); padding-bottom: var(--sp-2); }
+.promotion-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); }
+.promotion-form-grid--destination { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr); align-items: end; }
+.promotion-form-grid--colors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.promotion-counter { align-self: flex-end; color: var(--adm-muted); font: var(--t-caption); margin-top: -22px; z-index: 1; padding-right: 10px; }
+.promotion-switch-label { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; color: var(--adm-ink-2); font: var(--t-body-strong); }
+.promotion-switch-label input { accent-color: var(--adm-brand); width: 18px; height: 18px; }
+.promotion-product-search { position: relative; }
+.promotion-product-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 220px; overflow-y: auto; padding: 5px; background: var(--adm-surface); border: 1px solid var(--adm-border); border-radius: var(--r-md); box-shadow: var(--shadow-md); z-index: 4; }
+.promotion-product-option { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--adm-ink-2); text-align: left; font: var(--t-small); }
+.promotion-product-option:hover, .promotion-product-option.is-selected { background: var(--adm-brand-soft); color: var(--adm-ink); }
+.promotion-product-option span:last-child { color: var(--adm-brand); font-size: .72rem; white-space: nowrap; }
+.promotion-search-status { display: block; padding: 10px; color: var(--adm-muted); font: var(--t-small); }
+.promotion-selected-products { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.promotion-product-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--adm-brand); border-radius: var(--r-pill); background: var(--adm-brand-soft); color: var(--adm-brand); font: var(--t-caption); }
+.promotion-product-chip span { font-size: 1rem; line-height: .8; }
+.promotion-destination-note { min-height: 40px; display: flex; align-items: center; padding: 0 12px; border: 1px dashed var(--adm-border-strong); border-radius: var(--r-md); color: var(--adm-muted); font: var(--t-small); }
+.promotion-color-field { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; }
+.promotion-color-field input[type="color"] { width: 56px; padding: 4px; cursor: pointer; }
+
+@media (max-width: 760px) {
+  .promotions-head { align-items: stretch; flex-direction: column; }
+  .promotions-head > button { width: 100%; }
+  .promotion-form-grid, .promotion-form-grid--destination, .promotion-form-grid--colors { grid-template-columns: 1fr; }
+  .promotion-counter { margin-top: -22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promotion-product-option { transition: none; }
+}

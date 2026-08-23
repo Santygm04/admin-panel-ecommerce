@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
-  BarChart3, LockKeyhole, Users, Store, RefreshCw,
+  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';
@@ -58,6 +58,7 @@ export default function Layout({ children }) {
     { to: '/dashboard?tab=cuenta', label: 'Mi cuenta', icon: <LockKeyhole size={18} />, show: true },
     { to: '/dashboard?tab=usuarios', label: 'Usuarios', icon: <Users size={18} />, show: user?.role === 'admin' },
     { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: true },
+    { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, show: user?.role === 'admin' },
   ].filter((n) => n.show);
 
   const currentFull = `${location.pathname}${location.search}`;

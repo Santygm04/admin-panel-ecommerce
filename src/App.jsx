@@ -9,6 +9,7 @@ import DashBoard from "./components/DashBoard";
 import Login from "./components/Login";
 import AdminOrders from "./components/AdminOrders";
 import ErpView from "./components/ErpView";
+import Promotions from "./components/Promotions";
 
 // Splash de sesión: se muestra mientras se valida el token guardado
 function SessionSplash() {
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="/editar/:id" element={<ProductEdit />} />
         <Route path="/orders" element={<AdminOrders />} />
         <Route path="/erp" element={<ErpView />} />
+        <Route path="/promociones" element={<Promotions />} />
       </Route>
 
       {/* Fallback */}
