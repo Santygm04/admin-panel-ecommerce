@@ -478,7 +478,7 @@ export default function EditProduct() {
               <Input name="stock" type="number" inputMode="numeric" min="0" step="1"
                 value={producto.stock} onChange={handleChange}
                 onWheel={(e) => e.currentTarget.blur()}
-                disabled={isVendedor} />
+                disabled={soloPrecios} />
             </Field>
 
             <Field label="Unidades por caja" hint="El contador suma de a múltiplos. Vacío = unidad.">
