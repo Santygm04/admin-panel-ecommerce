@@ -381,11 +381,10 @@ export default function EditProduct() {
           <span className="pf-block-hint">Dejá vacío si no aplica el nivel</span>
         </div>
         <div className="pf-precio-grid">
-          <Field label={<><span className="price-tag price-tag--neutral">U</span> Precio Unitario <span className="pf-req">*</span></>}
-            hint="Sin mínimo de compra">
+          <Field label={<><span className="price-tag price-tag--neutral">U</span> Precio Unitario</>}
+            hint="Opcional. Si queda vacío o en 0 no se muestra en la tienda.">
             <Input name="precio" type="text" inputMode="decimal"
-              value={producto.precio} onChange={handleChange}
-              required={!isLenceriaCategory(producto.categoria)} />
+              value={producto.precio} onChange={handleChange} />
           </Field>
 
           <Field label={<><span className="price-tag price-tag--gold">E</span> Precio Especial</>}
@@ -416,7 +415,7 @@ export default function EditProduct() {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio total de cada pack. El precio por unidad se calcula automáticamente.
+                Lencería: cargá el precio por unidad de cada tier. El ecommerce calcula el total según x2, x6 o x12.
               </div>
 
               <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
@@ -427,10 +426,10 @@ export default function EditProduct() {
                   disabled={isVendedor} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total x2</>}
-                hint={`Total por ${producto.minimoMayorista || 2} unidades`}>
+              <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio por unidad x2</>}
+                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista) * Number(producto.minimoMayorista || 2)).toLocaleString("es-AR")}`}>
                 <Input name="precioMayorista" type="text" inputMode="decimal"
-                  placeholder="Ej: 1.800"
+                  placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>
@@ -443,10 +442,10 @@ export default function EditProduct() {
                   disabled={isVendedor} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total x6</>}
-                hint={`Total por ${producto.minimoMayorista2 || 6} unidades`}>
+              <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio por unidad x6</>}
+                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista2) * Number(producto.minimoMayorista2 || 6)).toLocaleString("es-AR")}`}>
                 <Input name="precioMayorista2" type="text" inputMode="decimal"
-                  placeholder="Ej: 5.400"
+                  placeholder="Ej: 850"
                   value={producto.precioMayorista2 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>
@@ -459,10 +458,10 @@ export default function EditProduct() {
                   disabled={isVendedor} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total x12</>}
-                hint={`Total por ${producto.minimoMayorista3 || 12} unidades`}>
+              <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio por unidad x12</>}
+                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista3) * Number(producto.minimoMayorista3 || 12)).toLocaleString("es-AR")}`}>
                 <Input name="precioMayorista3" type="text" inputMode="decimal"
-                  placeholder="Ej: 9.600"
+                  placeholder="Ej: 800"
                   value={producto.precioMayorista3 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>
