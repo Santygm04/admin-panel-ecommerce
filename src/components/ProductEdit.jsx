@@ -9,6 +9,7 @@ import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
+import { isLenceriaCategory, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -138,7 +139,14 @@ export default function EditProduct() {
 
     setProducto(prev => {
       const base = { ...prev, [name]: value };
-      if (name === "categoria" && value !== prev.categoria) base.subcategoria = "";
+      if (name === "categoria" && value !== prev.categoria) {
+        const wasLenceria = isLenceriaCategory(prev.categoria);
+        const nextIsLenceria = isLenceriaCategory(value);
+        base.subcategoria = "";
+        base.minimoMayorista = nextIsLenceria ? (wasLenceria ? prev.minimoMayorista : "2") : (wasLenceria ? "30000" : (prev.minimoMayorista || "30000"));
+        base.minimoMayorista2 = nextIsLenceria ? (prev.minimoMayorista2 || "6") : "";
+        base.minimoMayorista3 = nextIsLenceria ? (prev.minimoMayorista3 || "12") : "";
+      }
       return base;
     });
   };
@@ -219,12 +227,10 @@ export default function EditProduct() {
         : "";
       const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
-      const safeNum = (s) => {
-        const str = String(s).trim().replace(",", ".");
-        const n = parseFloat(str);
-        return Number.isFinite(n) ? Math.max(0, n) : 0;
-      };
-      const safeInt = safeNum;
+      const isLenceria = isLenceriaCategory(producto.categoria);
+      const precioMayorista = parseOptionalMoneyInput(producto.precioMayorista);
+      const precioMayorista2 = parseOptionalMoneyInput(producto.precioMayorista2);
+      const precioMayorista3 = parseOptionalMoneyInput(producto.precioMayorista3);
 
       const clean = variantes
         .map(v => ({
@@ -237,24 +243,24 @@ export default function EditProduct() {
       const body = {
         nombre: producto.nombre,
         codigoInterno: (producto.codigoInterno || "").toUpperCase().trim(),
-        precio: safeInt(producto.precio),
-        precioEspecial:  producto.precioEspecial  !== "" ? safeInt(producto.precioEspecial)  : null,
-        precioMayorista: producto.precioMayorista !== "" ? safeInt(producto.precioMayorista) : null,
+        precio: parseMoneyInput(producto.precio),
+        precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
+        precioMayorista,
         descripcion:     producto.descripcion,
         categoria:       (producto.categoria  || "").toLowerCase(),
         subcategoria:    (producto.subcategoria || "").toLowerCase(),
-        stock:           safeInt(producto.stock),
+        stock:           parseOptionalIntegerInput(producto.stock) ?? 0,
         destacado:       !!producto.destacado,
         tags:            producto.tags || [],
         imagenes: imagenesActuales,
         variants:        clean,
-        unidadesPorCaja: producto.unidadesPorCaja !== "" ? safeInt(producto.unidadesPorCaja) : null,
-        minimoMayorista:  producto.minimoMayorista  !== "" ? safeInt(producto.minimoMayorista)  : null,
-        minimoMayorista2: producto.minimoMayorista2 !== "" ? safeInt(producto.minimoMayorista2) : null,
-        precioMayorista2: producto.precioMayorista2 !== "" ? safeInt(producto.precioMayorista2) : null,
-        minimoMayorista3: producto.minimoMayorista3 !== "" ? Number(producto.minimoMayorista3) : null,
-        precioMayorista3: producto.precioMayorista3 !== "" ? Number(producto.precioMayorista3) : null,
-        cantidadTonos:   producto.cantidadTonos   !== "" ? safeInt(producto.cantidadTonos)   : null,
+        unidadesPorCaja: parseOptionalIntegerInput(producto.unidadesPorCaja),
+        minimoMayorista:  parseOptionalIntegerInput(producto.minimoMayorista) ?? (precioMayorista != null ? (isLenceria ? 2 : 30000) : null),
+        minimoMayorista2: parseOptionalIntegerInput(producto.minimoMayorista2) ?? (isLenceria && precioMayorista2 != null ? 6 : null),
+        precioMayorista2,
+        minimoMayorista3: parseOptionalIntegerInput(producto.minimoMayorista3) ?? (isLenceria && precioMayorista3 != null ? 12 : null),
+        precioMayorista3,
+        cantidadTonos:   parseOptionalIntegerInput(producto.cantidadTonos),
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
         syncToERP: !!producto.syncToERP,
@@ -276,6 +282,9 @@ export default function EditProduct() {
             precio: body.precio,
             precioEspecial: body.precioEspecial,
             precioMayorista: body.precioMayorista,
+            minimoMayorista: body.minimoMayorista,
+            minimoMayorista2: body.minimoMayorista2,
+            minimoMayorista3: body.minimoMayorista3,
             precioMayorista2: body.precioMayorista2,
             precioMayorista3: body.precioMayorista3,
           }
@@ -376,7 +385,7 @@ export default function EditProduct() {
             hint="Sin mínimo de compra">
             <Input name="precio" type="text" inputMode="decimal"
               value={producto.precio} onChange={handleChange}
-              required={producto.categoria !== "lenceria"} />
+              required={!isLenceriaCategory(producto.categoria)} />
           </Field>
 
           <Field label={<><span className="price-tag price-tag--gold">E</span> Precio Especial</>}
@@ -386,7 +395,7 @@ export default function EditProduct() {
               value={producto.precioEspecial ?? ""} onChange={handleChange} />
           </Field>
 
-          {producto.categoria !== "lenceria" && (
+          {!isLenceriaCategory(producto.categoria) && (
             <>
               <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
                 hint="Precio por unidad al alcanzar el mínimo">
@@ -404,7 +413,7 @@ export default function EditProduct() {
             </>
           )}
 
-          {producto.categoria === "lenceria" && (
+          {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
                 Lencería: cargá el precio total de cada pack. El precio por unidad se calcula automáticamente.
@@ -420,8 +429,8 @@ export default function EditProduct() {
 
               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total x2</>}
                 hint={`Total por ${producto.minimoMayorista || 2} unidades`}>
-                <Input name="precioMayorista" type="number" min="0" step="0.01"
-                  placeholder="Ej: 1800"
+                <Input name="precioMayorista" type="text" inputMode="decimal"
+                  placeholder="Ej: 1.800"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>
@@ -436,8 +445,8 @@ export default function EditProduct() {
 
               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total x6</>}
                 hint={`Total por ${producto.minimoMayorista2 || 6} unidades`}>
-                <Input name="precioMayorista2" type="number" min="0" step="0.01"
-                  placeholder="Ej: 5400"
+                <Input name="precioMayorista2" type="text" inputMode="decimal"
+                  placeholder="Ej: 5.400"
                   value={producto.precioMayorista2 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>
@@ -452,8 +461,8 @@ export default function EditProduct() {
 
               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total x12</>}
                 hint={`Total por ${producto.minimoMayorista3 || 12} unidades`}>
-                <Input name="precioMayorista3" type="number" min="0" step="0.01"
-                  placeholder="Ej: 9600"
+                <Input name="precioMayorista3" type="text" inputMode="decimal"
+                  placeholder="Ej: 9.600"
                   value={producto.precioMayorista3 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
               </Field>

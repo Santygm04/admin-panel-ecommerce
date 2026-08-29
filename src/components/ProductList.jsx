@@ -8,6 +8,7 @@ import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
 import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
+import { isLenceriaCategory } from "../utils/pricing";
 
 const API = `${API_URL}/api`;
 
@@ -50,7 +51,7 @@ function PriceTag({ label, tone = "neutral" }) {
 }
 
 function PriceTiers({ producto }) {
-  const isLenceria = String(producto.categoria || "").toLowerCase() === "lenceria";
+  const isLenceria = isLenceriaCategory(producto.categoria);
   const minimoMayorista = Number(producto.minimoMayorista) || 0;
   const hasUnit = Number(producto.precio) > 0;
   const tiers = [
