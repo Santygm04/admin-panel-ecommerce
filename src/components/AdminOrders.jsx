@@ -63,7 +63,10 @@ const waTxt = (o) => {
     const tonosPart = Array.isArray(it?.distribucionTonos) && it.distribucionTonos.length
       ? "\n   " + it.distribucionTonos.map(t => `${t.tono}: ${t.cantidad} u.`).join(" | ")
       : "";
-    return `- ${it.nombre}${vp} x${it.cantidad} --- ${$m(it.subtotal)}${tonosPart}`;
+    const boxUnits = Number(it?.unidadesPorCaja) || 0;
+    const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+    const quantityLabel = boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`;
+    return `- ${it.nombre}${vp} ${quantityLabel} --- ${$m(it.subtotal)}${tonosPart}`;
   }).join("\n");
   return [
     "✅ *¡Tu pedido fue confirmado, Aesthetic te lo confirma!*", "",
@@ -633,6 +636,8 @@ export default function AdminOrders() {
               <div className="ao-items">
                 {(detail.items || []).map((it, i) => {
                   const precioUnit = it.cantidad ? it.subtotal / it.cantidad : 0;
+                  const boxUnits = Number(it?.unidadesPorCaja) || 0;
+                  const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
                   return (
                     <div key={i} className="ao-item">
                       <div className="ao-item-head">
@@ -646,6 +651,7 @@ export default function AdminOrders() {
                       <div className="ao-item-row">
                         <span>Unitario: <b>{$m(precioUnit)}</b></span>
                         <span>Cantidad total: <b>{it.cantidad}</b></span>
+                        {boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
                         <span>Subtotal: <b>{$m(it.subtotal)}</b></span>
                       </div>
                       {Array.isArray(it.distribucionTonos) && it.distribucionTonos.length > 0 && (

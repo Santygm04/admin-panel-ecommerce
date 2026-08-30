@@ -58,6 +58,13 @@ function PriceTiers({ producto }) {
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
     { show: producto.precioEspecial != null, tone: "gold", label: "Esp", value: producto.precioEspecial },
     {
+      show: producto.publicarEnCajas && Number(producto.precioCaja) > 0,
+      tone: "brand",
+      label: "Caja",
+      detail: producto.unidadesPorCaja ? `${producto.unidadesPorCaja} uds.` : null,
+      value: producto.precioCaja,
+    },
+    {
       show: producto.precioMayorista != null,
       tone: "info",
       label: isLenceria ? `x${minimoMayorista || 2}` : "M",

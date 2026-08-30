@@ -37,6 +37,7 @@ export default function ProductForm({ onCreated }) {
     precio: "",
     precioEspecial: "",
     precioMayorista: "",
+    precioCaja: "",
     descripcion: "",
     categoria: "",
     subcategoria: "",
@@ -189,9 +190,14 @@ export default function ProductForm({ onCreated }) {
     e.preventDefault();
     const toneCount = Number(producto.cantidadTonos) || 0;
     const boxUnits = Number(producto.unidadesPorCaja) || 0;
+    const precioCaja = parseOptionalMoneyInput(producto.precioCaja);
     const toneNames = (producto.tonosDisponibles || []).map((tone) => String(tone).trim()).filter(Boolean);
     if (producto.publicarEnCajas && boxUnits < 1) {
       notify.warning("Para publicar una caja indicá cuántas unidades trae.");
+      return;
+    }
+    if (producto.publicarEnCajas && boxUnits > 1 && !(precioCaja > 0)) {
+      notify.warning("Para publicar una caja indicá el precio del bloque completo.");
       return;
     }
     if (toneCount > 0 && boxUnits > 0 && toneCount > boxUnits) {
@@ -230,6 +236,7 @@ export default function ProductForm({ onCreated }) {
         precio:          parseMoneyInput(producto.precio),
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
+        precioCaja,
         stock:           Number(producto.stock) || 0,
         categoria:    (producto.categoria    || "").toLowerCase(),
         subcategoria: (producto.subcategoria || "").toLowerCase(),
@@ -411,6 +418,15 @@ export default function ProductForm({ onCreated }) {
                 placeholder="Ej: 8 (bases), 3 (labiales)"
                 value={producto.unidadesPorCaja} onChange={handleChange} />
             </Field>
+
+            {(producto.publicarEnCajas || Number(producto.unidadesPorCaja) > 1) && (
+              <Field label={<><span className="price-tag price-tag--brand">C</span> Precio por caja</>}
+                hint="Precio final por el bloque completo, no por unidad. Ej: $7.200 por caja de 8.">
+                <Input name="precioCaja" type="text" inputMode="decimal"
+                  placeholder="Ej: 7200"
+                  value={producto.precioCaja ?? ""} onChange={handleChange} />
+              </Field>
+            )}
           </div>
 
           {/* ── SELECTOR DE TONOS ── */}
