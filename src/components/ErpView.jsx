@@ -52,6 +52,19 @@ const PAYMENT_LABELS = {
 const HIDDEN_ORDERS_KEY = 'aesthetic:erp:hidden-orders:v1';
 const orderKey = (order) => String(order?.id ?? order?._id ?? order?.orderNumber ?? '');
 
+const apiPath = (path, params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  });
+  const value = query.toString();
+  return value ? `${path}?${value}` : path;
+};
+
+const formatDate = (value) => value
+  ? new Date(`${value}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  : '';
+
 const readHiddenOrders = () => {
   try {
     const value = JSON.parse(localStorage.getItem(HIDDEN_ORDERS_KEY) || '[]');
@@ -102,7 +115,7 @@ export default function ErpView() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [categories, setCategories] = useState([]);
-  const [orderRange, setOrderRange] = useState({ from: '', to: '' });
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [hiddenOrderIds, setHiddenOrderIds] = useState(readHiddenOrders);
   const [hidingOrder, setHidingOrder] = useState(null);
 
@@ -159,26 +172,26 @@ export default function ErpView() {
     try {
       setError('');
       if (tab === 'resumen') {
-        const d = await api(`/api/integration/aesthetic/summary${unitId ? `?unitId=${unitId}` : ''}`);
+        const d = await api(apiPath('/api/integration/aesthetic/summary', { unitId, ...dateRange }));
         setSummary(d.units || []);
       } else if (tab === 'productos') {
         const d = await api(
-          `/api/integration/aesthetic/products?page=${products.page}&limit=20&search=${encodeURIComponent(deferredSearch)}${unitId ? `&unitId=${unitId}` : ''}`
+          apiPath('/api/integration/aesthetic/products', { page: products.page, limit: 20, search: deferredSearch, unitId, ...dateRange })
         );
         setProducts((p) => ({ ...p, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'ventas') {
         const d = await api(
-          `/api/integration/aesthetic/orders?page=${orders.page}&limit=20${unitId ? `&unitId=${unitId}` : ''}${orderRange.from ? `&from=${encodeURIComponent(orderRange.from)}` : ''}${orderRange.to ? `&to=${encodeURIComponent(orderRange.to)}` : ''}`
+          apiPath('/api/integration/aesthetic/orders', { page: orders.page, limit: 20, unitId, ...dateRange })
         );
         setOrders((o) => ({ ...o, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'stats') {
-        const d = await api(`/api/integration/aesthetic/stats?days=30${unitId ? `&unitId=${unitId}` : ''}`);
+        const d = await api(apiPath('/api/integration/aesthetic/stats', { days: 30, unitId, ...dateRange }));
         setStats(d.units || []);
       }
     } catch (e) {
       setError(e?.message || 'No se pudieron cargar los datos del ERP');
     }
-  }, [tab, unitId, products.page, orders.page, deferredSearch, orderRange.from, orderRange.to, api, token]);
+  }, [tab, unitId, products.page, orders.page, deferredSearch, dateRange, api, token]);
 
   useEffect(() => {
     if (units.length || loading === false) loadTab();
@@ -350,6 +363,16 @@ export default function ErpView() {
         <Button size="sm" variant="ghost" onClick={refresh}><RefreshIcon size={14} /> Actualizar</Button>
       </div>
 
+      <DateRangeFilter
+        tab={tab}
+        range={dateRange}
+        onChange={(range) => {
+          setDateRange(range);
+          setProducts((current) => ({ ...current, page: 1 }));
+          setOrders((current) => ({ ...current, page: 1 }));
+        }}
+      />
+
       {error && (
         <div className="ui-banner ui-banner--danger" role="alert">
           {error}
@@ -357,7 +380,7 @@ export default function ErpView() {
         </div>
       )}
 
-      {tab === 'resumen' && <SummaryTab summary={summary} loading={loading} onGoTab={setTab} />}
+      {tab === 'resumen' && <SummaryTab summary={summary} loading={loading} onGoTab={setTab} range={dateRange} />}
       {tab === 'productos' && (
         <ProductsTab
           products={products}
@@ -372,11 +395,6 @@ export default function ErpView() {
       {tab === 'ventas' && (
         <OrdersTab
           orders={orders}
-          range={orderRange}
-          onRangeChange={(range) => {
-            setOrderRange(range);
-            setOrders((current) => ({ ...current, page: 1 }));
-          }}
           hiddenOrderIds={hiddenOrderIds}
           onPage={(p) => setOrders((s) => ({ ...s, page: p }))}
           onOpen={openOrder}
@@ -384,7 +402,7 @@ export default function ErpView() {
           onRestore={restoreOrder}
         />
       )}
-      {tab === 'stats' && <StatsTab stats={stats} />}
+      {tab === 'stats' && <StatsTab stats={stats} range={dateRange} />}
 
       {/* ── Modal editar producto ── */}
       <Modal
@@ -602,7 +620,51 @@ export default function ErpView() {
   );
 }
 
-function SummaryTab({ summary, loading, onGoTab }) {
+function DateRangeFilter({ tab, range, onChange }) {
+  const descriptions = {
+    resumen: 'Filtra las métricas de ventas. El stock y los productos muestran su estado actual.',
+    productos: 'Filtra los productos por su fecha de alta en el ERP.',
+    ventas: 'Filtra las ventas por su fecha de creación.',
+    stats: 'Filtra gráficos, métodos de pago y productos más vendidos por fecha de venta.',
+  };
+  const hasRange = Boolean(range.from || range.to);
+
+  return (
+    <section className="erp-date-filter" aria-label="Filtro general por fecha">
+      <div className="erp-date-filter-copy">
+        <h3>Período</h3>
+        <p>{descriptions[tab]}</p>
+      </div>
+      <div className="erp-date-filter-fields">
+        <Field label="Desde">
+          <Input
+            aria-label="Fecha inicial del período"
+            type="date"
+            value={range.from}
+            max={range.to || undefined}
+            onChange={(e) => onChange({ ...range, from: e.target.value })}
+          />
+        </Field>
+        <Field label="Hasta">
+          <Input
+            aria-label="Fecha final del período"
+            type="date"
+            value={range.to}
+            min={range.from || undefined}
+            onChange={(e) => onChange({ ...range, to: e.target.value })}
+          />
+        </Field>
+        <div className="erp-filter-action">
+          <Button size="sm" variant="ghost" onClick={() => onChange({ from: '', to: '' })} disabled={!hasRange}>
+            Limpiar fechas
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SummaryTab({ summary, loading, onGoTab, range }) {
   if (loading) {
     return (
       <div className="ui-grid ui-grid--3">
@@ -622,6 +684,15 @@ function SummaryTab({ summary, loading, onGoTab }) {
     );
   }
 
+  const hasRange = Boolean(range.from || range.to);
+  const periodLabel = range.from && range.to
+    ? `${formatDate(range.from)} al ${formatDate(range.to)}`
+    : range.from
+      ? `Desde ${formatDate(range.from)}`
+      : range.to
+        ? `Hasta ${formatDate(range.to)}`
+        : 'Hoy';
+
   return (
     <div className="erp-summary">
       {summary.map((s) => (
@@ -631,22 +702,24 @@ function SummaryTab({ summary, loading, onGoTab }) {
             <Badge tone="brand">ERP</Badge>
           </div>
           <div className="ui-grid ui-grid--2 erp-kpis">
-            <Kpi icon={<CoinsIcon size={18} />} tone="brand" label="Ventas hoy" value={moneyShort(s.salesToday)} sub={money(s.salesToday)} />
-            <Kpi icon={<CoinsIcon size={18} />} tone="gold" label="Ventas del mes" value={moneyShort(s.salesMonth)} sub={money(s.salesMonth)} />
-            <Kpi icon={<ShoppingBagIcon size={18} />} tone="info" label="Órdenes hoy" value={String(s.ordersToday)} sub={`${s.ordersMonth} en el mes`} />
-            <Kpi icon={<TargetIcon size={18} />} tone="gold" label="Ticket promedio" value={moneyShort(s.avgTicket)} sub={`mes: ${moneyShort(s.avgTicketMonth)}`} />
+            <Kpi icon={<CoinsIcon size={18} />} tone="brand" label={hasRange ? 'Ventas del período' : 'Ventas hoy'} value={moneyShort(hasRange ? s.salesPeriod : s.salesToday)} sub={money(hasRange ? s.salesPeriod : s.salesToday)} />
+            <Kpi icon={<CoinsIcon size={18} />} tone="gold" label={hasRange ? 'Ventas online' : 'Ventas del mes'} value={moneyShort(hasRange ? s.onlineSalesPeriod : s.salesMonth)} sub={hasRange ? periodLabel : money(s.salesMonth)} />
+            <Kpi icon={<ShoppingBagIcon size={18} />} tone="info" label={hasRange ? 'Órdenes del período' : 'Órdenes hoy'} value={String(hasRange ? (s.ordersPeriod ?? 0) : s.ordersToday)} sub={hasRange ? `${s.unitsPeriod ?? 0} unidades` : `${s.ordersMonth} en el mes`} />
+            <Kpi icon={<TargetIcon size={18} />} tone="gold" label="Ticket promedio" value={moneyShort(hasRange ? s.avgTicketPeriod : s.avgTicket)} sub={hasRange ? periodLabel : `mes: ${moneyShort(s.avgTicketMonth)}`} />
             <Kpi icon={<BoxesIcon size={18} />} tone="neutral" label="Productos" value={String(s.totalProducts ?? 0)} sub={`${s.syncedProducts ?? 0} en tienda`} />
             <Kpi icon={<AlertIcon size={18} />} tone="danger" label="Stock crítico" value={String(s.criticalStock)} sub="≤ stock mínimo" />
           </div>
 
           <div className="erp-origin-split">
             <div className="erp-origin-head">
-              <span className="erp-origin-title">Origen de ventas de hoy</span>
-              <span className="erp-origin-total">{money(s.salesToday)}</span>
+              <span className="erp-origin-title">Origen de ventas {hasRange ? 'del período' : 'de hoy'}</span>
+              <span className="erp-origin-total">{money(hasRange ? s.salesPeriod : s.salesToday)}</span>
             </div>
             {(() => {
-              const total = Math.max(Number(s.salesToday) || 0, 1);
-              const online = Number(s.onlineSalesToday) || 0;
+              const total = Math.max(Number(hasRange ? s.salesPeriod : s.salesToday) || 0, 1);
+              const online = Number(hasRange ? s.onlineSalesPeriod : s.onlineSalesToday) || 0;
+              const orders = Number(hasRange ? s.ordersPeriod : s.ordersToday) || 0;
+              const onlineOrders = Number(hasRange ? s.onlineOrdersPeriod : s.onlineOrdersToday) || 0;
               const pct = Math.round((online / total) * 100);
               return (
                 <>
@@ -654,12 +727,12 @@ function SummaryTab({ summary, loading, onGoTab }) {
                     <div className="erp-origin-bar--online" style={{ width: `${pct}%` }} />
                   </div>
                   <div className="erp-origin-row">
-                    <span>Local: <b>{money(s.localSalesToday)}</b> ({s.ordersToday - (s.onlineOrdersToday || 0)} ventas)</span>
-                    <span>Online: <b>{money(online)}</b> ({s.onlineOrdersToday || 0} ventas)</span>
+                    <span>Local: <b>{money(hasRange ? s.localSalesPeriod : s.localSalesToday)}</b> ({orders - onlineOrders} ventas)</span>
+                    <span>Online: <b>{money(online)}</b> ({onlineOrders} ventas)</span>
                   </div>
                   <div className="erp-origin-row erp-origin-row--muted">
-                    <span>Unidades hoy: <b>{s.unitsToday ?? 0}</b></span>
-                    <span>Online del mes: <b>{money(s.onlineSalesMonth)}</b> · Local: <b>{money(s.localSalesMonth)}</b></span>
+                    <span>Unidades {hasRange ? 'del período' : 'hoy'}: <b>{hasRange ? (s.unitsPeriod ?? 0) : (s.unitsToday ?? 0)}</b></span>
+                    <span>{hasRange ? periodLabel : <>Online del mes: <b>{money(s.onlineSalesMonth)}</b> · Local: <b>{money(s.localSalesMonth)}</b></>}</span>
                   </div>
                 </>
               );
@@ -824,7 +897,7 @@ function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, on
   );
 }
 
-function OrdersTab({ orders, range, onRangeChange, hiddenOrderIds, onPage, onOpen, onHide, onRestore }) {
+function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [origin, setOrigin] = useState('all');
@@ -851,14 +924,13 @@ function OrdersTab({ orders, range, onRangeChange, hiddenOrderIds, onPage, onOpe
     return matchesQuery && matchesStatus && matchesOrigin && matchesPayment && matchesVisibility;
   }), [orders.items, hiddenSet, deferredQuery, status, origin, payment, visibility]);
   const hiddenOnPage = orders.items.filter((order) => hiddenSet.has(orderKey(order))).length;
-  const hasFilters = Boolean(query || status !== 'all' || origin !== 'all' || payment !== 'all' || visibility !== 'visible' || range.from || range.to);
+  const hasFilters = Boolean(query || status !== 'all' || origin !== 'all' || payment !== 'all' || visibility !== 'visible');
   const clearFilters = () => {
     setQuery('');
     setStatus('all');
     setOrigin('all');
     setPayment('all');
     setVisibility('visible');
-    onRangeChange({ from: '', to: '' });
   };
 
   const renderActions = (order, compact = false) => {
@@ -920,12 +992,6 @@ function OrdersTab({ orders, range, onRangeChange, hiddenOrderIds, onPage, onOpe
               <option value="all">Todos los métodos</option>
               {paymentOptions.map((method) => <option key={method} value={method}>{PAYMENT_LABELS[method] || method}</option>)}
             </Select>
-          </Field>
-          <Field label="Desde">
-            <Input aria-label="Fecha inicial" type="date" value={range.from} max={range.to || undefined} onChange={(e) => onRangeChange({ ...range, from: e.target.value })} />
-          </Field>
-          <Field label="Hasta">
-            <Input aria-label="Fecha final" type="date" value={range.to} min={range.from || undefined} onChange={(e) => onRangeChange({ ...range, to: e.target.value })} />
           </Field>
           <Field label="Visibilidad en panel">
             <Select aria-label="Filtrar ventas por visibilidad en el panel" value={visibility} onChange={(e) => setVisibility(e.target.value)}>
@@ -1024,8 +1090,15 @@ function OrdersTab({ orders, range, onRangeChange, hiddenOrderIds, onPage, onOpe
   );
 }
 
-function StatsTab({ stats }) {
+function StatsTab({ stats, range }) {
   const colors = useChartPalette();
+  const rangeLabel = range.from && range.to
+    ? `${formatDate(range.from)} al ${formatDate(range.to)}`
+    : range.from
+      ? `Desde ${formatDate(range.from)}`
+      : range.to
+        ? `Hasta ${formatDate(range.to)}`
+        : 'Últimos 30 días';
   if (!stats.length) {
     return <EmptyState icon={<StoreIcon size={24} />} title="Sin estadísticas" description="No hay series para mostrar todavía." />;
   }
@@ -1049,7 +1122,7 @@ function StatsTab({ stats }) {
             <Card key={s.unit.id} pad className="erp-chart-card">
               <div className="erp-chart-head">
                 <h3>{s.unit.name}</h3>
-                <Badge tone="neutral">últimos 30 días</Badge>
+                <Badge tone="neutral">{rangeLabel}</Badge>
               </div>
               <div className="erp-chart">
                 <ResponsiveContainer width="100%" height="100%">
