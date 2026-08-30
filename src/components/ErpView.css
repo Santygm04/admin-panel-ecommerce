@@ -15,6 +15,65 @@
   flex-wrap: wrap;
 }
 
+.erp-toolbar .ui-select { min-width: 220px; }
+
+/* ── Filtros ── */
+.erp-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.erp-filter-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.erp-filter-head h3 {
+  margin: 0;
+  font: var(--t-h2);
+  color: var(--adm-ink);
+}
+
+.erp-filter-head p {
+  margin: 3px 0 0;
+  font: var(--t-caption);
+  color: var(--adm-muted);
+}
+
+.erp-filter-grid {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: end;
+}
+
+.erp-filter-grid--products { grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(170px, 1fr)) auto; }
+.erp-filter-grid--orders { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+.erp-filter-grid .ui-field { min-width: 0; }
+.erp-filter-action { display: flex; align-items: center; min-height: 40px; }
+
+.erp-view-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--adm-info);
+  border-radius: var(--r-md);
+  background: var(--adm-info-soft);
+  color: var(--adm-ink-2);
+  font: var(--t-caption);
+  line-height: 1.5;
+}
+
+.erp-view-note svg { flex: 0 0 auto; margin-top: 2px; color: var(--adm-info); }
+
 /* ── Resumen ── */
 .erp-summary { display: flex; flex-direction: column; gap: var(--sp-4); }
 .erp-unit-card { display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -168,6 +227,32 @@
 .erp-tab { display: flex; flex-direction: column; gap: var(--sp-3); }
 .erp-mono { font-family: var(--font-mono); font-size: 0.8125rem; }
 .erp-pager { justify-content: center; }
+.erp-products-table { min-width: 820px; }
+.erp-orders-table { min-width: 1180px; }
+.erp-orders-table td { vertical-align: middle; }
+.erp-order-row--hidden { opacity: 0.66; background: var(--adm-info-soft); }
+.erp-order-actions { display: flex; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+.erp-order-cards { display: none; }
+
+.erp-order-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.erp-order-card--hidden { border-color: var(--adm-info); background: var(--adm-info-soft); }
+.erp-order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); }
+.erp-order-card-head > div { display: flex; flex-direction: column; min-width: 0; }
+.erp-order-card-head > strong { color: var(--adm-ink); font: var(--t-h2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.erp-order-number { color: var(--adm-ink); font: var(--t-body-strong); font-weight: 800; }
+.erp-order-date { color: var(--adm-muted); font: var(--t-caption); }
+.erp-order-card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.erp-order-card-data { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2) var(--sp-3); margin: 0; }
+.erp-order-card-data div { min-width: 0; }
+.erp-order-card-data dt { color: var(--adm-muted); font: var(--t-caption); }
+.erp-order-card-data dd { margin: 2px 0 0; color: var(--adm-ink-2); font: var(--t-body); overflow-wrap: anywhere; }
+.erp-order-actions--compact { justify-content: stretch; }
+.erp-order-actions--compact .ui-btn { flex: 1; min-height: 42px; }
 
 /* ── Stats ── */
 .erp-chart-card { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
@@ -213,12 +298,31 @@
 
 @media (max-width: 900px) {
   .erp-kpis { grid-template-columns: 1fr 1fr; }
+  .erp-filter-grid--products { grid-template-columns: 1fr 1fr; }
+  .erp-filter-grid--orders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .erp-orders-table-wrap { display: none; }
+  .erp-order-cards { display: grid; gap: var(--sp-3); }
 }
 @media (max-width: 520px) {
   .erp-kpis { grid-template-columns: 1fr; }
+  .erp-toolbar { align-items: stretch; }
+  .erp-toolbar .ui-tabs { width: 100%; overflow-x: auto; }
+  .erp-toolbar .ui-select { width: 100%; max-width: none !important; }
+  .erp-toolbar .ui-spacer { display: none; }
+  .erp-filter-panel { padding: var(--sp-3); }
+  .erp-filter-head { align-items: stretch; flex-direction: column; }
+  .erp-filter-head .ui-btn { width: 100%; min-height: 44px; }
+  .erp-filter-grid--products,
+  .erp-filter-grid--orders { grid-template-columns: 1fr; }
+  .erp-filter-action .ui-btn { width: 100%; min-height: 44px; }
+  .erp-order-card-data { grid-template-columns: 1fr; }
+  .erp-pager { justify-content: space-between; }
+  .erp-origin-row { align-items: flex-start; flex-direction: column; }
 }
 
-/* -- Edici�n de productos + detalle de ventas -- */
+/* -- Edición de productos + detalle de ventas -- */
 .erp-edit-form { display: flex; flex-direction: column; gap: 14px; }
 
 .ui-check-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--adm-text, #f3eefc); cursor: pointer; }

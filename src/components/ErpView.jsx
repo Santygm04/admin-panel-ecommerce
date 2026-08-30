@@ -4,7 +4,7 @@
 // - Productos: EDITABLES (nombre, precio, costo, stock, activo) + archivar.
 // - Ventas: detalle completo de cada venta online.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { notify } from '../utils/toast';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -13,7 +13,7 @@ import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Tabs } fr
 import { useTheme } from '../theme/ThemeContext';
 import {
   StoreIcon, SearchIcon, AlertIcon, CoinsIcon, ShoppingBagIcon, TargetIcon, BoxesIcon,
-  EditIcon, TrashIcon, EyeIcon, TruckIcon, CheckCircleIcon,
+  EditIcon, TrashIcon, EyeIcon, EyeOffIcon, TruckIcon, RefreshIcon,
 } from './ui/icons';
 import ConfirmDialog from './ConfirmDialog';
 import './ErpView.css';
@@ -36,6 +36,29 @@ const STATUS = {
   cancelada: { lbl: 'Cancelada', tone: 'danger' },
   devuelta_parcial: { lbl: 'Dev. parcial', tone: 'info' },
   devuelta_total: { lbl: 'Dev. total', tone: 'neutral' },
+};
+
+const PAYMENT_LABELS = {
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  debito: 'Débito',
+  credito: 'Crédito',
+  mercadopago: 'MercadoPago',
+  qr: 'QR',
+  cuenta_corriente: 'Cta. corriente',
+  mixto: 'Mixto',
+};
+
+const HIDDEN_ORDERS_KEY = 'aesthetic:erp:hidden-orders:v1';
+const orderKey = (order) => String(order?.id ?? order?._id ?? order?.orderNumber ?? '');
+
+const readHiddenOrders = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(HIDDEN_ORDERS_KEY) || '[]');
+    return Array.isArray(value) ? value.map(String) : [];
+  } catch {
+    return [];
+  }
 };
 
 function useChartPalette() {
@@ -77,7 +100,11 @@ export default function ErpView() {
   const [orders, setOrders] = useState({ items: [], total: 0, page: 1 });
   const [stats, setStats] = useState([]);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [categories, setCategories] = useState([]);
+  const [orderRange, setOrderRange] = useState({ from: '', to: '' });
+  const [hiddenOrderIds, setHiddenOrderIds] = useState(readHiddenOrders);
+  const [hidingOrder, setHidingOrder] = useState(null);
 
   // Edición / eliminación de productos
   const [editingProduct, setEditingProduct] = useState(null);
@@ -136,12 +163,12 @@ export default function ErpView() {
         setSummary(d.units || []);
       } else if (tab === 'productos') {
         const d = await api(
-          `/api/integration/aesthetic/products?page=${products.page}&limit=20&search=${encodeURIComponent(search)}${unitId ? `&unitId=${unitId}` : ''}`
+          `/api/integration/aesthetic/products?page=${products.page}&limit=20&search=${encodeURIComponent(deferredSearch)}${unitId ? `&unitId=${unitId}` : ''}`
         );
         setProducts((p) => ({ ...p, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'ventas') {
         const d = await api(
-          `/api/integration/aesthetic/orders?page=${orders.page}&limit=20${unitId ? `&unitId=${unitId}` : ''}`
+          `/api/integration/aesthetic/orders?page=${orders.page}&limit=20${unitId ? `&unitId=${unitId}` : ''}${orderRange.from ? `&from=${encodeURIComponent(orderRange.from)}` : ''}${orderRange.to ? `&to=${encodeURIComponent(orderRange.to)}` : ''}`
         );
         setOrders((o) => ({ ...o, items: d.items || [], total: d.total || 0 }));
       } else if (tab === 'stats') {
@@ -151,7 +178,7 @@ export default function ErpView() {
     } catch (e) {
       setError(e?.message || 'No se pudieron cargar los datos del ERP');
     }
-  }, [tab, unitId, products.page, orders.page, search, api, token]);
+  }, [tab, unitId, products.page, orders.page, deferredSearch, orderRange.from, orderRange.to, api, token]);
 
   useEffect(() => {
     if (units.length || loading === false) loadTab();
@@ -159,6 +186,28 @@ export default function ErpView() {
   }, [loadTab, loading]);
 
   const refresh = () => loadTab();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIDDEN_ORDERS_KEY, JSON.stringify(hiddenOrderIds));
+    } catch {
+      // El ocultado sigue funcionando durante la sesión aunque el navegador bloquee storage.
+    }
+  }, [hiddenOrderIds]);
+
+  const confirmHideOrder = () => {
+    const id = orderKey(hidingOrder);
+    if (!id) return;
+    setHiddenOrderIds((current) => current.includes(id) ? current : [...current, id]);
+    setHidingOrder(null);
+    notify.success('Venta oculta solo en este panel');
+  };
+
+  const restoreOrder = (order) => {
+    const id = orderKey(order);
+    setHiddenOrderIds((current) => current.filter((item) => item !== id));
+    notify.success('Venta restaurada en el panel');
+  };
 
   // ── Edición de producto ──
   const openEdit = (p) => {
@@ -272,7 +321,7 @@ export default function ErpView() {
           <StoreIcon size={22} />
           <h2 className="ui-page-title">ERP Aesthetic</h2>
         </div>
-        <p className="erp-sub">Datos de Santiago. Productos editables; ventas y stats en consulta.</p>
+        <p className="erp-sub">Gestión conectada al ERP. Ocultar ventas solo modifica esta vista y nunca elimina datos reales.</p>
       </div>
 
       <div className="erp-toolbar">
@@ -288,13 +337,17 @@ export default function ErpView() {
           ]}
         />
         <div className="ui-spacer" />
-        <Select value={unitId} onChange={(e) => setUnitId(e.target.value)} style={{ maxWidth: 220 }}>
+        <Select value={unitId} aria-label="Filtrar por unidad" onChange={(e) => {
+          setUnitId(e.target.value);
+          setProducts((current) => ({ ...current, page: 1 }));
+          setOrders((current) => ({ ...current, page: 1 }));
+        }} style={{ maxWidth: 220 }}>
           <option value="">Todas las unidades Aesthetic</option>
           {unitOptions.map((u) => (
             <option key={u.value} value={u.value}>{u.label}</option>
           ))}
         </Select>
-        <Button size="sm" variant="ghost" onClick={refresh}>Actualizar</Button>
+        <Button size="sm" variant="ghost" onClick={refresh}><RefreshIcon size={14} /> Actualizar</Button>
       </div>
 
       {error && (
@@ -317,7 +370,19 @@ export default function ErpView() {
         />
       )}
       {tab === 'ventas' && (
-        <OrdersTab orders={orders} onPage={(p) => setOrders((s) => ({ ...s, page: p }))} onOpen={openOrder} />
+        <OrdersTab
+          orders={orders}
+          range={orderRange}
+          onRangeChange={(range) => {
+            setOrderRange(range);
+            setOrders((current) => ({ ...current, page: 1 }));
+          }}
+          hiddenOrderIds={hiddenOrderIds}
+          onPage={(p) => setOrders((s) => ({ ...s, page: p }))}
+          onOpen={openOrder}
+          onHide={setHidingOrder}
+          onRestore={restoreOrder}
+        />
       )}
       {tab === 'stats' && <StatsTab stats={stats} />}
 
@@ -429,6 +494,16 @@ export default function ErpView() {
         loading={deleting}
       />
 
+      <ConfirmDialog
+        open={!!hidingOrder}
+        title="Ocultar venta del panel"
+        message={`La venta #${hidingOrder?.orderNumber ?? '—'} dejará de verse en el listado de este navegador. Seguirá existiendo sin cambios en el ERP y podrás restaurarla desde el filtro "Ocultas".`}
+        confirmText="Ocultar de la vista"
+        onConfirm={confirmHideOrder}
+        onCancel={() => setHidingOrder(null)}
+        danger={false}
+      />
+
       {/* ── Modal detalle de venta ── */}
       <Modal
         open={!!orderDetail}
@@ -446,9 +521,9 @@ export default function ErpView() {
               <div className="erp-detail-box">
                 <span className="erp-detail-label">Cliente</span>
                 <strong>{orderDetail.customer?.name || orderDetail.customerName}</strong>
-                {orderDetail.customer?.phone && <span>📞 {orderDetail.customer.phone}</span>}
-                {orderDetail.customer?.email && <span>✉️ {orderDetail.customer.email}</span>}
-                {orderDetail.customer?.dni && <span>🪪 DNI {orderDetail.customer.dni}</span>}
+                {orderDetail.customer?.phone && <span>Teléfono: {orderDetail.customer.phone}</span>}
+                {orderDetail.customer?.email && <span>Email: {orderDetail.customer.email}</span>}
+                {orderDetail.customer?.dni && <span>DNI: {orderDetail.customer.dni}</span>}
               </div>
               <div className="erp-detail-box">
                 <span className="erp-detail-label">Pago</span>
@@ -516,7 +591,7 @@ export default function ErpView() {
             </div>
 
             {orderDetail.notes && (
-              <p className="erp-detail-notes">📝 {orderDetail.notes}</p>
+              <p className="erp-detail-notes"><strong>Notas:</strong> {orderDetail.notes}</p>
             )}
           </div>
         ) : (
@@ -579,8 +654,8 @@ function SummaryTab({ summary, loading, onGoTab }) {
                     <div className="erp-origin-bar--online" style={{ width: `${pct}%` }} />
                   </div>
                   <div className="erp-origin-row">
-                    <span>🏪 Local: <b>{money(s.localSalesToday)}</b> ({s.ordersToday - (s.onlineOrdersToday || 0)} ventas)</span>
-                    <span>🌐 Online: <b>{money(online)}</b> ({s.onlineOrdersToday || 0} ventas)</span>
+                    <span>Local: <b>{money(s.localSalesToday)}</b> ({s.ordersToday - (s.onlineOrdersToday || 0)} ventas)</span>
+                    <span>Online: <b>{money(online)}</b> ({s.onlineOrdersToday || 0} ventas)</span>
                   </div>
                   <div className="erp-origin-row erp-origin-row--muted">
                     <span>Unidades hoy: <b>{s.unitsToday ?? 0}</b></span>
@@ -626,33 +701,85 @@ function Kpi({ icon, tone, label, value, sub }) {
 }
 
 function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, onCreate }) {
+  const [stockFilter, setStockFilter] = useState('all');
+  const [syncFilter, setSyncFilter] = useState('all');
   const pages = Math.max(1, Math.ceil(products.total / 20));
+  const filteredProducts = useMemo(() => products.items.filter((product) => {
+    const stock = Number(product.stock) || 0;
+    const minStock = Number(product.minStock) || 5;
+    const matchesStock = stockFilter === 'all'
+      || (stockFilter === 'empty' && stock === 0)
+      || (stockFilter === 'critical' && stock > 0 && stock <= minStock)
+      || (stockFilter === 'available' && stock > minStock);
+    const matchesSync = syncFilter === 'all'
+      || (syncFilter === 'synced' && product.onlineSynced)
+      || (syncFilter === 'erp' && !product.onlineSynced);
+    return matchesStock && matchesSync;
+  }), [products.items, stockFilter, syncFilter]);
+  const hasFilters = Boolean(search || stockFilter !== 'all' || syncFilter !== 'all');
+  const clearFilters = () => {
+    setSearch('');
+    setStockFilter('all');
+    setSyncFilter('all');
+    onPage(1);
+  };
+
   return (
     <div className="erp-tab">
-      <div className="ui-row erp-products-toolbar">
-        <Input
-          type="search"
-          placeholder="Buscar producto en el ERP…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          icon={<SearchIcon size={16} />}
-          style={{ maxWidth: 360 }}
-        />
-        <div className="ui-spacer" />
-        <Button size="sm" onClick={onCreate}>+ Nuevo producto</Button>
+      <div className="erp-filter-panel">
+        <div className="erp-filter-head">
+          <div>
+            <h3>Filtrar productos</h3>
+            <p>{filteredProducts.length} de {products.items.length} productos en esta página</p>
+          </div>
+          <Button size="sm" onClick={onCreate}>Nuevo producto</Button>
+        </div>
+        <div className="erp-filter-grid erp-filter-grid--products">
+          <Field label="Buscar">
+            <Input
+              aria-label="Buscar productos en el ERP"
+              type="search"
+              placeholder="Nombre, SKU o descripción"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                onPage(1);
+              }}
+              icon={<SearchIcon size={16} />}
+            />
+          </Field>
+          <Field label="Estado de stock">
+            <Select aria-label="Filtrar productos por estado de stock" value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
+              <option value="all">Todo el stock</option>
+              <option value="empty">Sin stock</option>
+              <option value="critical">Stock crítico</option>
+              <option value="available">Stock disponible</option>
+            </Select>
+          </Field>
+          <Field label="Publicación">
+            <Select aria-label="Filtrar productos por publicación" value={syncFilter} onChange={(e) => setSyncFilter(e.target.value)}>
+              <option value="all">Todos</option>
+              <option value="synced">En tienda online</option>
+              <option value="erp">Solo ERP</option>
+            </Select>
+          </Field>
+          <div className="erp-filter-action">
+            <Button size="sm" variant="ghost" onClick={clearFilters} disabled={!hasFilters}>Limpiar filtros</Button>
+          </div>
+        </div>
       </div>
-      {!products.items.length ? (
+      {!filteredProducts.length ? (
         <EmptyState icon={<BoxesIcon size={24} />} title="Sin productos" description="No se encontraron productos con los filtros actuales." />
       ) : (
         <div className="ui-table-wrap">
-          <table className="ui-table" role="table" aria-label="Productos del ERP">
+          <table className="ui-table erp-products-table" role="table" aria-label="Productos del ERP">
             <thead>
               <tr>
                 <th>Producto</th><th>SKU</th><th>Unidad</th><th>Precio</th><th>Stock</th><th>Tienda</th><th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {products.items.map((p) => (
+              {filteredProducts.map((p) => (
                 <tr key={p.id}>
                   <td>{p.name}</td>
                   <td className="erp-mono">{p.sku || '—'}</td>
@@ -671,7 +798,7 @@ function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, on
                       <Button size="sm" variant="secondary" onClick={() => onEdit(p)} title="Editar">
                         <EditIcon size={14} /> Editar
                       </Button>
-                      <Button size="sm" variant="danger-ghost" onClick={() => onDelete(p)} title="Eliminar">
+                      <Button size="sm" variant="danger-ghost" onClick={() => onDelete(p)} title="Eliminar" aria-label={`Eliminar ${p.name} del ERP`}>
                         <TrashIcon size={14} />
                       </Button>
                     </div>
@@ -697,47 +824,195 @@ function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, on
   );
 }
 
-function OrdersTab({ orders, onPage, onOpen }) {
+function OrdersTab({ orders, range, onRangeChange, hiddenOrderIds, onPage, onOpen, onHide, onRestore }) {
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
+  const [origin, setOrigin] = useState('all');
+  const [payment, setPayment] = useState('all');
+  const [visibility, setVisibility] = useState('visible');
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const pages = Math.max(1, Math.ceil(orders.total / 20));
-  if (!orders.items.length) {
-    return <EmptyState icon={<ShoppingBagIcon size={24} />} title="Sin ventas" description="No hay ventas registradas en el rango actual." />;
-  }
+  const hiddenSet = useMemo(() => new Set(hiddenOrderIds), [hiddenOrderIds]);
+  const paymentOptions = useMemo(() => [...new Set(orders.items.map((order) => order.paymentMethod).filter(Boolean))].sort(), [orders.items]);
+  const filteredOrders = useMemo(() => orders.items.filter((order) => {
+    const isHidden = hiddenSet.has(orderKey(order));
+    const text = [order.orderNumber, order.customerName, order.sellerName, order.paymentMethod]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const matchesQuery = !deferredQuery || text.includes(deferredQuery);
+    const matchesStatus = status === 'all' || order.status === status;
+    const matchesOrigin = origin === 'all'
+      || (origin === 'online' && order.origen === 'ecommerce')
+      || (origin === 'local' && order.origen !== 'ecommerce');
+    const matchesPayment = payment === 'all' || order.paymentMethod === payment;
+    const matchesVisibility = visibility === 'all'
+      || (visibility === 'hidden' ? isHidden : !isHidden);
+    return matchesQuery && matchesStatus && matchesOrigin && matchesPayment && matchesVisibility;
+  }), [orders.items, hiddenSet, deferredQuery, status, origin, payment, visibility]);
+  const hiddenOnPage = orders.items.filter((order) => hiddenSet.has(orderKey(order))).length;
+  const hasFilters = Boolean(query || status !== 'all' || origin !== 'all' || payment !== 'all' || visibility !== 'visible' || range.from || range.to);
+  const clearFilters = () => {
+    setQuery('');
+    setStatus('all');
+    setOrigin('all');
+    setPayment('all');
+    setVisibility('visible');
+    onRangeChange({ from: '', to: '' });
+  };
+
+  const renderActions = (order, compact = false) => {
+    const hidden = hiddenSet.has(orderKey(order));
+    return (
+      <div className={`erp-order-actions ${compact ? 'erp-order-actions--compact' : ''}`}>
+        <Button size="sm" variant="ghost" onClick={() => onOpen(order.id ?? order._id)} title="Ver detalle de la venta">
+          <EyeIcon size={14} /> Ver
+        </Button>
+        {hidden ? (
+          <Button size="sm" variant="secondary" onClick={() => onRestore(order)} title="Volver a mostrar en el panel">
+            <EyeIcon size={14} /> Restaurar
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary" onClick={() => onHide(order)} title="Ocultar solo de este panel">
+            <EyeOffIcon size={14} /> Ocultar
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="erp-tab">
-      <div className="ui-table-wrap">
-        <table className="ui-table" role="table" aria-label="Ventas del ERP">
+      <div className="erp-filter-panel">
+        <div className="erp-filter-head">
+          <div>
+            <h3>Filtrar ventas</h3>
+            <p>{filteredOrders.length} resultados en esta página · {hiddenOnPage} ocultas</p>
+          </div>
+          <Badge tone="info" outline>Solo consulta</Badge>
+        </div>
+        <div className="erp-filter-grid erp-filter-grid--orders">
+          <Field label="Buscar venta">
+            <Input
+              aria-label="Buscar ventas por número, cliente o vendedor"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Nº, cliente o vendedor"
+              icon={<SearchIcon size={16} />}
+            />
+          </Field>
+          <Field label="Estado">
+            <Select aria-label="Filtrar ventas por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">Todos los estados</option>
+              {Object.entries(STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.lbl}</option>)}
+            </Select>
+          </Field>
+          <Field label="Origen">
+            <Select aria-label="Filtrar ventas por origen" value={origin} onChange={(e) => setOrigin(e.target.value)}>
+              <option value="all">Todos los orígenes</option>
+              <option value="online">Online</option>
+              <option value="local">Local</option>
+            </Select>
+          </Field>
+          <Field label="Método de pago">
+            <Select aria-label="Filtrar ventas por método de pago" value={payment} onChange={(e) => setPayment(e.target.value)}>
+              <option value="all">Todos los métodos</option>
+              {paymentOptions.map((method) => <option key={method} value={method}>{PAYMENT_LABELS[method] || method}</option>)}
+            </Select>
+          </Field>
+          <Field label="Desde">
+            <Input aria-label="Fecha inicial" type="date" value={range.from} max={range.to || undefined} onChange={(e) => onRangeChange({ ...range, from: e.target.value })} />
+          </Field>
+          <Field label="Hasta">
+            <Input aria-label="Fecha final" type="date" value={range.to} min={range.from || undefined} onChange={(e) => onRangeChange({ ...range, to: e.target.value })} />
+          </Field>
+          <Field label="Visibilidad en panel">
+            <Select aria-label="Filtrar ventas por visibilidad en el panel" value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+              <option value="visible">Visibles</option>
+              <option value="hidden">Ocultas</option>
+              <option value="all">Todas</option>
+            </Select>
+          </Field>
+          <div className="erp-filter-action">
+            <Button size="sm" variant="ghost" onClick={clearFilters} disabled={!hasFilters}>Limpiar filtros</Button>
+          </div>
+        </div>
+        <div className="erp-view-note" role="note">
+          <EyeOffIcon size={15} /> Ocultar una venta solo la quita de esta vista en este navegador. La venta y sus importes permanecen intactos en el ERP.
+        </div>
+      </div>
+
+      {!filteredOrders.length ? (
+        <EmptyState
+          icon={<ShoppingBagIcon size={24} />}
+          title={orders.items.length ? 'Sin coincidencias' : 'Sin ventas'}
+          description={orders.items.length ? 'Probá limpiar o cambiar los filtros aplicados.' : 'No hay ventas registradas en el rango actual.'}
+          action={hasFilters ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpiar filtros</Button> : undefined}
+        />
+      ) : (
+        <>
+          <div className="erp-order-cards" aria-label="Ventas del ERP">
+            {filteredOrders.map((order) => {
+              const st = STATUS[order.status] || { lbl: order.status || '—', tone: 'neutral' };
+              const hidden = hiddenSet.has(orderKey(order));
+              return (
+                <Card key={orderKey(order)} pad className={`erp-order-card ${hidden ? 'erp-order-card--hidden' : ''}`}>
+                  <div className="erp-order-card-head">
+                    <div>
+                      <span className="erp-order-number">Venta #{order.orderNumber}</span>
+                      <span className="erp-order-date">{new Date(order.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <strong>{money(order.total)}</strong>
+                  </div>
+                  <div className="erp-order-card-badges">
+                    <Badge tone={st.tone} dot>{st.lbl}</Badge>
+                    {order.origen === 'ecommerce' ? <Badge tone="brand">Online</Badge> : <Badge tone="neutral" outline>Local</Badge>}
+                    {hidden && <Badge tone="info" outline>Oculta en panel</Badge>}
+                  </div>
+                  <dl className="erp-order-card-data">
+                    <div><dt>Cliente</dt><dd>{order.customerName || 'Sin identificar'}</dd></div>
+                    <div><dt>Vendedor</dt><dd>{order.sellerName || '—'}</dd></div>
+                    <div><dt>Pago</dt><dd>{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod || '—'}</dd></div>
+                    <div><dt>Ítems</dt><dd>{order.itemCount ?? 0}</dd></div>
+                  </dl>
+                  {renderActions(order, true)}
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="ui-table-wrap erp-orders-table-wrap">
+            <table className="ui-table erp-orders-table" role="table" aria-label="Ventas del ERP">
           <thead>
             <tr>
-              <th>#</th><th>Fecha y hora</th><th>Cliente</th><th>Vendedor</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Detalle</th>
+              <th>#</th><th>Fecha y hora</th><th>Cliente</th><th>Vendedor</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {orders.items.map((o) => {
+            {filteredOrders.map((o) => {
               const st = STATUS[o.status] || { lbl: o.status, tone: 'neutral' };
+              const hidden = hiddenSet.has(orderKey(o));
               return (
-                <tr key={o.id}>
+                <tr key={orderKey(o)} className={hidden ? 'erp-order-row--hidden' : ''}>
                   <td>{o.orderNumber}</td>
                   <td>{new Date(o.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                   <td>{o.customerName}</td>
                   <td>{o.sellerName || '—'}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{o.paymentMethod}</td>
+                  <td>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || '—'}</td>
                   <td>{o.itemCount}</td>
                   <td><Badge tone={st.tone} dot>{st.lbl}</Badge></td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(o.total)}</td>
                   <td>{o.origen === 'ecommerce' ? <Badge tone="brand">Online</Badge> : <Badge tone="neutral" outline>Local</Badge>}</td>
-                  <td>
-                    <div className="ui-row" style={{ justifyContent: 'flex-end' }}>
-                      <Button size="sm" variant="ghost" onClick={() => onOpen(o.id)} title="Ver detalle">
-                        <EyeIcon size={14} /> Ver
-                      </Button>
-                    </div>
-                  </td>
+                  <td>{renderActions(o)}</td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
-      </div>
+            </table>
+          </div>
+        </>
+      )}
       {pages > 1 && (
         <div className="ui-row erp-pager">
           <Button size="sm" variant="secondary" disabled={orders.page <= 1} onClick={() => onPage(orders.page - 1)}>Anterior</Button>
@@ -754,11 +1029,6 @@ function StatsTab({ stats }) {
   if (!stats.length) {
     return <EmptyState icon={<StoreIcon size={24} />} title="Sin estadísticas" description="No hay series para mostrar todavía." />;
   }
-
-  const PAY_LABELS = {
-    efectivo: 'Efectivo', transferencia: 'Transferencia', debito: 'Débito', credito: 'Crédito',
-    mercadopago: 'MercadoPago', qr: 'QR', cuenta_corriente: 'Cta. corriente', mixto: 'Mixto',
-  };
 
   return (
     <div className="erp-tab">
@@ -801,8 +1071,8 @@ function StatsTab({ stats }) {
                     <div style={{ width: `${((onlineRow?.total || 0) / originTotal) * 100}%`, background: colors.gold }} title="Online" />
                   </div>
                   <div className="erp-breakdown-row">
-                    <span>🏪 Local: <b>{money(localRow?.total)}</b></span>
-                    <span>🌐 Online: <b>{money(onlineRow?.total)}</b></span>
+                    <span>Local: <b>{money(localRow?.total)}</b></span>
+                    <span>Online: <b>{money(onlineRow?.total)}</b></span>
                   </div>
                 </div>
 
@@ -812,7 +1082,7 @@ function StatsTab({ stats }) {
                     <div className="erp-breakdown-bars">
                       {s.byPayment.slice(0, 5).map((p, i) => (
                         <div key={p.method} className="erp-breakdown-row erp-breakdown-row--bar">
-                          <span className="erp-breakdown-label">{PAY_LABELS[p.method] || p.method}</span>
+                          <span className="erp-breakdown-label">{PAYMENT_LABELS[p.method] || p.method}</span>
                           <div className="erp-breakdown-track">
                             <div
                               style={{ width: `${((p.total || 0) / payTotal) * 100}%`, background: [colors.brand, colors.gold, '#7fd0c5', '#9a8df0', '#f0a98d'][i % 5] }}
