@@ -87,6 +87,7 @@ export default function ProductList() {
   const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
   const [productos, setProductos] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [soloCajas, setSoloCajas] = useState(false);
   const [q, setQ] = useState("");
 
   const [saving, setSaving] = useState(new Set());
@@ -151,9 +152,8 @@ export default function ProductList() {
   }, [q]);
 
   const productosFiltrados = useMemo(() => {
-    if (!categoriaFiltro) return productos;
-    return productos.filter((p) => p.categoria === categoriaFiltro);
-  }, [productos, categoriaFiltro]);
+    return productos.filter((p) => (!categoriaFiltro || p.categoria === categoriaFiltro) && (!soloCajas || p.publicarEnCajas === true));
+  }, [productos, categoriaFiltro, soloCajas]);
 
   const categoriasUnicas = useMemo(() => {
     return [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort();
@@ -554,6 +554,10 @@ export default function ProductList() {
               </option>
             ))}
           </Select>
+          <label className="pl-filter-check">
+            <input type="checkbox" checked={soloCajas} onChange={(e) => setSoloCajas(e.target.checked)} />
+            Solo Packs / Cajas
+          </label>
           {categoriaFiltro && (
             <Button size="sm" variant="ghost" onClick={() => setCategoriaFiltro("")}>
               Limpiar filtro
@@ -595,6 +599,7 @@ export default function ProductList() {
                         {producto.syncToERP
                           ? <Badge tone="brand">En ERP</Badge>
                           : <Badge tone="neutral" outline>Solo tienda</Badge>}
+                        {producto.publicarEnCajas && <Badge tone="gold">Packs / Cajas</Badge>}
                       </div>
                     </div>
                     <PriceTiers producto={producto} />
@@ -667,6 +672,7 @@ export default function ProductList() {
                     {producto.syncToERP
                       ? <Badge tone="brand" className="pl-inline-badge">En ERP</Badge>
                       : <Badge tone="neutral" outline className="pl-inline-badge">Solo tienda</Badge>}
+                    {producto.publicarEnCajas && <Badge tone="gold" className="pl-inline-badge">Packs / Cajas</Badge>}
                   </td>
                   <td><PriceTiers producto={producto} /></td>
                   <td>

@@ -24,6 +24,7 @@ const getMinimoSugerido = (subcat) => {
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
+const TONE_COUNTS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 const label = (k) => k.charAt(0).toUpperCase() + k.slice(1);
 const API = `${API_URL}/api`;
@@ -52,6 +53,7 @@ export default function ProductForm({ onCreated }) {
     precioMayorista3: "",
     modoTonos: "automatico",
     tonosDisponibles: [],
+    publicarEnCajas: false,
     syncToERP: false,
   };
 
@@ -75,6 +77,11 @@ export default function ProductForm({ onCreated }) {
         else set.delete("nuevos-ingresos");
         return { ...prev, tags: Array.from(set) };
       });
+      return;
+    }
+
+    if (type === "checkbox") {
+      setProducto((prev) => ({ ...prev, [name]: checked }));
       return;
     }
 
@@ -180,6 +187,21 @@ export default function ProductForm({ onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const toneCount = Number(producto.cantidadTonos) || 0;
+    const boxUnits = Number(producto.unidadesPorCaja) || 0;
+    const toneNames = (producto.tonosDisponibles || []).map((tone) => String(tone).trim()).filter(Boolean);
+    if (producto.publicarEnCajas && boxUnits < 1) {
+      notify.warning("Para publicar una caja indicá cuántas unidades trae.");
+      return;
+    }
+    if (toneCount > 0 && boxUnits > 0 && toneCount > boxUnits) {
+      notify.warning("La cantidad de tonos no puede superar las unidades de la caja.");
+      return;
+    }
+    if (producto.modoTonos === "manual" && toneCount > 0 && (toneNames.length !== toneCount || new Set(toneNames.map((tone) => tone.toLowerCase())).size !== toneCount)) {
+      notify.warning("Completá los nombres de tonos sin repetirlos.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { urls: imagenes, failed, failures } = await uploadImages();
@@ -221,6 +243,7 @@ export default function ProductForm({ onCreated }) {
         cantidadTonos:   parseOptionalIntegerInput(producto.cantidadTonos),
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
+        publicarEnCajas: !!producto.publicarEnCajas,
         syncToERP: !!producto.syncToERP,
       };
 
@@ -407,7 +430,7 @@ export default function ProductForm({ onCreated }) {
                     setProducto(p => ({ ...p, cantidadTonos: n, tonosDisponibles: p.modoTonos === "automatico" ? tonos : p.tonosDisponibles.slice(0, n || 0) }));
                   }}>
                   <option value="">Sin tonos</option>
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} tono{n > 1 ? "s" : ""}</option>)}
+                   {TONE_COUNTS.map(n => <option key={n} value={n}>{n} tono{n > 1 ? "s" : ""}</option>)}
                 </Select>
               </Field>
 
@@ -451,6 +474,11 @@ export default function ProductForm({ onCreated }) {
               <div className="ui-banner ui-banner--success">
                 ✓ {producto.unidadesPorCaja} unidades ÷ {producto.cantidadTonos} tonos = {Math.floor(producto.unidadesPorCaja / producto.cantidadTonos)} por tono
                 {producto.unidadesPorCaja % producto.cantidadTonos > 0 && ` (+${producto.unidadesPorCaja % producto.cantidadTonos} extra)`}
+              </div>
+            )}
+            {producto.publicarEnCajas && (
+              <div className="ui-banner ui-banner--info pf-box-banner">
+                Esta publicación aparecerá en <b>Packs / Cajas</b>. La compra se ofrecerá en bloques de {producto.unidadesPorCaja || "..."} unidades.
               </div>
             )}
           </div>
@@ -618,6 +646,16 @@ export default function ProductForm({ onCreated }) {
                 onChange={e => setProducto({ ...producto, destacado: e.target.checked })}
               />
               Producto destacado
+            </label>
+            <label className="ui-check pf-box-toggle">
+              <input
+                type="checkbox"
+                name="publicarEnCajas"
+                checked={!!producto.publicarEnCajas}
+                onChange={handleChange}
+              />
+              Publicar en <b className="pf-ni">Packs / Cajas</b>
+              <span className="pf-muted" style={{ fontWeight: 400 }}>(incluye cajas de tonos)</span>
             </label>
             <label className="ui-check">
               <input

@@ -192,6 +192,13 @@
 /* ── Switches ── */
 .pf-switches { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-2); }
 .pf-ni { color: var(--adm-brand); }
+.pf-box-toggle {
+  padding: var(--sp-3);
+  border: 1px solid var(--adm-brand);
+  border-radius: var(--r-md);
+  background: var(--adm-brand-tint);
+}
+.pf-box-banner { margin-top: var(--sp-2); }
 
 /* ── Acciones ── */
 .pf-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }

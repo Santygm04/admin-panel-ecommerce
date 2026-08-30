@@ -22,6 +22,20 @@
 }
 .pl-filters .ui-input-wrap { flex: 1 1 260px; }
 .pl-filters .ui-select { flex: 0 1 240px; }
+.pl-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-md);
+  background: var(--adm-surface-2);
+  color: var(--adm-ink-2);
+  font: var(--t-small);
+  font-weight: 700;
+}
+.pl-filter-check input { accent-color: var(--adm-brand); }
 
 /* ── Tags de precio (tiers) ── */
 .price-tiers { display: flex; flex-direction: column; gap: 4px; font: var(--t-small); color: var(--adm-ink-2); }
