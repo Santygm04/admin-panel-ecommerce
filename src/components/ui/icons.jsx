@@ -126,6 +126,13 @@ export const ChartIcon = makeIcon(
   </>
 );
 
+export const CalendarIcon = makeIcon(
+  <>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M16 3v4M8 3v4M3 10h18" />
+  </>
+);
+
 export const LockIcon = makeIcon(
   <>
     <rect x="3" y="11" width="18" height="11" rx="2" />
