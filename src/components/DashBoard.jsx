@@ -1,62 +1,17 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { Link, useLocation } from "react-router-dom";
-import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
-} from "recharts";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
-import StatsAdminControls from "./StatsAdminControls";
+import StatsPage from "./StatsPage";
 import CategoryManager from "./CategoryManager";
 import ConfirmDialog from "./ConfirmDialog";
-import { Badge, Button, Card, CardTitle, EmptyState, Field, Input, Select, Tabs } from "./ui";
-import { useTheme } from "../theme/ThemeContext";
+import { Badge, Button, Card, CardTitle, EmptyState, Field, Input, Select } from "./ui";
 import {
-  PlusIcon, ChartIcon, LockIcon, UsersIcon,
-  CoinsIcon, CheckCircleIcon, PercentIcon, TargetIcon,
+  PlusIcon, LockIcon, UsersIcon,
 } from "./ui/icons";
 import "./DashBoard.css";
 import { API_URL } from "../utils/api";
-
-const SHOW_ADVANCED_DEFAULT =
-  String(import.meta.env.VITE_STATS_SHOW_ADVANCED ?? "true").toLowerCase() === "true";
-
-/* ─── Helpers ─── */
-const money = (n) =>
-  Number(n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
-
-const moneyShort = (n) => {
-  const v = Number(n || 0);
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
-  return `$${Math.round(v)}`;
-};
-
-const fmtDay = (s) => {
-  const [y, m, d] = String(s || "").split("-").map(Number);
-  if (!y) return "—";
-  return new Date(y, m - 1, d).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
-};
-
-const fmtDT = (iso) => {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("es-AR");
-};
-
-/* Paleta de gráficos leída de los tokens (se refresca con el tema) */
-function useChartPalette() {
-  useTheme();
-  const css = (name, fallback) =>
-    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-  return {
-    brand: css("--adm-brand", "#ff5aa8"),
-    brandSoft: css("--adm-brand-soft", "rgba(255,90,168,.14)"),
-    gold: css("--adm-gold", "#e8c56a"),
-    grid: css("--adm-border", "#332b49"),
-    tick: css("--adm-muted", "#a89fbb"),
-  };
-}
 
 /* ══════════════════════════════════════════
    DASHBOARD PRINCIPAL
@@ -80,242 +35,10 @@ export default function DashBoard() {
         {vista === "stock" && <ProductList />}
         {vista === "crear" && <ProductForm onCreated={() => setVista("stock")} />}
         {vista === "categorias" && (is("editarCategorias") ? <CategoryManager /> : <SolicitarPermisoSection permiso="editarCategorias" />)}
-        {vista === "estadisticas" && <StatsSection />}
+        {vista === "estadisticas" && (is("verEstadisticas") ? <StatsPage role={user?.role} /> : <SolicitarPermisoSection permiso="verEstadisticas" />)}
         {vista === "cuenta" && <CuentaSection />}
         {vista === "usuarios" && <UsuariosSection />}
       </main>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════
-   STATS SECTION
-══════════════════════════════════════════ */
-function StatsSection() {
-  const [range, setRange] = useState("7d");
-  const [useSnapshots, setUseSnapshots] = useState(false);
-  const [stats, setStats] = useState(null);
-  const [live, setLive] = useState(false);
-  const [error, setError] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(SHOW_ADVANCED_DEFAULT);
-
-  const token = sessionStorage.getItem("aesthetic:token") || "";
-
-  async function refetchSummary(r = range, snap = useSnapshots) {
-    if (!token) return;
-    const base = snap ? "/api/payments/stats/snapshot/summary" : "/api/payments/stats/summary";
-    try {
-      setError("");
-      const res = await fetch(`${API_URL}${base}?range=${r}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await res.json();
-      if (!res.ok) { setError(d?.message || "Error en estadísticas"); setStats(null); return; }
-      setStats(d);
-    } catch { setError("No se pudieron cargar estadísticas"); }
-  }
-
-  useEffect(() => { refetchSummary(range, useSnapshots); }, [range, token, useSnapshots]); // eslint-disable-line
-
-  useEffect(() => {
-    if (!token) return;
-    setLive(false);
-    if (useSnapshots) return;
-    setLive(true);
-    const id = setInterval(() => refetchSummary(range, false), 30000);
-    return () => clearInterval(id);
-  }, [range, token, useSnapshots]); // eslint-disable-line
-
-  const data = stats?.seriesByDay || [];
-  const totals = stats?.totals || {};
-  const conv = totals.ordersAll ? Math.round((totals.ordersPaid / totals.ordersAll) * 100) : 0;
-
-  return (
-    <div className="st-wrap">
-      <div className="st-head">
-        <div className="st-head-left">
-          <h2 className="st-title">Estadísticas</h2>
-          {!useSnapshots && (
-            <Badge tone={live ? "success" : "neutral"} dot>{live ? "En vivo" : "Offline"}</Badge>
-          )}
-        </div>
-        <div className="st-head-right">
-          <Tabs
-            variant="pill"
-            active={range}
-            onChange={setRange}
-            items={[
-              { key: "7d", label: "7d" },
-              { key: "30d", label: "30d" },
-              { key: "12w", label: "12s" },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div className="st-toolbar">
-        <label className="st-check">
-          <input
-            type="checkbox"
-            checked={useSnapshots}
-            onChange={(e) => setUseSnapshots(e.target.checked)}
-          />
-          Snapshots históricos
-        </label>
-
-        {SHOW_ADVANCED_DEFAULT && (
-          <Button variant="ghost" size="sm" onClick={() => setShowAdvanced((s) => !s)}>
-            {showAdvanced ? "Ocultar avanzado" : "Avanzado"}
-          </Button>
-        )}
-      </div>
-
-      {showAdvanced && (
-        <div className="st-adv-bar">
-          <StatsAdminControls onAfterAction={() => refetchSummary(range, true)} />
-        </div>
-      )}
-
-      {error && (
-        <div className="ui-banner ui-banner--danger" role="alert">{error}</div>
-      )}
-
-      <div className="st-kpis">
-        <KPICard tone="brand" icon={<CoinsIcon size={20} />} label="Ingresos pagados"
-          value={stats ? moneyShort(totals.paidRevenue) : "…"}
-          sub={stats ? money(totals.paidRevenue) : "cargando…"} />
-        <KPICard tone="success" icon={<CheckCircleIcon size={20} />} label="Órdenes pagadas"
-          value={stats ? String(totals.ordersPaid ?? 0) : "…"}
-          sub={`de ${totals.ordersAll ?? 0} totales`} />
-        <KPICard tone="info" icon={<PercentIcon size={20} />} label="Conversión"
-          value={stats ? `${conv}%` : "…"}
-          sub="pagadas / totales" />
-        <KPICard tone="gold" icon={<TargetIcon size={20} />} label="Ticket promedio"
-          value={stats ? moneyShort(totals.aov) : "…"}
-          sub={stats ? money(totals.aov) : "cargando…"} />
-      </div>
-
-      <div className="st-charts">
-        <Card className="st-chart-card" pad>
-          <p className="st-chart-title">Ingresos por día</p>
-          <p className="st-chart-sub">Ventas confirmadas en ARS</p>
-          <RevenueChart data={data} />
-        </Card>
-
-        <Card className="st-chart-card" pad>
-          <div className="st-chart-head">
-            <div>
-              <p className="st-chart-title">Órdenes por día</p>
-              <p className="st-chart-sub">Pagadas vs. totales</p>
-            </div>
-            <div className="st-legend">
-              <span><i className="st-legend-dot st-legend-dot--brand" />Pagadas</span>
-              <span><i className="st-legend-dot st-legend-dot--soft" />Totales</span>
-            </div>
-          </div>
-          <OrdersChart data={data} />
-        </Card>
-      </div>
-
-      <Card className="st-table-card">
-        <div className="st-table-head">
-          <div>
-            <p className="st-chart-title">Resumen semanal</p>
-            <p className="st-chart-sub">Últimos 7 días · órdenes pagadas</p>
-          </div>
-          {stats && <span className="st-range-chip">{stats.from} → {stats.to}</span>}
-        </div>
-        <div className="st-table-scroll">
-          <table className="st-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Pagadas</th>
-                <th>Totales</th>
-                <th>Ingresos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.slice(-7).map((row) => (
-                <tr key={row.date}>
-                  <td><b>{fmtDay(row.date)}</b></td>
-                  <td><Badge tone="success">{row.ordersPaid}</Badge></td>
-                  <td className="st-td-muted">{row.ordersAll}</td>
-                  <td className="st-td-money">{money(row.paidRevenue)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!data.length && (
-            <EmptyState
-              icon={<ChartIcon size={24} />}
-              title="Sin datos para este período"
-              description="Todavía no hay ventas registradas en el rango seleccionado."
-            />
-          )}
-        </div>
-        <p className="st-foot">Actualizado: {fmtDT(stats?.generatedAt)}</p>
-      </Card>
-    </div>
-  );
-}
-
-/* ── Gráficos recharts ── */
-function ChartTip({ active, payload, label, format }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="chart-tip">
-      <span className="chart-tip-label">{label}</span>
-      {payload.map((p) => (
-        <span key={p.dataKey} className="chart-tip-row">
-          <i style={{ background: p.color || p.fill }} />
-          {p.name}: <b>{format ? format(p.value) : money(p.value)}</b>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function RevenueChart({ data }) {
-  const colors = useChartPalette();
-  const rows = data.map((d) => ({ name: fmtDay(d.date), ingresos: d.paidRevenue }));
-  return (
-    <div className="chart-box">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <defs>
-            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={colors.brand} stopOpacity={0.28} />
-              <stop offset="100%" stopColor={colors.brand} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke={colors.grid} strokeDasharray="3 6" vertical={false} />
-          <XAxis dataKey="name" tick={{ fill: colors.tick, fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
-          <YAxis tick={{ fill: colors.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={moneyShort} width={56} />
-          <Tooltip content={<ChartTip format={money} />} />
-          <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke={colors.brand}
-            strokeWidth={2.5} fill="url(#revGrad)" dot={data.length > 20 ? false : { r: 3, fill: colors.brand }} activeDot={{ r: 5 }} />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function OrdersChart({ data }) {
-  const colors = useChartPalette();
-  const rows = data.map((d) => ({ name: fmtDay(d.date), pagadas: d.ordersPaid, totales: d.ordersAll }));
-  return (
-    <div className="chart-box">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={3}>
-          <CartesianGrid stroke={colors.grid} strokeDasharray="3 6" vertical={false} />
-          <XAxis dataKey="name" tick={{ fill: colors.tick, fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
-          <YAxis tick={{ fill: colors.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={40} />
-          <Tooltip content={<ChartTip format={(v) => String(v)} />} />
-          <Bar dataKey="pagadas" name="Pagadas" fill={colors.brand} radius={[5, 5, 0, 0]} maxBarSize={26} />
-          <Bar dataKey="totales" name="Totales" fill={colors.brandSoft} radius={[5, 5, 0, 0]} maxBarSize={26} />
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   );
 }
@@ -682,18 +405,5 @@ function SolicitarPermisoSection({ permiso }) {
       />
       {msg && estado !== "ok" && <div className="ui-banner ui-banner--danger">{msg}</div>}
     </div>
-  );
-}
-
-function KPICard({ tone, icon, label, value, sub }) {
-  return (
-    <Card className={`st-kpi st-kpi--${tone}`}>
-      <div className="st-kpi-top">
-        <span className="st-kpi-icon">{icon}</span>
-        <span className="st-kpi-label">{label}</span>
-      </div>
-      <div className="st-kpi-value">{value}</div>
-      <div className="st-kpi-sub">{sub}</div>
-    </Card>
   );
 }
