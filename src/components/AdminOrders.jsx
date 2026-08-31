@@ -349,25 +349,25 @@ export default function AdminOrders() {
     return (
       <div className={`ao-actions ${compact ? "ao-actions--compact" : ""}`}>
         <Button size="sm" variant="secondary" onClick={() => setDetail(o)} title="Ver detalle">
-          <EyeIcon size={14} /> Ver
+          <EyeIcon size={14} /> Ver detalle
         </Button>
         {o.status === "pending" && (
           <>
             <Button size="sm" variant="primary" onClick={() => openAct("confirm", o)}>
-              <CheckIcon size={14} /> Confirmar
+              <CheckIcon size={14} /> Confirmar pago
             </Button>
             <Button size="sm" variant="danger-ghost" onClick={() => openAct("reject", o)}>
               <XIcon size={14} /> Rechazar
             </Button>
           </>
         )}
-        {canShip && <Button size="sm" variant="secondary" onClick={() => setTrackM({ open: true, order: o })}><TruckIcon size={14} /> Despachar</Button>}
-        {canRetiro && <Button size="sm" variant="secondary" onClick={() => doShip(o)}>Listo para retirar</Button>}
-        {canRetirado && <Button size="sm" variant="secondary" onClick={() => doDeliv(o)}><CheckIcon size={14} /> Retirado</Button>}
-        {canDeliv && <Button size="sm" variant="secondary" onClick={() => doDeliv(o)}><CheckIcon size={14} /> Entregado</Button>}
+        {canShip && <Button size="sm" variant="primary" onClick={() => setTrackM({ open: true, order: o })}><TruckIcon size={14} /> Despachar</Button>}
+        {canRetiro && <Button size="sm" variant="primary" onClick={() => doShip(o)}><CheckIcon size={14} /> Marcar listo</Button>}
+        {canRetirado && <Button size="sm" variant="primary" onClick={() => doDeliv(o)}><CheckIcon size={14} /> Marcar retirado</Button>}
+        {canDeliv && <Button size="sm" variant="primary" onClick={() => doDeliv(o)}><CheckIcon size={14} /> Marcar entregado</Button>}
         {o.status === "paid" && (
-          <Button size="sm" variant="gold" onClick={() => { const lnk = ADMIN_WA ? `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt(o))}` : null; setWaM({ open: true, link: lnk, order: o }); }} title="Notificar por WhatsApp">
-            <WhatsAppIcon size={14} /> WA
+          <Button size="sm" variant="gold" onClick={() => { const lnk = ADMIN_WA ? `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt(o))}` : null; setWaM({ open: true, link: lnk, order: o }); }} title="Avisar por WhatsApp">
+            <WhatsAppIcon size={14} /> Avisar
           </Button>
         )}
         <Button size="sm" variant="danger-ghost" onClick={() => openDel(o)}>
@@ -518,7 +518,7 @@ export default function AdminOrders() {
                 <tr>
                   <th>Fecha</th><th>Pedido</th><th>Cliente</th><th>Teléfono</th>
                   <th>Método</th><th>Estado</th><th style={{ textAlign: "right" }}>Total</th>
-                  <th>Entrega</th><th>Acciones</th>
+                  <th>Entrega</th><th className="ao-actions-head">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -560,7 +560,7 @@ export default function AdminOrders() {
                           <div className="ao-cell-sub">Entregado: {new Date(o.shipping.deliveredAt).toLocaleDateString("es-AR")}</div>
                         )}
                       </td>
-                      <td><OrderActions o={o} compact /></td>
+                      <td className="ao-actions-cell"><OrderActions o={o} compact /></td>
                     </tr>
                   );
                 })}
@@ -742,13 +742,13 @@ export default function AdminOrders() {
         title="Pedido confirmado"
         onClose={closeWaM}
         footer={
-          <>
-            <Button variant="gold" onClick={() => {
+          <div className="ao-wa-footer">
+            <Button className="ao-wa-footer-primary" variant="gold" onClick={() => {
               navigator.clipboard.writeText(waTxt(waM.order));
               window.open(`https://wa.me/${tel(waM.order?.buyer?.telefono)}`, "_blank");
               closeWaM();
             }}>
-              <WhatsAppIcon size={15} /> Abrir WhatsApp y pegar mensaje
+              <WhatsAppIcon size={16} /> Copiar mensaje y abrir WhatsApp
             </Button>
             <Button variant="secondary" onClick={() => {
               try {
@@ -759,10 +759,10 @@ export default function AdminOrders() {
               }
               closeWaM();
             }}>
-              <CopyIcon size={15} /> Copiar y cerrar
+              <CopyIcon size={15} /> Solo copiar mensaje
             </Button>
             <Button variant="ghost" onClick={closeWaM}>Cerrar</Button>
-          </>
+          </div>
         }
       >
         <p className="ao-modal-text">El pedido <b>{num(waM.order)}</b> fue marcado como pagado.</p>

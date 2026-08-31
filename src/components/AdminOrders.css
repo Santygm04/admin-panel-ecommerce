@@ -93,14 +93,24 @@
 /* ── Acciones ── */
 .ao-actions {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   border-top: 1px solid var(--adm-border-soft);
   padding-top: var(--sp-3);
 }
-.ao-actions--compact { border-top: none; padding-top: 0; flex-wrap: nowrap; justify-content: flex-end; }
+.ao-actions--compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: none;
+  padding-top: 0;
+  justify-content: center;
+}
 .ao-actions .ui-btn { justify-content: center; text-align: center; }
+.ao-actions--compact .ui-btn { width: 100%; min-width: 0; }
+.ao-actions-head { text-align: center; }
+.ao-actions-cell { min-width: 320px; }
 
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
@@ -238,7 +248,7 @@
   letter-spacing: 0.05em;
   color: var(--adm-brand);
 }
-.ao-ticket-value { font: var(--t-mono); font-weight: 800; color: var(--adm-brand); letter-spacing: 1px; flex: 1; }
+.ao-ticket-value { min-width: 0; flex: 1; overflow-wrap: anywhere; font: var(--t-mono); font-weight: 800; color: var(--adm-brand); letter-spacing: 1px; }
 .ao-wa-preview-label {
   font: var(--t-caption);
   font-weight: 800;
@@ -257,4 +267,35 @@
   background: transparent;
   max-height: 260px;
   overflow-y: auto;
+}
+
+.ao-wa-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  width: 100%;
+  min-width: 0;
+}
+.ao-wa-footer-primary { grid-column: 1 / -1; }
+.ao-wa-footer .ui-btn { width: 100%; min-width: 0; min-height: 44px; }
+
+@media (max-width: 900px) {
+  .ao-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .ao-actions .ui-btn { width: 100%; min-width: 0; min-height: 44px; }
+}
+
+@media (max-width: 520px) {
+  .ao-ticket-box { gap: var(--sp-2); }
+  .ao-ticket-label { width: 100%; }
+  .ao-wa-preview { max-height: min(240px, 34dvh); }
+  .ao-wa-footer { grid-template-columns: 1fr; }
+  .ao-wa-footer-primary { grid-column: auto; }
+}
+
+@media (max-width: 380px) {
+  .ao-actions { grid-template-columns: 1fr; }
 }
