@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Filter, RefreshCw } from "lucide-react";
+import { ClipboardList, Eye, Filter, RefreshCw } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import { Badge, Button, Card, Field, Input, Select, Table, TBody, Td, Th, THead } from "./ui";
+import { Badge, Button, Card, Field, Input, Modal, Select, Table, TBody, Td, Th, THead } from "./ui";
 import "./AuditPage.css";
 
 const ACTION_LABELS = {
@@ -55,8 +55,84 @@ function actionLabel(action) {
 }
 
 function metadataLabel(metadata) {
-  if (!metadata || typeof metadata !== "object" || !Object.keys(metadata).length) return "-";
-  return JSON.stringify(metadata).slice(0, 140);
+  if (metadata === undefined || metadata === null || metadata === "") return "-";
+  if (typeof metadata === "object" && !Object.keys(metadata).length) return "-";
+  return String(typeof metadata === "object" ? JSON.stringify(metadata) : metadata).slice(0, 140);
+}
+
+function metadataJson(metadata) {
+  if (metadata === undefined || metadata === null || metadata === "") return "Sin datos adicionales";
+  if (typeof metadata === "object" && !Object.keys(metadata).length) return "Sin datos adicionales";
+  return typeof metadata === "object" ? JSON.stringify(metadata, null, 2) : String(metadata);
+}
+
+function detailValue(value) {
+  if (value === undefined || value === null || value === "") return "-";
+  return String(value);
+}
+
+function AuditDetailField({ label, value, mono = false }) {
+  return (
+    <div className="audit-detail-field">
+      <dt>{label}</dt>
+      <dd className={mono ? "audit-detail-mono" : ""}>{detailValue(value)}</dd>
+    </div>
+  );
+}
+
+function AuditDetailModal({ event, onClose }) {
+  if (!event) return null;
+
+  const resultLabel = event.success ? "Operación exitosa" : `Operación rechazada · ${event.statusCode || 403}`;
+  const actor = event.actor?.username || "Sistema";
+  const resource = event.resource?.type
+    ? `${event.resource.type}${event.resource.id ? ` · ${event.resource.id}` : ""}`
+    : "Sin recurso asociado";
+
+  return (
+    <Modal
+      open
+      wide
+      title={actionLabel(event.action)}
+      subtitle={`Evento registrado el ${formatDate(event.createdAt)}`}
+      onClose={onClose}
+      footer={<Button variant="secondary" onClick={onClose}>Cerrar</Button>}
+    >
+      <div className="audit-detail-modal">
+        <div className={`audit-detail-result ${event.success ? "is-success" : "is-danger"}`}>
+          <span className="audit-detail-result-dot" aria-hidden="true" />
+          <div>
+            <strong>{resultLabel}</strong>
+            <span>{event.success ? "La solicitud se completó correctamente." : "La solicitud no llegó a completarse."}</span>
+          </div>
+        </div>
+
+        <dl className="audit-detail-grid">
+          <AuditDetailField label="Usuario" value={actor} />
+          <AuditDetailField label="Rol" value={event.actor?.role || "-"} />
+          <AuditDetailField label="Acción técnica" value={event.action} mono />
+          <AuditDetailField label="Recurso" value={resource} mono />
+          <AuditDetailField label="Método" value={event.method} mono />
+          <AuditDetailField label="Código HTTP" value={event.statusCode} mono />
+          <AuditDetailField label="Dirección IP" value={event.ip} mono />
+          <AuditDetailField label="ID del usuario" value={event.actor?.userId} mono />
+          <AuditDetailField label="Ruta solicitada" value={event.path} mono />
+          <AuditDetailField label="User-Agent" value={event.userAgent} mono />
+        </dl>
+
+        <section className="audit-detail-section" aria-labelledby="audit-metadata-title">
+          <div className="audit-detail-section-head">
+            <div>
+              <h3 id="audit-metadata-title">Datos del evento</h3>
+              <p>Información adicional guardada para entender qué ocurrió.</p>
+            </div>
+            <Badge tone="info">JSON</Badge>
+          </div>
+          <pre className="audit-metadata-code">{metadataJson(event.metadata)}</pre>
+        </section>
+      </div>
+    </Modal>
+  );
 }
 
 export default function AuditPage() {
@@ -65,6 +141,7 @@ export default function AuditPage() {
   const [data, setData] = useState({ items: [], page: 1, pages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const load = async (page = 1, values = filters) => {
     setLoading(true);
@@ -155,7 +232,20 @@ export default function AuditPage() {
                     <small>{item.action}</small>
                   </Td>
                   <Td data-label="Recurso">{item.resource?.type ? `${item.resource.type}${item.resource.id ? ` · ${item.resource.id.slice(0, 12)}` : ""}` : "-"}</Td>
-                  <Td data-label="Detalle"><small className="audit-detail">{metadataLabel(item.metadata)}</small></Td>
+                   <Td data-label="Detalle">
+                     <div className="audit-detail-cell">
+                       <small className="audit-detail" title={metadataLabel(item.metadata)}>{metadataLabel(item.metadata)}</small>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         className="audit-detail-btn"
+                         onClick={() => setSelectedEvent(item)}
+                         aria-label={`Ver detalle de ${actionLabel(item.action)}`}
+                       >
+                         <Eye size={15} /> Ver detalle
+                       </Button>
+                     </div>
+                   </Td>
                   <Td data-label="Resultado"><Badge tone={item.success ? "success" : "danger"}>{item.success ? "OK" : `${item.statusCode || 403}`}</Badge></Td>
                   <Td data-label="Origen">{item.ip || "-"}</Td>
                 </tr>
@@ -174,6 +264,8 @@ export default function AuditPage() {
           </Button>
         </div>
       </Card>
+
+      <AuditDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
     </div>
   );
 }

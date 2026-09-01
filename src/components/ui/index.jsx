@@ -30,11 +30,11 @@ export function Button({
 }
 
 /* ── Field / Input / Textarea / Select ── */
-export function Field({ label, error, hint, required, children, className = '' }) {
+export function Field({ label, error, hint, required, htmlFor, children, className = '' }) {
   return (
     <div className={`ui-field ${className}`.trim()}>
       {label && (
-        <label className="ui-label">
+        <label className="ui-label" htmlFor={htmlFor}>
           {label}
           {required && <span aria-hidden="true"> *</span>}
         </label>
@@ -212,11 +212,16 @@ export function Tabs({ items = [], active, onChange, variant = 'pill', className
 /* ── Modal ── */
 export function Modal({ open, title, subtitle, onClose, footer, children, wide = false }) {
   const ref = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'Escape') onCloseRef.current?.();
     };
     document.addEventListener('keydown', onKey);
     const prev = document.activeElement;
@@ -226,7 +231,7 @@ export function Modal({ open, title, subtitle, onClose, footer, children, wide =
       document.removeEventListener('keydown', onKey);
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

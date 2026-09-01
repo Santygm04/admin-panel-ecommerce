@@ -6,12 +6,60 @@ import ProductForm from "./ProductForm";
 import StatsPage from "./StatsPage";
 import CategoryManager from "./CategoryManager";
 import ConfirmDialog from "./ConfirmDialog";
-import { Badge, Button, Card, CardTitle, EmptyState, Field, Input, Select } from "./ui";
+import { Badge, Button, Card, CardTitle, EmptyState, Field, Input, Modal, Select } from "./ui";
 import {
-  PlusIcon, LockIcon, UsersIcon,
+  CheckCircleIcon, EditIcon, EyeIcon, EyeOffIcon, InfoIcon, LockIcon, PlusIcon, TrashIcon, UsersIcon,
 } from "./ui/icons";
 import "./DashBoard.css";
 import { API_URL } from "../utils/api";
+
+const DEFAULT_USER_PERMISSIONS = {
+  verEstadisticas: false,
+  verOrdenes: true,
+  editarCategorias: false,
+  crearProductos: true,
+  editarStockSolo: true,
+};
+
+const USER_PERMISSION_DEFINITIONS = [
+  { key: "verEstadisticas", label: "Ver estadísticas", description: "Consulta ventas, ingresos y métricas del panel." },
+  { key: "verOrdenes", label: "Ver órdenes", description: "Visualiza y gestiona el seguimiento de pedidos." },
+  { key: "editarCategorias", label: "Editar categorías", description: "Crea, renombra y organiza categorías del catálogo." },
+  { key: "crearProductos", label: "Crear productos", description: "Crea productos y edita la información del catálogo." },
+  { key: "editarStockSolo", label: "Solo editar stock", description: "Actualiza existencias sin modificar el resto del producto." },
+];
+
+const USER_ROLE_DEFINITIONS = [
+  { value: "vendedor", label: "Vendedor/a", description: "Opera el catálogo y las órdenes según los permisos elegidos." },
+  { value: "admin", label: "Administradora", description: "Acceso completo a usuarios, configuración y todas las secciones." },
+];
+
+const emptyUserForm = () => ({
+  username: "",
+  password: "",
+  name: "",
+  role: "vendedor",
+  active: true,
+  permissions: { ...DEFAULT_USER_PERMISSIONS },
+});
+
+function userInitials(user) {
+  const value = user?.name || user?.username || "U";
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("");
+}
+
+function userPermissionCount(user) {
+  return USER_PERMISSION_DEFINITIONS.filter(({ key }) => Boolean(user?.permissions?.[key])).length;
+}
+
+function userRoleLabel(role) {
+  return USER_ROLE_DEFINITIONS.find((item) => item.value === role)?.label || role || "Usuario";
+}
 
 /* ══════════════════════════════════════════
    DASHBOARD PRINCIPAL
@@ -175,14 +223,8 @@ function UsuariosSection() {
   const [editTarget, setEditTarget] = useState(null);
   const [confirmData, setConfirmData] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState({
-    username: "", password: "", name: "", role: "vendedor",
-    active: true,
-    permissions: {
-      verEstadisticas: false, verOrdenes: true,
-      editarCategorias: false, crearProductos: true, editarStockSolo: true,
-    },
-  });
+  const [form, setForm] = useState(emptyUserForm);
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -193,14 +235,8 @@ function UsuariosSection() {
   useEffect(() => { load(); }, []); // eslint-disable-line
 
   const resetForm = () => {
-    setForm({
-      username: "", password: "", name: "", role: "vendedor",
-      active: true,
-      permissions: {
-        verEstadisticas: false, verOrdenes: true,
-        editarCategorias: false, crearProductos: true, editarStockSolo: true,
-      },
-    });
+    setForm(emptyUserForm());
+    setShowPassword(false);
     setEditTarget(null);
     setShowForm(false);
   };
@@ -210,8 +246,9 @@ function UsuariosSection() {
     setForm({
       username: u.username, password: "", name: u.name || "", role: u.role,
       active: u.active !== false,
-      permissions: { ...u.permissions },
+      permissions: { ...DEFAULT_USER_PERMISSIONS, ...(u.permissions || {}) },
     });
+    setShowPassword(false);
     setShowForm(true);
   };
 
@@ -253,18 +290,18 @@ function UsuariosSection() {
   const togglePerm = (key) =>
     setForm((f) => ({ ...f, permissions: { ...f.permissions, [key]: !f.permissions[key] } }));
 
-  const PERMS = [
-    { key: "verEstadisticas", label: "Ver estadísticas" },
-    { key: "verOrdenes", label: "Ver órdenes" },
-    { key: "editarCategorias", label: "Editar categorías" },
-    { key: "crearProductos", label: "Crear productos" },
-    { key: "editarStockSolo", label: "Solo editar stock" },
-  ];
+  const activeUsers = users.filter((u) => u.active !== false).length;
+  const vendors = users.filter((u) => u.role === "vendedor").length;
+  const selectedPermissions = USER_PERMISSION_DEFINITIONS.filter(({ key }) => Boolean(form.permissions[key]));
 
   return (
-    <div className="section-narrow">
+    <div className="section-narrow users-section">
       <div className="section-head">
-        <h2 className="st-title">Gestión de usuarios</h2>
+        <div className="users-section-intro">
+          <p className="users-kicker"><UsersIcon size={15} /> Equipo del panel</p>
+          <h2 className="st-title">Gestión de usuarios</h2>
+          <p className="section-meta">Creá accesos, asigná responsabilidades y controlá quién puede operar cada parte del panel.</p>
+        </div>
         <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}>
           <PlusIcon size={15} /> Nuevo usuario
         </Button>
@@ -272,80 +309,217 @@ function UsuariosSection() {
 
       {msg && <div className="ui-banner ui-banner--danger" role="alert">{msg}</div>}
 
-      {showForm && (
-        <Card pad className="users-form-card">
-          <CardTitle>{editTarget ? `Editar: ${editTarget.username}` : "Nuevo usuario"}</CardTitle>
-          <form onSubmit={handleSubmit} className="section-form">
-            {!editTarget && (
-              <Field label="Usuario" hint="Ej: vendedora1">
+      <div className="users-overview" aria-label="Resumen del equipo">
+        <div className="users-overview-card">
+          <span>Total de usuarios</span>
+          <strong>{users.length}</strong>
+          <small>Accesos registrados</small>
+        </div>
+        <div className="users-overview-card">
+          <span>Cuentas activas</span>
+          <strong>{activeUsers}</strong>
+          <small>Con acceso al panel</small>
+        </div>
+        <div className="users-overview-card">
+          <span>Vendedores</span>
+          <strong>{vendors}</strong>
+          <small>Con permisos configurables</small>
+        </div>
+      </div>
+
+      <Modal
+        open={showForm}
+        wide
+        title={editTarget ? "Editar usuario" : "Crear nuevo usuario"}
+        subtitle={editTarget ? `Actualizá el acceso de @${editTarget.username}` : "Configurá la identidad, el rol y los permisos antes de habilitar el acceso."}
+        onClose={saving ? undefined : resetForm}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={resetForm} disabled={saving}>Cancelar</Button>
+            <Button type="submit" form="user-form" loading={saving}>
+              {saving ? "Guardando…" : editTarget ? "Guardar cambios" : "Crear usuario"}
+            </Button>
+          </>
+        )}
+      >
+        <form id="user-form" onSubmit={handleSubmit} className="users-form">
+          <div className="users-form-intro">
+            <div className="users-form-intro-icon"><UsersIcon size={21} /></div>
+            <div>
+              <strong>{editTarget ? "Revisá los cambios de acceso" : "Un acceso claro desde el primer día"}</strong>
+              <p>El usuario solo verá y podrá operar las secciones que correspondan a su rol y permisos.</p>
+            </div>
+          </div>
+
+          <div className="users-form-columns">
+            <section className="users-form-section">
+              <div className="users-form-section-head">
+                <span className="users-form-step">01</span>
+                <div>
+                  <h3>Identidad y acceso</h3>
+                  <p>Datos que usará para ingresar al panel.</p>
+                </div>
+              </div>
+              {!editTarget ? (
+                <Field htmlFor="user-username" label="Usuario de acceso" hint="3 a 64 caracteres: letras minúsculas, números, punto, guion o guion bajo" required>
+                  <Input
+                    id="user-username"
+                    value={form.username}
+                    autoComplete="username"
+                    placeholder="ej. maria.garcia"
+                    pattern="[a-z0-9._-]{3,64}"
+                    title="Usá letras minúsculas, números, puntos, guiones o guiones bajos"
+                    onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
+                    required
+                  />
+                </Field>
+              ) : (
+                <div className="users-readonly-field">
+                  <span>Usuario de acceso</span>
+                  <strong>@{form.username}</strong>
+                  <small>El identificador de inicio de sesión no se puede cambiar.</small>
+                </div>
+              )}
+              <Field htmlFor="user-name" label="Nombre visible" hint="Cómo aparecerá dentro del panel">
                 <Input
-                  value={form.username}
-                  onChange={(e) => setForm({ ...form, username: e.target.value })}
-                  required
+                  id="user-name"
+                  value={form.name}
+                  autoComplete="name"
+                  placeholder="ej. María García"
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </Field>
-            )}
-            <Field label="Nombre visible">
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </Field>
-            <Field label={editTarget ? "Nueva contraseña" : "Contraseña"}
-              hint={editTarget ? "Dejar vacío para no cambiar" : "8+ caracteres, mayúscula, minúscula, número y símbolo"}>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                {...(!editTarget && { required: true })}
-              />
-            </Field>
-            <Field label="Rol">
-              <Select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
+              <Field
+                htmlFor="user-password"
+                label={editTarget ? "Nueva contraseña" : "Contraseña inicial"}
+                hint={editTarget ? "Dejá vacío para conservar la contraseña actual" : "Mínimo 8 caracteres: mayúscula, minúscula, número y símbolo (!@#$%^&*)"}
+                required={!editTarget}
               >
-                <option value="vendedor">Vendedor</option>
-                <option value="admin">Admin</option>
-              </Select>
-            </Field>
+                <div className="users-password-input">
+                  <Input
+                    id="user-password"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    autoComplete={editTarget ? "new-password" : "new-password"}
+                    minLength={8}
+                    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}"
+                    title="Usá al menos 8 caracteres con mayúscula, minúscula, número y símbolo"
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    {...(!editTarget && { required: true })}
+                  />
+                  <button
+                    type="button"
+                    className="users-password-toggle"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
+                  </button>
+                </div>
+              </Field>
+            </section>
 
-            {editTarget && (
-              <label className="ui-check users-active-toggle">
-                <input
-                  type="checkbox"
-                  checked={form.active}
-                  disabled={editTarget._id === me?._id}
-                  onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                />
-                Usuario activo
-              </label>
-            )}
-
-            <Field label="Permisos">
-              <div className="users-perms">
-                {PERMS.map(({ key, label }) => (
-                  <label key={key} className="ui-check">
+            <section className="users-form-section">
+              <div className="users-form-section-head">
+                <span className="users-form-step">02</span>
+                <div>
+                  <h3>Rol y estado</h3>
+                  <p>Definí el alcance general de esta cuenta.</p>
+                </div>
+              </div>
+              <fieldset className="users-role-options">
+                <legend>Elegí un rol</legend>
+                {USER_ROLE_DEFINITIONS.map(({ value, label, description }) => (
+                  <label key={value} className={`users-role-option ${form.role === value ? "is-selected" : ""}`}>
                     <input
-                      type="checkbox"
-                      checked={!!form.permissions[key]}
-                      onChange={() => togglePerm(key)}
+                      type="radio"
+                      name="user-role"
+                      value={value}
+                      checked={form.role === value}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
                     />
-                    {label}
+                    <span className="users-role-copy">
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                    {form.role === value && <CheckCircleIcon size={18} />}
                   </label>
                 ))}
-              </div>
-            </Field>
+              </fieldset>
 
-            <div className="ui-row">
-              <Button type="submit" loading={saving}>
-                {saving ? "Guardando…" : editTarget ? "Guardar cambios" : "Crear usuario"}
-              </Button>
-              <Button variant="secondary" onClick={resetForm}>Cancelar</Button>
+              {editTarget ? (
+                <label className="users-status-toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.active}
+                    disabled={editTarget._id === me?._id}
+                    onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                  />
+                  <span>
+                    <strong>{form.active ? "Cuenta activa" : "Cuenta bloqueada"}</strong>
+                    <small>{editTarget._id === me?._id ? "No podés desactivar tu propia cuenta." : form.active ? "Puede iniciar sesión y usar sus permisos." : "No podrá iniciar sesión hasta reactivarla."}</small>
+                  </span>
+                  <Badge tone={form.active ? "success" : "neutral"} outline>{form.active ? "Activa" : "Inactiva"}</Badge>
+                </label>
+              ) : (
+                <div className="users-status-note">
+                  <CheckCircleIcon size={18} />
+                  <span><strong>La cuenta se creará activa</strong><small>Podés bloquearla más adelante desde Editar.</small></span>
+                </div>
+              )}
+            </section>
+          </div>
+
+          <section className="users-form-section users-permissions-section">
+            <div className="users-form-section-head">
+              <span className="users-form-step">03</span>
+              <div>
+                <h3>Permisos operativos</h3>
+                <p>Seleccioná exactamente qué puede hacer esta persona.</p>
+              </div>
             </div>
-          </form>
-        </Card>
-      )}
+            {form.role === "admin" && (
+              <div className="users-admin-note" role="status">
+                <InfoIcon size={18} />
+                <span><strong>Acceso total por rol</strong> Las administradoras pueden acceder a todas las secciones, aunque estos permisos no estén seleccionados.</span>
+              </div>
+            )}
+            <div className="users-permission-grid">
+              {USER_PERMISSION_DEFINITIONS.map(({ key, label, description }) => (
+                <label key={key} className={`users-permission-option ${form.permissions[key] ? "is-selected" : ""} ${form.role === "admin" ? "is-disabled" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.permissions[key]}
+                    disabled={form.role === "admin"}
+                    onChange={() => togglePerm(key)}
+                  />
+                  <span className="users-permission-copy">
+                    <strong>{label}</strong>
+                    <small>{description}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <div className="users-access-summary">
+            <div className="users-access-summary-icon"><CheckCircleIcon size={19} /></div>
+            <div className="users-access-summary-copy">
+              <div className="users-access-summary-head">
+                <strong>Vista previa del acceso</strong>
+                <Badge tone="brand">{form.role === "admin" ? "Acceso total" : `${selectedPermissions.length} permisos`}</Badge>
+              </div>
+              <p>{form.role === "admin" ? "Podrá administrar usuarios, catálogo, órdenes, estadísticas y configuración." : selectedPermissions.length ? "Podrá operar únicamente estas funciones:" : "No tendrá funciones operativas hasta que selecciones un permiso."}</p>
+              {form.role !== "admin" && (
+                <div className="users-access-chips">
+                  {selectedPermissions.length ? selectedPermissions.map(({ key, label }) => <span key={key}>{label}</span>) : <span className="is-muted">Sin permisos seleccionados</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        </form>
+      </Modal>
 
       {loading ? (
         <div className="users-skeleton">
@@ -357,22 +531,27 @@ function UsuariosSection() {
         <div className="users-list">
           {users.map((u) => (
             <Card key={u._id} pad className="users-item">
-              <div className="users-item-meta">
-                <div className="ui-row">
-                  <strong className="users-item-name">{u.name || u.username}</strong>
-                  {u._id === me?._id && <Badge tone="brand">Vos</Badge>}
+              <div className="users-item-main">
+                <div className="users-avatar" aria-hidden="true">{userInitials(u)}</div>
+                <div className="users-item-meta">
+                  <div className="ui-row">
+                    <strong className="users-item-name">{u.name || u.username}</strong>
+                    {u._id === me?._id && <Badge tone="brand">Vos</Badge>}
+                  </div>
+                  <p className="users-item-sub">
+                    @{u.username} · {userRoleLabel(u.role)} · <Badge tone={u.active !== false ? "success" : "neutral"} outline dot>{u.active !== false ? "Activo" : "Inactivo"}</Badge>
+                  </p>
                 </div>
-                <p className="users-item-sub">
-                  @{u.username} · {u.role} ·{" "}
-                  <Badge tone={u.active ? "success" : "neutral"} outline>
-                    {u.active ? "activo" : "inactivo"}
-                  </Badge>
-                </p>
+              </div>
+              <div className="users-item-access">
+                <strong>{u.role === "admin" ? "Acceso total" : `${userPermissionCount(u)} permisos activos`}</strong>
+                <small>{u.role === "admin" ? "Todas las secciones" : "Según configuración"}</small>
               </div>
               <div className="ui-row users-item-actions">
-                <Button variant="secondary" size="sm" onClick={() => startEdit(u)}>Editar</Button>
+                <Button variant="secondary" size="sm" onClick={() => startEdit(u)}><EditIcon size={14} /> Editar</Button>
                 {u._id !== me?._id && (
                   <Button variant="danger-ghost" size="sm" onClick={() => setConfirmData(u)}>
+                    <TrashIcon size={14} />
                     Eliminar
                   </Button>
                 )}
