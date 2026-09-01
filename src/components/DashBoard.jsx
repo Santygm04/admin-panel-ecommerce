@@ -33,11 +33,11 @@ export default function DashBoard() {
     <div className="dash">
       <main className="dash-content">
         {vista === "stock" && <ProductList />}
-        {vista === "crear" && <ProductForm onCreated={() => setVista("stock")} />}
+        {vista === "crear" && (is("crearProductos") ? <ProductForm onCreated={() => setVista("stock")} /> : <SolicitarPermisoSection permiso="crearProductos" />)}
         {vista === "categorias" && (is("editarCategorias") ? <CategoryManager /> : <SolicitarPermisoSection permiso="editarCategorias" />)}
         {vista === "estadisticas" && (is("verEstadisticas") ? <StatsPage role={user?.role} /> : <SolicitarPermisoSection permiso="verEstadisticas" />)}
         {vista === "cuenta" && <CuentaSection />}
-        {vista === "usuarios" && <UsuariosSection />}
+        {vista === "usuarios" && (user?.role === "admin" ? <UsuariosSection /> : <EmptyState icon={<LockIcon size={24} />} title="Sección restringida" description="Solo una administradora puede gestionar usuarios y permisos." />)}
       </main>
     </div>
   );
@@ -47,10 +47,31 @@ export default function DashBoard() {
    CUENTA — Cambiar contraseña
 ══════════════════════════════════════════ */
 function CuentaSection() {
-  const { changePassword, user } = useAuth();
+  const { changePassword, updateProfile, user } = useAuth();
+  const [profile, setProfile] = useState({ username: "", name: "" });
+  const [profileMsg, setProfileMsg] = useState({ text: "", ok: false });
+  const [profileLoading, setProfileLoading] = useState(false);
   const [form, setForm] = useState({ actual: "", nueva: "", repetir: "" });
   const [msg, setMsg] = useState({ text: "", ok: false });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setProfile({ username: user?.username || "", name: user?.name || "" });
+  }, [user]);
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setProfileMsg({ text: "", ok: false });
+    setProfileLoading(true);
+    try {
+      await updateProfile(profile);
+      setProfileMsg({ text: "Datos de perfil actualizados.", ok: true });
+    } catch (err) {
+      setProfileMsg({ text: err?.message || "No se pudo actualizar el perfil.", ok: false });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -81,6 +102,24 @@ function CuentaSection() {
       )}
 
       <Card pad>
+        <CardTitle>Datos del perfil</CardTitle>
+        <form onSubmit={saveProfile} className="section-form">
+          {profileMsg.text && (
+            <div className={`ui-banner ${profileMsg.ok ? "ui-banner--success" : "ui-banner--danger"}`} role="status">
+              {profileMsg.text}
+            </div>
+          )}
+          <Field label="Usuario" hint="Se usa para iniciar sesión">
+            <Input value={profile.username} onChange={(e) => setProfile({ ...profile, username: e.target.value })} required minLength={3} />
+          </Field>
+          <Field label="Nombre visible">
+            <Input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+          </Field>
+          <Button type="submit" loading={profileLoading}>{profileLoading ? "Guardando…" : "Guardar perfil"}</Button>
+        </form>
+      </Card>
+
+      <Card pad>
         <CardTitle>Cambiar contraseña</CardTitle>
         <form onSubmit={submit} className="section-form">
           {msg.text && (
@@ -97,7 +136,7 @@ function CuentaSection() {
               required
             />
           </Field>
-          <Field label="Nueva contraseña" hint="Mínimo 8 caracteres">
+           <Field label="Nueva contraseña" hint="Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo">
             <Input
               type="password"
               autoComplete="new-password"
@@ -138,6 +177,7 @@ function UsuariosSection() {
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     username: "", password: "", name: "", role: "vendedor",
+    active: true,
     permissions: {
       verEstadisticas: false, verOrdenes: true,
       editarCategorias: false, crearProductos: true, editarStockSolo: true,
@@ -155,6 +195,7 @@ function UsuariosSection() {
   const resetForm = () => {
     setForm({
       username: "", password: "", name: "", role: "vendedor",
+      active: true,
       permissions: {
         verEstadisticas: false, verOrdenes: true,
         editarCategorias: false, crearProductos: true, editarStockSolo: true,
@@ -168,6 +209,7 @@ function UsuariosSection() {
     setEditTarget(u);
     setForm({
       username: u.username, password: "", name: u.name || "", role: u.role,
+      active: u.active !== false,
       permissions: { ...u.permissions },
     });
     setShowForm(true);
@@ -179,7 +221,7 @@ function UsuariosSection() {
     setMsg("");
     try {
       if (editTarget) {
-        const payload = { name: form.name, role: form.role, permissions: form.permissions };
+        const payload = { name: form.name, role: form.role, active: form.active, permissions: form.permissions };
         if (form.password) payload.password = form.password;
         await updateUser(editTarget._id, payload);
       } else {
@@ -250,7 +292,7 @@ function UsuariosSection() {
               />
             </Field>
             <Field label={editTarget ? "Nueva contraseña" : "Contraseña"}
-              hint={editTarget ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"}>
+              hint={editTarget ? "Dejar vacío para no cambiar" : "8+ caracteres, mayúscula, minúscula, número y símbolo"}>
               <Input
                 type="password"
                 value={form.password}
@@ -267,6 +309,18 @@ function UsuariosSection() {
                 <option value="admin">Admin</option>
               </Select>
             </Field>
+
+            {editTarget && (
+              <label className="ui-check users-active-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  disabled={editTarget._id === me?._id}
+                  onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                />
+                Usuario activo
+              </label>
+            )}
 
             <Field label="Permisos">
               <div className="users-perms">

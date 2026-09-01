@@ -35,6 +35,13 @@ return data.user;
   };
 
   const logout = () => {
+    if (token) {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        keepalive: true,
+      }).catch(() => {});
+    }
     sessionStorage.removeItem(LS_KEY);
     sessionStorage.removeItem(LS_USER);
     setToken("");
@@ -53,6 +60,10 @@ return data.user;
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || "No se pudo cambiar la contraseña");
+    if (data.token) {
+      sessionStorage.setItem(LS_KEY, data.token);
+      setToken(data.token);
+    }
     return true;
   };
 
@@ -136,6 +147,10 @@ return data.user;
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || "Error al actualizar usuario");
+    if (data.token) {
+      sessionStorage.setItem(LS_KEY, data.token);
+      setToken(data.token);
+    }
     return data.user;
   };
 
@@ -149,8 +164,21 @@ return data.user;
     return true;
   };
 
+  const getAuditLogs = async (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") query.set(key, value);
+    });
+    const res = await fetch(`${API_URL_CTX}/api/audit?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Error al cargar la auditoría");
+    return data;
+  };
+
   const value = useMemo(
-    () => ({ token, user, isAuthenticated, bootstrapping, login, logout, changePassword, updateProfile, getUsers, createUser, updateUser, deleteUser }),
+    () => ({ token, user, isAuthenticated, bootstrapping, login, logout, changePassword, updateProfile, getUsers, createUser, updateUser, deleteUser, getAuditLogs }),
     [token, user, isAuthenticated, bootstrapping]
   );
 

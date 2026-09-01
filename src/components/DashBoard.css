@@ -24,6 +24,7 @@
 
 .users-form-card { margin-bottom: var(--sp-2); }
 .users-perms { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.users-active-toggle { margin-top: var(--sp-1); }
 .ui-check {
   display: inline-flex;
   align-items: center;

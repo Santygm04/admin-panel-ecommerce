@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
-  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone,
+  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone, ClipboardList,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';
@@ -22,6 +22,10 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (!token) return;
     let abort = false;
+    if (user?.role !== 'admin' && !user?.permissions?.verOrdenes) {
+      setPendingCount(0);
+      return undefined;
+    }
     const fetchCount = async () => {
       try {
         const url = new URL(`${API_URL}/api/payments/orders`);
@@ -40,7 +44,7 @@ export default function Layout({ children }) {
       abort = true;
       clearInterval(id);
     };
-  }, [token]);
+  }, [token, user]);
 
   const handleLogout = () => {
     logout();
@@ -57,8 +61,9 @@ export default function Layout({ children }) {
     { to: '/dashboard?tab=estadisticas', label: 'Estadísticas', icon: <BarChart3 size={18} />, show: can('verEstadisticas') },
     { to: '/dashboard?tab=cuenta', label: 'Mi cuenta', icon: <LockKeyhole size={18} />, show: true },
     { to: '/dashboard?tab=usuarios', label: 'Usuarios', icon: <Users size={18} />, show: user?.role === 'admin' },
-    { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: true },
-    { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, show: user?.role === 'admin' },
+     { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: user?.role === 'admin' },
+     { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, show: user?.role === 'admin' },
+     { to: '/auditoria', label: 'Auditoría', icon: <ClipboardList size={18} />, show: user?.role === 'admin' },
   ].filter((n) => n.show);
 
   const currentFull = `${location.pathname}${location.search}`;

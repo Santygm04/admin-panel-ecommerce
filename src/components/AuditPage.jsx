@@ -1,0 +1,179 @@
+import { useEffect, useState } from "react";
+import { ClipboardList, Filter, RefreshCw } from "lucide-react";
+import { useAuth } from "./AuthContext";
+import { Badge, Button, Card, Field, Input, Select, Table, TBody, Td, Th, THead } from "./ui";
+import "./AuditPage.css";
+
+const ACTION_LABELS = {
+  "auth.login": "Inicio de sesión",
+  "auth.logout": "Cierre de sesión",
+  "auth.denied": "Acceso rechazado",
+  "auth.forbidden": "Permiso rechazado",
+  "auth.profile.update": "Perfil actualizado",
+  "auth.password.change": "Contraseña actualizada",
+  "user.create": "Usuario creado",
+  "user.update": "Usuario actualizado",
+  "user.delete": "Usuario eliminado",
+  "permission.request": "Permiso solicitado",
+  "product.create": "Producto creado",
+  "product.update": "Producto actualizado",
+  "product.visibility.update": "Visibilidad modificada",
+  "product.delete": "Producto eliminado",
+  "category.create": "Categoría creada",
+  "category.update": "Categoría actualizada",
+  "category.delete": "Categoría eliminada",
+  "promotion.create": "Promoción creada",
+  "promotion.update": "Promoción actualizada",
+  "promotion.toggle": "Promoción activada/desactivada",
+  "promotion.delete": "Promoción eliminada",
+  "order.confirm": "Orden confirmada",
+  "order.cancel": "Orden cancelada",
+  "order.ship": "Orden despachada",
+  "order.delivered": "Orden entregada",
+  "order.delete": "Orden enviada a papelera",
+  "order.delete_permanent": "Orden eliminada permanentemente",
+  "shipping.create": "Envío generado",
+  "erp.product.create": "Producto creado en ERP",
+  "erp.product.update": "Producto actualizado en ERP",
+  "erp.product.archive": "Producto archivado en ERP",
+  "stats.snapshot.run": "Snapshots reconstruidos",
+  "stats.snapshot.clear": "Snapshots eliminados",
+  "stats.snapshot.reset": "Snapshots reiniciados",
+  "stats.snapshot.refresh_day": "Snapshot recalculado",
+};
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function actionLabel(action) {
+  return ACTION_LABELS[action] || action || "Evento";
+}
+
+function metadataLabel(metadata) {
+  if (!metadata || typeof metadata !== "object" || !Object.keys(metadata).length) return "-";
+  return JSON.stringify(metadata).slice(0, 140);
+}
+
+export default function AuditPage() {
+  const { getAuditLogs, token } = useAuth();
+  const [filters, setFilters] = useState({ action: "", username: "", success: "", from: "", to: "" });
+  const [data, setData] = useState({ items: [], page: 1, pages: 1, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = async (page = 1, values = filters) => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await getAuditLogs({ ...values, page, limit: 25 });
+      setData(result);
+    } catch (err) {
+      setError(err?.message || "No se pudo cargar la auditoría");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) load(1);
+    // La consulta debe reiniciarse solamente al cambiar la sesión.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
+
+  return (
+    <div className="audit-page">
+      <div className="audit-head">
+        <div>
+          <p className="audit-kicker"><ClipboardList size={15} /> Control administrativo</p>
+          <h1 className="ui-page-title">Auditoría</h1>
+          <p className="ui-page-sub">Registro de accesos, cambios y operaciones sensibles del panel.</p>
+        </div>
+        <Button variant="secondary" onClick={() => load(data.page)} loading={loading}>
+          <RefreshCw size={15} /> Actualizar
+        </Button>
+      </div>
+
+      <Card pad className="audit-filters">
+        <div className="audit-filter-title"><Filter size={16} /> Filtrar eventos</div>
+        <form className="audit-filter-grid" onSubmit={(event) => { event.preventDefault(); load(1); }}>
+          <Field label="Acción">
+            <Input value={filters.action} onChange={(event) => updateFilter("action", event.target.value)} placeholder="Ej: user.update" />
+          </Field>
+          <Field label="Usuario">
+            <Input value={filters.username} onChange={(event) => updateFilter("username", event.target.value)} placeholder="Buscar usuario" />
+          </Field>
+          <Field label="Resultado">
+            <Select value={filters.success} onChange={(event) => updateFilter("success", event.target.value)}>
+              <option value="">Todos</option>
+              <option value="true">Exitosos</option>
+              <option value="false">Rechazados</option>
+            </Select>
+          </Field>
+          <Field label="Desde"><Input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} /></Field>
+          <Field label="Hasta"><Input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} /></Field>
+          <div className="audit-filter-action"><Button type="submit"><Filter size={15} /> Aplicar filtros</Button></div>
+        </form>
+      </Card>
+
+      {error && <div className="ui-banner ui-banner--danger" role="alert">{error}</div>}
+
+      <Card className="audit-table-card">
+        <div className="audit-table-meta">
+          <strong>{data.total || 0} eventos</strong>
+          <span>Página {data.page || 1} de {data.pages || 1}</span>
+        </div>
+        {loading ? (
+          <div className="audit-loading">Cargando eventos…</div>
+        ) : data.items?.length ? (
+          <Table label="Registro de auditoría" className="audit-table-wrap">
+            <THead>
+              <Th>Fecha</Th>
+              <Th>Usuario</Th>
+              <Th>Acción</Th>
+              <Th>Recurso</Th>
+              <Th>Detalle</Th>
+              <Th>Resultado</Th>
+              <Th>Origen</Th>
+            </THead>
+            <TBody>
+              {data.items.map((item) => (
+                <tr key={item._id}>
+                  <Td data-label="Fecha">{formatDate(item.createdAt)}</Td>
+                  <Td data-label="Usuario">
+                    <strong>{item.actor?.username || "Sistema"}</strong>
+                    {item.actor?.role && <small>{item.actor.role}</small>}
+                  </Td>
+                  <Td data-label="Acción">
+                    <strong>{actionLabel(item.action)}</strong>
+                    <small>{item.action}</small>
+                  </Td>
+                  <Td data-label="Recurso">{item.resource?.type ? `${item.resource.type}${item.resource.id ? ` · ${item.resource.id.slice(0, 12)}` : ""}` : "-"}</Td>
+                  <Td data-label="Detalle"><small className="audit-detail">{metadataLabel(item.metadata)}</small></Td>
+                  <Td data-label="Resultado"><Badge tone={item.success ? "success" : "danger"}>{item.success ? "OK" : `${item.statusCode || 403}`}</Badge></Td>
+                  <Td data-label="Origen">{item.ip || "-"}</Td>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        ) : (
+          <div className="audit-empty">No hay eventos para los filtros seleccionados.</div>
+        )}
+        <div className="audit-pagination">
+          <Button variant="secondary" size="sm" disabled={data.page <= 1 || loading} onClick={() => load(data.page - 1)}>
+            Anterior
+          </Button>
+          <Button variant="secondary" size="sm" disabled={data.page >= data.pages || loading} onClick={() => load(data.page + 1)}>
+            Siguiente
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}

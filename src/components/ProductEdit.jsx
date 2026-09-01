@@ -21,8 +21,10 @@ const API = `${API_URL}/api`;
 export default function EditProduct() {
   const { user } = useAuth();
   const isVendedor  = user?.role === "vendedor";
-  const soloPrecios = isVendedor && !user?.permissions?.editarStockSolo;
-  const soloStock   = isVendedor && !!user?.permissions?.editarStockSolo;
+  const canEditCatalog = !isVendedor || user?.permissions?.crearProductos === true;
+  const canEditStock = !isVendedor || user?.permissions?.editarStockSolo === true;
+  const soloPrecios = isVendedor && canEditCatalog && !canEditStock;
+  const soloStock   = isVendedor && !canEditCatalog && canEditStock;
   const { id }   = useParams();
   const nav      = useNavigate();
 
@@ -293,7 +295,7 @@ export default function EditProduct() {
         syncToERP: !!producto.syncToERP,
       };
 
-      const payload = isVendedor
+      const payload = isVendedor && !soloStock
         ? {
             nombre: body.nombre,
             descripcion: body.descripcion,
@@ -315,18 +317,12 @@ export default function EditProduct() {
             minimoMayorista3: body.minimoMayorista3,
             precioMayorista2: body.precioMayorista2,
             precioMayorista3: body.precioMayorista3,
+            unidadesPorCaja: body.unidadesPorCaja,
+            publicarEnCajas: body.publicarEnCajas,
+            ...(canEditStock ? { stock: body.stock } : {}),
           }
         : soloStock
-        ? {
-            precio: body.precio,
-            precioEspecial: body.precioEspecial,
-            precioMayorista: body.precioMayorista,
-            precioCaja: body.precioCaja,
-            precioMayorista2: body.precioMayorista2,
-            precioMayorista3: body.precioMayorista3,
-            minimoMayorista: body.minimoMayorista,
-            minimoMayorista2: body.minimoMayorista2,
-            minimoMayorista3: body.minimoMayorista3,
+          ? {
             stock: body.stock,
             variants: body.variants,
           }
@@ -370,9 +366,9 @@ export default function EditProduct() {
   return (
     <form className="product-form" onSubmit={handleSubmit} autoComplete="off">
 
-      {soloPrecios && (
+      {(soloPrecios || soloStock) && (
         <div className="ui-banner ui-banner--info">
-          Solo podés modificar los precios del producto.
+           {soloStock ? "Solo podés modificar el stock y el stock de sus variantes." : "Podés modificar el catálogo, pero no el stock."}
         </div>
       )}
 
@@ -436,7 +432,7 @@ export default function EditProduct() {
                 <Input name="minimoMayorista" type="number" min="0" step="1"
                   placeholder="30000"
                   value={producto.minimoMayorista ?? ""} onChange={handleChange}
-                  disabled={isVendedor} />
+                   disabled={isVendedor && !canEditCatalog} />
               </Field>
             </>
           )}
@@ -452,7 +448,7 @@ export default function EditProduct() {
                 <Input name="minimoMayorista" type="number" min="1" step="1"
                   placeholder="2"
                   value={producto.minimoMayorista ?? ""} onChange={handleChange}
-                  disabled={isVendedor} />
+                   disabled={isVendedor && !canEditCatalog} />
               </Field>
 
               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio por unidad x2</>}
@@ -468,7 +464,7 @@ export default function EditProduct() {
                 <Input name="minimoMayorista2" type="number" min="1" step="1"
                   placeholder="6"
                   value={producto.minimoMayorista2 ?? ""} onChange={handleChange}
-                  disabled={isVendedor} />
+                   disabled={isVendedor && !canEditCatalog} />
               </Field>
 
               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio por unidad x6</>}
@@ -484,7 +480,7 @@ export default function EditProduct() {
                 <Input name="minimoMayorista3" type="number" min="1" step="1"
                   placeholder="12"
                   value={producto.minimoMayorista3 ?? ""} onChange={handleChange}
-                  disabled={isVendedor} />
+                   disabled={isVendedor && !canEditCatalog} />
               </Field>
 
               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio por unidad x12</>}
@@ -691,9 +687,10 @@ export default function EditProduct() {
                     </Select>
                     <Input
                       type="number" min="0" step="1"
-                      value={v.stock ?? 0}
-                      onChange={e => setVar(i, "stock", Number(e.target.value) || 0)}
-                      style={{ width: 84, textAlign: "center" }}
+                       value={v.stock ?? 0}
+                       onChange={e => setVar(i, "stock", Number(e.target.value) || 0)}
+                       disabled={!canEditStock}
+                       style={{ width: 84, textAlign: "center" }}
                     />
                     <button type="button" className="pf-var-del" onClick={() => delVar(i)} aria-label="Eliminar variante">
                       <XIcon size={14} />
