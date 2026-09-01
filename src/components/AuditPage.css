@@ -3,6 +3,12 @@
 .audit-kicker { display: inline-flex; align-items: center; gap: 6px; margin-bottom: var(--sp-2); color: var(--adm-brand); font: var(--t-small); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .audit-filters { display: flex; flex-direction: column; gap: var(--sp-4); }
 .audit-filter-title { display: flex; align-items: center; gap: 8px; color: var(--adm-ink); font: var(--t-body-strong); }
+.audit-quick-filters { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-3); border: 1px solid var(--adm-border); border-radius: var(--r-lg); background: var(--adm-surface-2); }
+.audit-quick-label { color: var(--adm-muted); font: var(--t-caption); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.audit-quick-options { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.audit-quick-option { min-height: 36px; padding: 7px 12px; border: 1px solid var(--adm-border); border-radius: var(--r-pill); background: var(--adm-surface); color: var(--adm-muted); font: var(--t-small); font-weight: 600; transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+.audit-quick-option:hover { border-color: var(--adm-brand); color: var(--adm-ink); background: var(--adm-brand-tint); }
+.audit-quick-option.is-active { border-color: var(--adm-brand); color: #fff; background: linear-gradient(135deg, var(--adm-brand), var(--adm-brand-600)); box-shadow: var(--shadow-brand); }
 .audit-filter-grid { display: grid; grid-template-columns: minmax(170px, 1.4fr) minmax(150px, 1fr) minmax(130px, .8fr) repeat(2, minmax(130px, .8fr)) auto; gap: var(--sp-3); align-items: end; }
 .audit-filter-action { padding-bottom: 1px; }
 .audit-table-card { overflow: hidden; }

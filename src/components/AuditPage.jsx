@@ -42,6 +42,15 @@ const ACTION_LABELS = {
   "stats.snapshot.refresh_day": "Snapshot recalculado",
 };
 
+const QUICK_EVENT_FILTERS = [
+  { key: "all", label: "Todos" },
+  { key: "users", label: "Usuarios" },
+  { key: "sales", label: "Ventas" },
+  { key: "product-created", label: "Producto creado" },
+  { key: "products", label: "Productos" },
+  { key: "security", label: "Seguridad" },
+];
+
 function formatDate(value) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("es-AR", {
@@ -138,16 +147,17 @@ function AuditDetailModal({ event, onClose }) {
 export default function AuditPage() {
   const { getAuditLogs, token } = useAuth();
   const [filters, setFilters] = useState({ action: "", username: "", success: "", from: "", to: "" });
+  const [eventType, setEventType] = useState("all");
   const [data, setData] = useState({ items: [], page: 1, pages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  const load = async (page = 1, values = filters) => {
+  const load = async (page = 1, values = filters, type = eventType) => {
     setLoading(true);
     setError("");
     try {
-      const result = await getAuditLogs({ ...values, page, limit: 25 });
+      const result = await getAuditLogs({ ...values, eventType: type === "all" ? "" : type, page, limit: 25 });
       setData(result);
     } catch (err) {
       setError(err?.message || "No se pudo cargar la auditoría");
@@ -164,6 +174,13 @@ export default function AuditPage() {
 
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 
+  const selectEventType = (type) => {
+    const nextFilters = { ...filters, action: "" };
+    setEventType(type);
+    setFilters(nextFilters);
+    load(1, nextFilters, type);
+  };
+
   return (
     <div className="audit-page">
       <div className="audit-head">
@@ -179,9 +196,25 @@ export default function AuditPage() {
 
       <Card pad className="audit-filters">
         <div className="audit-filter-title"><Filter size={16} /> Filtrar eventos</div>
+        <div className="audit-quick-filters" aria-label="Filtros rápidos por tipo de actividad">
+          <span className="audit-quick-label">Acceso rápido</span>
+          <div className="audit-quick-options">
+            {QUICK_EVENT_FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={`audit-quick-option ${eventType === key ? "is-active" : ""}`}
+                aria-pressed={eventType === key}
+                onClick={() => selectEventType(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <form className="audit-filter-grid" onSubmit={(event) => { event.preventDefault(); load(1); }}>
-          <Field label="Acción">
-            <Input value={filters.action} onChange={(event) => updateFilter("action", event.target.value)} placeholder="Ej: user.update" />
+          <Field label="Acción exacta" hint="Opcional: buscá un código como user.update">
+            <Input value={filters.action} onChange={(event) => { updateFilter("action", event.target.value); if (event.target.value) setEventType("all"); }} placeholder="Ej: user.update" />
           </Field>
           <Field label="Usuario">
             <Input value={filters.username} onChange={(event) => updateFilter("username", event.target.value)} placeholder="Buscar usuario" />
