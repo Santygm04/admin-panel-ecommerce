@@ -48,15 +48,37 @@ const QUICK_EVENT_FILTERS = [
   { key: "sales", label: "Ventas" },
   { key: "product-created", label: "Producto creado" },
   { key: "products", label: "Productos" },
+  { key: "categories", label: "Categorías" },
+  { key: "promotions", label: "Promociones" },
+  { key: "stats", label: "Estadísticas" },
+  { key: "erp", label: "ERP" },
   { key: "security", label: "Seguridad" },
 ];
 
+const ACTION_GROUPS = [
+  { label: "Usuarios y permisos", actions: ["user.create", "user.update", "user.delete", "permission.request"] },
+  { label: "Autenticación", actions: ["auth.login", "auth.logout", "auth.denied", "auth.forbidden", "auth.profile.update", "auth.password.change"] },
+  { label: "Productos", actions: ["product.create", "product.update", "product.visibility.update", "product.delete"] },
+  { label: "Categorías", actions: ["category.create", "category.update", "category.delete"] },
+  { label: "Promociones", actions: ["promotion.create", "promotion.update", "promotion.toggle", "promotion.delete"] },
+  { label: "Ventas y envíos", actions: ["order.confirm", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
+  { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive"] },
+  { label: "Estadísticas", actions: ["stats.snapshot.run", "stats.snapshot.clear", "stats.snapshot.reset", "stats.snapshot.refresh_day"] },
+];
+
 function formatDate(value) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
+  const parts = formatDateParts(value);
+  return parts.date === "-" ? "-" : `${parts.date} · ${parts.time}`;
+}
+
+function formatDateParts(value) {
+  if (!value) return { date: "-", time: "-" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: "-", time: "-" };
+  return {
+    date: new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" }).format(date),
+    time: new Intl.DateTimeFormat("es-AR", { timeStyle: "short" }).format(date),
+  };
 }
 
 function actionLabel(action) {
@@ -92,6 +114,7 @@ function AuditDetailField({ label, value, mono = false }) {
 function AuditDetailModal({ event, onClose }) {
   if (!event) return null;
 
+  const dateParts = formatDateParts(event.createdAt);
   const resultLabel = event.success ? "Operación exitosa" : `Operación rechazada · ${event.statusCode || 403}`;
   const actor = event.actor?.username || "Sistema";
   const resource = event.resource?.type
@@ -117,6 +140,8 @@ function AuditDetailModal({ event, onClose }) {
         </div>
 
         <dl className="audit-detail-grid">
+          <AuditDetailField label="Fecha" value={dateParts.date} />
+          <AuditDetailField label="Hora" value={dateParts.time} />
           <AuditDetailField label="Usuario" value={actor} />
           <AuditDetailField label="Rol" value={event.actor?.role || "-"} />
           <AuditDetailField label="Acción técnica" value={event.action} mono />
@@ -174,6 +199,11 @@ export default function AuditPage() {
 
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 
+  const selectAction = (value) => {
+    updateFilter("action", value);
+    setEventType("all");
+  };
+
   const selectEventType = (type) => {
     const nextFilters = { ...filters, action: "" };
     setEventType(type);
@@ -213,8 +243,15 @@ export default function AuditPage() {
           </div>
         </div>
         <form className="audit-filter-grid" onSubmit={(event) => { event.preventDefault(); load(1); }}>
-          <Field label="Acción exacta" hint="Opcional: buscá un código como user.update">
-            <Input value={filters.action} onChange={(event) => { updateFilter("action", event.target.value); if (event.target.value) setEventType("all"); }} placeholder="Ej: user.update" />
+          <Field label="Acción del panel" hint="Todas las acciones están agrupadas por sección">
+            <Select value={filters.action} onChange={(event) => selectAction(event.target.value)}>
+              <option value="">Todas las acciones</option>
+              {ACTION_GROUPS.map(({ label, actions }) => (
+                <optgroup key={label} label={label}>
+                  {actions.map((action) => <option key={action} value={action}>{actionLabel(action)} · {action}</option>)}
+                </optgroup>
+              ))}
+            </Select>
           </Field>
           <Field label="Usuario">
             <Input value={filters.username} onChange={(event) => updateFilter("username", event.target.value)} placeholder="Buscar usuario" />
@@ -253,36 +290,44 @@ export default function AuditPage() {
               <Th>Origen</Th>
             </THead>
             <TBody>
-              {data.items.map((item) => (
-                <tr key={item._id}>
-                  <Td data-label="Fecha">{formatDate(item.createdAt)}</Td>
-                  <Td data-label="Usuario">
-                    <strong>{item.actor?.username || "Sistema"}</strong>
-                    {item.actor?.role && <small>{item.actor.role}</small>}
-                  </Td>
-                  <Td data-label="Acción">
-                    <strong>{actionLabel(item.action)}</strong>
-                    <small>{item.action}</small>
-                  </Td>
-                  <Td data-label="Recurso">{item.resource?.type ? `${item.resource.type}${item.resource.id ? ` · ${item.resource.id.slice(0, 12)}` : ""}` : "-"}</Td>
-                   <Td data-label="Detalle">
-                     <div className="audit-detail-cell">
-                       <small className="audit-detail" title={metadataLabel(item.metadata)}>{metadataLabel(item.metadata)}</small>
-                       <Button
-                         variant="ghost"
-                         size="sm"
-                         className="audit-detail-btn"
-                         onClick={() => setSelectedEvent(item)}
-                         aria-label={`Ver detalle de ${actionLabel(item.action)}`}
-                       >
-                         <Eye size={15} /> Ver detalle
-                       </Button>
-                     </div>
-                   </Td>
-                  <Td data-label="Resultado"><Badge tone={item.success ? "success" : "danger"}>{item.success ? "OK" : `${item.statusCode || 403}`}</Badge></Td>
-                  <Td data-label="Origen">{item.ip || "-"}</Td>
-                </tr>
-              ))}
+              {data.items.map((item) => {
+                const dateParts = formatDateParts(item.createdAt);
+                return (
+                  <tr key={item._id}>
+                    <Td data-label="Fecha">
+                      <div className="audit-date-cell">
+                        <strong>{dateParts.date}</strong>
+                        <span>{dateParts.time}</span>
+                      </div>
+                    </Td>
+                    <Td data-label="Usuario">
+                      <strong>{item.actor?.username || "Sistema"}</strong>
+                      {item.actor?.role && <small>{item.actor.role}</small>}
+                    </Td>
+                    <Td data-label="Acción">
+                      <strong>{actionLabel(item.action)}</strong>
+                      <small>{item.action}</small>
+                    </Td>
+                    <Td data-label="Recurso">{item.resource?.type ? `${item.resource.type}${item.resource.id ? ` · ${item.resource.id.slice(0, 12)}` : ""}` : "-"}</Td>
+                    <Td data-label="Detalle">
+                      <div className="audit-detail-cell">
+                        <small className="audit-detail" title={metadataLabel(item.metadata)}>{metadataLabel(item.metadata)}</small>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="audit-detail-btn"
+                          onClick={() => setSelectedEvent(item)}
+                          aria-label={`Ver detalle de ${actionLabel(item.action)}`}
+                        >
+                          <Eye size={15} /> Ver detalle
+                        </Button>
+                      </div>
+                    </Td>
+                    <Td data-label="Resultado"><Badge tone={item.success ? "success" : "danger"}>{item.success ? "OK" : `${item.statusCode || 403}`}</Badge></Td>
+                    <Td data-label="Origen">{item.ip || "-"}</Td>
+                  </tr>
+                );
+              })}
             </TBody>
           </Table>
         ) : (

@@ -22,6 +22,9 @@
 .audit-detail-cell .audit-detail { flex: 1 1 auto; min-width: 0; }
 .audit-detail-btn { flex-shrink: 0; padding-inline: 8px; }
 .audit-table-wrap td:first-child { white-space: nowrap; color: var(--adm-muted); }
+.audit-date-cell { display: flex; flex-direction: column; gap: 2px; min-width: 118px; }
+.audit-date-cell strong { color: var(--adm-ink-2); font: var(--t-body-strong); }
+.audit-date-cell span { color: var(--adm-muted); font: var(--t-small); }
 .audit-loading, .audit-empty { padding: var(--sp-12) var(--sp-5); text-align: center; color: var(--adm-muted); }
 .audit-pagination { justify-content: flex-end; border-top: 1px solid var(--adm-border); }
 
