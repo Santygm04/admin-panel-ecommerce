@@ -10,6 +10,7 @@ import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
 import { isLenceriaCategory, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { normalizeImageUrl } from "../utils/image";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -67,8 +68,9 @@ export default function EditProduct() {
           subcategoria:    p.subcategoria    || "",
           stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
           destacado:       !!p.destacado,
-          imagen:          p.imagen          || "",
-          imagenes:        Array.isArray(p.imagenes) && p.imagenes.length ? p.imagenes : (p.imagen ? [p.imagen] : []),
+           imagen:          normalizeImageUrl(p.imagen),
+           imagenes:        (Array.isArray(p.imagenes) && p.imagenes.length ? p.imagenes : (p.imagen ? [p.imagen] : []))
+             .map(normalizeImageUrl).filter(Boolean),
           tags:            Array.isArray(p.tags) ? p.tags : [],
           createdAt:       p.createdAt,
           unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
@@ -712,7 +714,7 @@ export default function EditProduct() {
                 <div className="pf-previews">
                   {previewUrls.length === 0 && [...new Set((producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagen]).filter(Boolean))].map((url, i) => (
                     <div className="pf-preview" key={i}>
-                      <img src={url} alt={`Imagen ${i + 1}`} />
+                       <img src={normalizeImageUrl(url)} alt={`Imagen ${i + 1}`} onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
                       <button type="button" className="pf-preview-x" onClick={() => removeImagenExistente(url)}
                         aria-label="Quitar imagen existente">
                         <XIcon size={12} />

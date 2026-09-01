@@ -9,6 +9,7 @@ import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from 
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import { isLenceriaCategory } from "../utils/pricing";
+import { ProductImage } from "../utils/image";
 
 const API = `${API_URL}/api`;
 
@@ -591,8 +592,8 @@ export default function ProductList() {
             return (
               <Card key={producto._id} className="pl-card">
                 <div className="pl-card-main">
-                  <img
-                    src={producto.imagenes?.[0] || producto.imagen}
+                  <ProductImage
+                    product={producto}
                     alt={producto.nombre}
                     className="pl-card-thumb"
                     loading="lazy"
@@ -666,8 +667,8 @@ export default function ProductList() {
               return (
                 <tr key={producto._id}>
                   <td>
-                    <img
-                      src={producto.imagenes?.[0] || producto.imagen}
+                    <ProductImage
+                      product={producto}
                       alt={producto.nombre}
                       className="pl-thumb"
                       loading="lazy"

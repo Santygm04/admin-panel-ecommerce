@@ -1,4 +1,5 @@
 import axios from "axios";
+import { normalizeImageUrl } from "./image";
 
 const CLOUD_NAME = "deejrf2ub";
 const UPLOAD_PRESET = "aesthetic";
@@ -16,7 +17,8 @@ export async function uploadCloudinaryImage(file) {
 
   const { data } = await axios.post(CLOUDINARY_UPLOAD_URL, formData);
   if (!data?.secure_url) throw new Error("Cloudinary no devolvió una URL segura para la imagen.");
-  return data.secure_url;
+  // Cloudinary can keep HEIC originals; f_auto delivers JPG/WebP to browsers.
+  return normalizeImageUrl(data.secure_url);
 }
 
 export function cloudinaryErrorMessage(error) {
