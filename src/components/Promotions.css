@@ -7,6 +7,8 @@
 .promotion-message strong { color: var(--adm-ink); font-weight: 600; line-height: 1.35; }
 .promotion-message small, .promotion-dates { color: var(--adm-muted); font: var(--t-small); }
 .promotion-message small { font-size: .72rem; }
+.promotion-status { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; }
+.promotion-visibility-note { color: var(--adm-warning); font: var(--t-caption); line-height: 1.25; }
 .promotion-swatch { width: 28px; height: 6px; border-radius: var(--r-pill); border: 1px solid var(--adm-border); margin-bottom: 3px; }
 .promotion-dates { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
 .promotion-form { display: flex; flex-direction: column; gap: var(--sp-5); padding-bottom: var(--sp-2); }

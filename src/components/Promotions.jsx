@@ -39,6 +39,19 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 }
 
+function promotionVisibility(item, now = Date.now()) {
+  if (!item.active) return { label: "Inactiva", tone: "neutral", visible: false };
+
+  const start = Date.parse(item.startAt);
+  const end = Date.parse(item.endAt);
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return { label: "Sin vigencia", tone: "danger", visible: false };
+  }
+  if (now < start) return { label: "Programada", tone: "info", visible: false };
+  if (now > end) return { label: "Vencida", tone: "warning", visible: false };
+  return { label: "Visible en tienda", tone: "success", visible: true };
+}
+
 function productLabel(product) {
   if (!product) return "Producto";
   const code = product.codigoInterno || product.sku;
@@ -338,6 +351,7 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
 
 export default function Promotions() {
   const [items, setItems] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -362,6 +376,11 @@ export default function Promotions() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -454,16 +473,24 @@ export default function Promotions() {
             <Th>Mensaje</Th><Th>Estado</Th><Th>Vigencia</Th><Th>Productos</Th><Th>Prioridad</Th><Th>Acciones</Th>
           </THead>
           <TBody>
-            {items.map((item) => (
+            {items.map((item) => {
+              const visibility = promotionVisibility(item, now);
+              return (
               <tr key={item._id}>
                 <Td><div className="promotion-message"><span className="promotion-swatch" style={{ background: item.backgroundColor }} /><strong>{item.text}</strong><small>{item.destinationType === "auto" ? "Destino automático" : `Destino: ${item.destinationType}`}</small></div></Td>
-                <Td><Badge tone={item.active ? "success" : "neutral"} dot>{item.active ? "Activa" : "Inactiva"}</Badge></Td>
+                <Td>
+                  <div className="promotion-status">
+                    <Badge tone={visibility.tone} dot>{visibility.label}</Badge>
+                    {item.active && !visibility.visible && <small className="promotion-visibility-note">Interruptor activo, pero fuera de vigencia</small>}
+                  </div>
+                </Td>
                 <Td><div className="promotion-dates"><span>{formatDate(item.startAt)}</span><span>hasta {formatDate(item.endAt)}</span></div></Td>
                 <Td>{item.productIds?.length || 0}</Td>
                 <Td><Badge tone="gold">{item.priority ?? 0}</Badge></Td>
                 <Td><div className="ui-table-actions"><Button size="sm" variant="ghost" onClick={() => toggle(item)} disabled={toggling.has(item._id)} title={item.active ? "Desactivar" : "Activar"} aria-label={item.active ? "Desactivar promoción" : "Activar promoción"}><Power size={16} /></Button><Button size="sm" variant="ghost" onClick={() => openEdit(item)} title="Editar" aria-label="Editar promoción"><Edit3 size={16} /></Button><Button size="sm" variant="danger-ghost" onClick={() => setDeleteTarget(item)} title="Eliminar" aria-label="Eliminar promoción"><Trash2 size={16} /></Button></div></Td>
               </tr>
-            ))}
+              );
+            })}
           </TBody>
         </Table>
       )}
