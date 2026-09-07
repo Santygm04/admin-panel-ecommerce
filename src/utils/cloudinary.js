@@ -4,21 +4,39 @@ import { normalizeImageUrl } from "./image";
 const CLOUD_NAME = "deejrf2ub";
 const UPLOAD_PRESET = "aesthetic";
 const CLOUDINARY_FOLDER = "productos";
+const UPLOAD_ATTEMPTS = 2;
+const UPLOAD_TIMEOUT_MS = 30000;
 
 export const CLOUDINARY_UPLOAD_URL =
   `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 export const CLOUDINARY_UPLOAD_PRESET = UPLOAD_PRESET;
 
 export async function uploadCloudinaryImage(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", CLOUDINARY_FOLDER);
+  let lastError;
 
-  const { data } = await axios.post(CLOUDINARY_UPLOAD_URL, formData);
-  if (!data?.secure_url) throw new Error("Cloudinary no devolvió una URL segura para la imagen.");
-  // Cloudinary can keep HEIC originals; f_auto delivers JPG/WebP to browsers.
-  return normalizeImageUrl(data.secure_url);
+  for (let attempt = 0; attempt < UPLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", CLOUDINARY_FOLDER);
+
+      const { data } = await axios.post(CLOUDINARY_UPLOAD_URL, formData, {
+        timeout: UPLOAD_TIMEOUT_MS,
+      });
+      if (!data?.secure_url) throw new Error("Cloudinary no devolvió una URL segura para la imagen.");
+      // Cloudinary can keep HEIC originals; f_auto delivers JPG/WebP to browsers.
+      return normalizeImageUrl(data.secure_url);
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status;
+      const retryable = !status || status === 408 || status === 429 || status >= 500;
+      if (!retryable || attempt === UPLOAD_ATTEMPTS - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+
+  throw lastError;
 }
 
 export function cloudinaryErrorMessage(error) {
@@ -43,7 +61,7 @@ export function cloudinaryErrorMessage(error) {
   if (/too large|file size|maximum|exceeds/i.test(message)) {
     return `La imagen supera el tamaño máximo permitido. ${detail}`;
   }
-  if (/network error|failed to fetch|network request failed/i.test(message) && !error?.response) {
+  if (/network error|failed to fetch|network request failed|timeout/i.test(message) && !error?.response) {
     return "No se pudo conectar con Cloudinary. Verificá tu conexión o la política de seguridad del dominio. " + detail;
   }
 

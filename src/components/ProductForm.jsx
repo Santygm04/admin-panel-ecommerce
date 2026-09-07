@@ -211,11 +211,14 @@ export default function ProductForm({ onCreated }) {
     setSubmitting(true);
     try {
       const { urls: imagenes, failed, failures } = await uploadImages();
-      const imageWarning = failed > 0
-        ? `Producto creado, pero ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+      if (failed > 0) {
+        notify.error(
+          `No se creó el producto porque ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
           `${failures.map(({ name, message }) => `${name}: ${message}`).join(" | ")} ` +
-          "El resto de los datos se guardó correctamente."
-        : "";
+          "Revisá el archivo y volvé a intentar."
+        );
+        return;
+      }
 
       const cleanVariants = (producto.variants || [])
         .filter(v => v.size || v.color)
@@ -233,6 +236,7 @@ export default function ProductForm({ onCreated }) {
       const body = {
         ...producto,
         imagenes,
+        imagen: imagenes[0] || "",
         precio:          parseMoneyInput(producto.precio),
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
@@ -264,8 +268,7 @@ export default function ProductForm({ onCreated }) {
       setImagenFiles([]);
       setPreviewUrls([]);
       if (onCreated) onCreated();
-      if (imageWarning) notify.warning(imageWarning);
-      else notify.success("Producto creado correctamente");
+      notify.success("Producto creado correctamente");
       nav("/dashboard?tab=stock", { replace: true });
     } catch (err) {
       console.error(err?.response?.data || err);

@@ -58,6 +58,10 @@ export default function EditProduct() {
         setCategoriasDB(cats);
 
         const p = resProd.data || {};
+        const imagenes = [...new Set([
+          ...(Array.isArray(p.imagenes) ? p.imagenes : []),
+          p.imagen,
+        ].map(normalizeImageUrl).filter(Boolean))];
         setProducto({
           nombre:          p.nombre          || "",
           codigoInterno:   p.codigoInterno    || "",
@@ -70,9 +74,8 @@ export default function EditProduct() {
           subcategoria:    p.subcategoria    || "",
           stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
           destacado:       !!p.destacado,
-           imagen:          normalizeImageUrl(p.imagen),
-           imagenes:        (Array.isArray(p.imagenes) && p.imagenes.length ? p.imagenes : (p.imagen ? [p.imagen] : []))
-             .map(normalizeImageUrl).filter(Boolean),
+          imagen:          imagenes[0] || "",
+          imagenes,
           tags:            Array.isArray(p.tags) ? p.tags : [],
           createdAt:       p.createdAt,
           unidadesPorCaja:  p.unidadesPorCaja  != null ? String(p.unidadesPorCaja)  : "",
@@ -247,11 +250,14 @@ export default function EditProduct() {
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
       const { urls: nuevas, failed, failures } = await uploadImagesIfNeeded();
-      const imageWarning = failed > 0
-        ? `${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
+      if (failed > 0) {
+        notify.error(
+          `No se guardaron los cambios porque ${failed} imagen${failed === 1 ? " no pudo" : "es no pudieron"} subirse. ` +
           `${failures.map(({ name, message }) => `${name}: ${message}`).join(" | ")} ` +
-          "El resto de los cambios se guardó correctamente."
-        : "";
+          "Revisá el archivo y volvé a intentar."
+        );
+        return;
+      }
       const imagenesActuales = [...new Set([...existentes, ...(nuevas || [])].filter(Boolean))].slice(0, 10);
 
       const isLenceria = isLenceriaCategory(producto.categoria);
@@ -281,6 +287,7 @@ export default function EditProduct() {
         destacado:       !!producto.destacado,
         tags:            producto.tags || [],
         imagenes: imagenesActuales,
+        imagen: imagenesActuales[0] || "",
         variants:        clean,
         unidadesPorCaja: parseOptionalIntegerInput(producto.unidadesPorCaja),
         minimoMayorista:  parseOptionalIntegerInput(producto.minimoMayorista) ?? (precioMayorista != null ? (isLenceria ? 2 : 30000) : null),
@@ -302,6 +309,7 @@ export default function EditProduct() {
             categoria: body.categoria,
             subcategoria: body.subcategoria,
             imagenes: body.imagenes,
+            imagen: body.imagen,
             variants: body.variants,
             destacado: body.destacado,
             tags: body.tags,
@@ -332,8 +340,7 @@ export default function EditProduct() {
       await axios.put(`${API}/productos/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (imageWarning) notify.warning(imageWarning);
-      else notify.success("Producto actualizado");
+      notify.success("Producto actualizado");
       nav(-1);
     } catch (err) {
       console.error(err);
