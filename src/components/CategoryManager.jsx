@@ -6,6 +6,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import "./CategoryManager.css";
 import { API_URL } from "../utils/api";
 import { notify } from "../utils/toast";
+import { normalizeSlug } from "../utils/pricing";
 
 const API = `${API_URL}/api`;
 const authHeader = () => {
@@ -43,7 +44,10 @@ export default function CategoryManager() {
         const items = Array.isArray(data) ? data : data.items || [];
         const map = {};
         for (const p of items) {
-          if (p.categoria) map[p.categoria] = (map[p.categoria] || 0) + 1;
+          if (p.categoria) {
+            const key = normalizeSlug(p.categoria);
+            map[key] = (map[key] || 0) + 1;
+          }
         }
         setCounts(map);
       })
@@ -65,7 +69,7 @@ export default function CategoryManager() {
     e.preventDefault();
     const payload = {
       nombre: form.nombre.trim(),
-      slug:   form.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+      slug:   normalizeSlug(form.slug).replace(/\s+/g, "-"),
       subcategorias: form.subcategorias.split(",").map(s => s.trim()).filter(Boolean),
       orden: Number(form.orden) || 0,
     };
@@ -200,8 +204,8 @@ export default function CategoryManager() {
                   <span className="cm-card-name">{cat.nombre}</span>
                   <span className="cm-card-slug">/{cat.slug}</span>
                   {cat.orden != null && <span className="cm-card-orden">orden {cat.orden}</span>}
-                  {counts[cat.slug] > 0 && (
-                    <Badge tone="brand">{counts[cat.slug]} producto{counts[cat.slug] !== 1 ? "s" : ""}</Badge>
+                  {counts[normalizeSlug(cat.slug)] > 0 && (
+                    <Badge tone="brand">{counts[normalizeSlug(cat.slug)]} producto{counts[normalizeSlug(cat.slug)] !== 1 ? "s" : ""}</Badge>
                   )}
                 </div>
                 {cat.subcategorias?.length > 0 && (

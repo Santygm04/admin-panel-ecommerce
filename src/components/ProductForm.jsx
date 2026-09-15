@@ -8,7 +8,7 @@ import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
-import { isLenceriaCategory, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 
 // Subcategorías con precio unitario "desde 2 unidades"
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -28,6 +28,7 @@ const TONE_COUNTS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 const label = (k) => k.charAt(0).toUpperCase() + k.slice(1);
 const API = `${API_URL}/api`;
+const categorySlug = (category) => normalizeSlug(category?.slug || category?.nombre);
 
 export default function ProductForm({ onCreated }) {
   const nav = useNavigate();
@@ -112,7 +113,7 @@ export default function ProductForm({ onCreated }) {
       .then(({ data }) => setCategoriasDB(data.categories || []))
       .catch(() => {});
   }, []);
-  const subcategorias = categoriasDB.find(c => c.slug === producto.categoria)?.subcategorias || [];
+  const subcategorias = categoriasDB.find(c => categorySlug(c) === normalizeSlug(producto.categoria))?.subcategorias || [];
 
   const handleImageChange = (e) => {
     const newFiles = Array.from(e.target.files || []);
@@ -523,7 +524,7 @@ export default function ProductForm({ onCreated }) {
               <Select name="categoria" value={producto.categoria} onChange={handleChange} required>
                 <option value="">Seleccionar categoría</option>
                 {categoriasDB.map((cat) => (
-                  <option key={cat.slug} value={cat.slug}>{cat.nombre}</option>
+                  <option key={cat._id || cat.slug} value={categorySlug(cat)}>{cat.nombre}</option>
                 ))}
               </Select>
             </Field>

@@ -8,7 +8,7 @@ import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "./ui";
 import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
-import { isLenceriaCategory } from "../utils/pricing";
+import { isLenceriaCategory, normalizeSlug } from "../utils/pricing";
 import { ProductImage } from "../utils/image";
 
 const API = `${API_URL}/api`;
@@ -269,7 +269,7 @@ export default function ProductList() {
         const legacyItems = Array.isArray(data) ? data : null;
         const legacyFiltered = legacyItems
           ? legacyItems.filter((product) => (
-              (!categoriaFiltro || String(product.categoria || "").toLowerCase() === categoriaFiltro.toLowerCase())
+              (!categoriaFiltro || normalizeSlug(product.categoria) === normalizeSlug(categoriaFiltro))
               && (!soloCajas || product.publicarEnCajas === true)
             ))
           : [];
@@ -329,11 +329,12 @@ export default function ProductList() {
   const categoriasUnicas = useMemo(() => {
     const options = new Map();
     for (const category of categoriasDB) {
-      const value = category?.slug || category?.nombre;
+      const value = normalizeSlug(category?.slug || category?.nombre);
       if (value) options.set(value, category?.nombre || value);
     }
     for (const product of productos) {
-      if (product.categoria && !options.has(product.categoria)) options.set(product.categoria, product.categoria);
+      const value = normalizeSlug(product.categoria);
+      if (value && !options.has(value)) options.set(value, product.categoria);
     }
     return [...options.entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
   }, [categoriasDB, productos]);

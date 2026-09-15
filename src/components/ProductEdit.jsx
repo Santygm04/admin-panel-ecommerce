@@ -9,7 +9,7 @@ import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
-import { isLenceriaCategory, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { normalizeImageUrl } from "../utils/image";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
@@ -17,6 +17,7 @@ const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","c
 const TONE_COUNTS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 const API = `${API_URL}/api`;
+const categorySlug = (category) => normalizeSlug(category?.slug || category?.nombre);
 
 export default function EditProduct() {
   const { user } = useAuth();
@@ -70,7 +71,7 @@ export default function EditProduct() {
           precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
           precioCaja:      p.precioCaja      != null ? String(p.precioCaja)      : "",
           descripcion:     p.descripcion     || "",
-          categoria:       p.categoria       || "",
+          categoria:       normalizeSlug(p.categoria),
           subcategoria:    p.subcategoria    || "",
           stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
           stockMinimo:     p.stockMinimo === 0 || p.stockMinimo ? String(p.stockMinimo) : "5",
@@ -112,7 +113,7 @@ export default function EditProduct() {
   }, [id, nav]);
 
   const subcategorias = useMemo(() =>
-    categoriasDB.find(c => c.slug === producto?.categoria)?.subcategorias || [],
+    categoriasDB.find(c => categorySlug(c) === normalizeSlug(producto?.categoria))?.subcategorias || [],
     [categoriasDB, producto?.categoria]
   );
 
@@ -615,7 +616,7 @@ export default function EditProduct() {
               <Select name="categoria" value={producto.categoria} onChange={handleChange} required>
                 <option value="">Seleccionar categoría</option>
                 {categoriasDB.map((cat) => (
-                  <option key={cat.slug} value={cat.slug}>{cat.nombre}</option>
+                  <option key={cat._id || cat.slug} value={categorySlug(cat)}>{cat.nombre}</option>
                 ))}
               </Select>
             </Field>
