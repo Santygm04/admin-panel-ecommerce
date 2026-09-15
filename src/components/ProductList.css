@@ -2,7 +2,7 @@
    ProductList.css — control de stock (tokens DS)
    ===================================================== */
 
-.pl-container { display: flex; flex-direction: column; gap: var(--sp-4); }
+.pl-container { display: flex; flex-direction: column; gap: var(--sp-4); width: 100%; min-width: 0; }
 
 /* ── Header y filtros ── */
 .pl-header { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -14,6 +14,8 @@
   flex-wrap: wrap;
 }
 .pl-header-top svg { color: var(--adm-brand); }
+.pl-header-stats { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.pl-header-stats > span { color: var(--adm-muted); font: var(--t-small); }
 
 .pl-filters {
   display: flex;
@@ -36,6 +38,7 @@
   font-weight: 700;
 }
 .pl-filter-check input { accent-color: var(--adm-brand); }
+.pl-fetching { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--adm-muted); font: var(--t-small); }
 
 /* ── Tags de precio (tiers) ── */
 .price-tiers { display: flex; flex-direction: column; gap: 4px; font: var(--t-small); color: var(--adm-ink-2); }
@@ -84,6 +87,9 @@
   color: var(--adm-muted);
 }
 .pl-card-meta b { color: var(--adm-muted-2); font-weight: 600; }
+.pl-loading-state, .pl-table-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 220px; padding: var(--sp-8); color: var(--adm-muted); text-align: center; }
+.pl-loading-state strong, .pl-table-loading strong { color: var(--adm-ink-2); font: var(--t-body-strong); }
+.pl-loading-state span { font: var(--t-small); }
 
 .pl-block { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pl-block h4 {
@@ -132,9 +138,35 @@
   border-radius: var(--r-sm);
   background: var(--adm-surface-3);
 }
-.pl-ellipsis { max-width: 220px; }
+.pl-table { min-width: 1360px; table-layout: fixed; }
+.pl-table th, .pl-table td { overflow-wrap: anywhere; }
+.pl-table th:nth-child(1), .pl-table td:nth-child(1) { width: 70px; }
+.pl-table th:nth-child(2), .pl-table td:nth-child(2) { width: 200px; }
+.pl-table th:nth-child(3), .pl-table td:nth-child(3) { width: 140px; }
+.pl-table th:nth-child(4), .pl-table td:nth-child(4) { width: 110px; }
+.pl-table th:nth-child(5), .pl-table td:nth-child(5) { width: 120px; }
+.pl-table th:nth-child(6), .pl-table td:nth-child(6) { width: 230px; }
+.pl-table th:nth-child(7), .pl-table td:nth-child(7) { width: 70px; }
+.pl-table th:nth-child(8), .pl-table td:nth-child(8) { width: 195px; }
+.pl-table th:nth-child(9), .pl-table td:nth-child(9) { width: 225px; }
+.pl-ellipsis { max-width: none; }
 .pl-ellipsis .pl-inline-badge { margin-left: 6px; vertical-align: middle; }
-.pl-promo-td { min-width: 200px; }
+.pl-promo-td { min-width: 0; }
+.pl-table .stock-actions--compact { gap: 3px; flex-wrap: nowrap; }
+.pl-table .stock-actions--compact .ui-btn { padding-inline: 7px; font-size: .72rem; }
+.pl-table .stock-actions--compact .stock-input { width: 48px; }
+.pl-table .pl-actions { gap: 4px; }
+.pl-table .pl-actions .ui-btn { padding-inline: 8px; font-size: .72rem; }
+.pl-table-wrap { position: relative; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.pl-table-wrap.is-loading::after { content: ""; position: absolute; inset: 0; background: rgba(19, 16, 25, .08); pointer-events: none; }
+
+/* ── Paginación ── */
+.pl-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--adm-border); border-radius: var(--r-lg); background: var(--adm-surface); }
+.pl-pagination-summary { color: var(--adm-muted); font: var(--t-small); }
+.pl-pagination-summary strong { color: var(--adm-ink-2); }
+.pl-pagination-controls { display: flex; align-items: center; gap: var(--sp-2); }
+.pl-pagination-current { min-width: 120px; color: var(--adm-muted); font: var(--t-small); text-align: center; }
+.pl-pagination-current strong { color: var(--adm-ink-2); }
 
 /* ── Responsive cards ↔ tabla ── */
 .pl-table-wrap { display: none; }
@@ -145,4 +177,14 @@
 @media (max-width: 420px) {
   .pl-card-main { flex-direction: column; }
   .pl-card-thumb { width: 100%; height: 140px; }
+}
+
+@media (max-width: 640px) {
+  .pl-header-top { align-items: flex-start; flex-direction: column; }
+  .pl-header-stats { width: 100%; justify-content: space-between; }
+  .pl-pagination { align-items: stretch; flex-direction: column; }
+  .pl-pagination-summary { text-align: center; }
+  .pl-pagination-controls { justify-content: space-between; }
+  .pl-pagination-current { min-width: 0; }
+  .pl-pagination-controls .ui-btn { min-width: 94px; }
 }

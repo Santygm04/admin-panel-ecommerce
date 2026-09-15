@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
-import { Badge, Button, Card, EmptyState, Input, Select } from "./ui";
+import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "./ui";
 import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
@@ -12,6 +12,7 @@ import { isLenceriaCategory } from "../utils/pricing";
 import { ProductImage } from "../utils/image";
 
 const API = `${API_URL}/api`;
+const PAGE_SIZE = 50;
 
 /* ===== Helpers promo ===== */
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -94,9 +95,13 @@ export default function ProductList() {
   const { user } = useAuth();
   const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
   const [productos, setProductos] = useState([]);
+  const [categoriasDB, setCategoriasDB] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [soloCajas, setSoloCajas] = useState(false);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: PAGE_SIZE });
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   const [saving, setSaving] = useState(new Set());
   const [drafts, setDrafts] = useState({});
@@ -111,17 +116,45 @@ export default function ProductList() {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    axios.get(`${API}/categories`, { signal: ctrl.signal })
+      .then(({ data }) => {
+        if (!ctrl.signal.aborted) setCategoriasDB(data?.categories || []);
+      })
+      .catch((err) => {
+        if (err.name !== "CanceledError") setCategoriasDB([]);
+      });
+    return () => ctrl.abort();
+  }, []);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
 
     const t = setTimeout(async () => {
+      setLoadingProducts(true);
       try {
         const { data } = await axios.get(`${API}/productos`, {
-          params: { limit: 500, q, admin: true },
+          params: {
+            limit: PAGE_SIZE,
+            page,
+            q,
+            admin: true,
+            ...(categoriaFiltro ? { categoria: categoriaFiltro } : {}),
+            ...(soloCajas ? { publicarEnCajas: true } : {}),
+          },
           headers: { Authorization: `Bearer ${sessionStorage.getItem("aesthetic:token") || ""}` },
           signal: ctrl.signal,
         });
 
         const items = Array.isArray(data) ? data : data.items || [];
         setProductos(items);
+        setPagination(Array.isArray(data)
+          ? { page: 1, pages: 1, total: items.length, limit: items.length || PAGE_SIZE }
+          : {
+              page: data.page || page,
+              pages: data.pages || 1,
+              total: data.total ?? items.length,
+              limit: data.limit || PAGE_SIZE,
+            });
 
         setDrafts((prev) => {
           const next = { ...prev };
@@ -150,6 +183,8 @@ export default function ProductList() {
           notify.error("No se pudieron cargar los productos. Reintentá en unos segundos.");
           console.error("Error al obtener productos", err);
         }
+      } finally {
+        if (!ctrl.signal.aborted) setLoadingProducts(false);
       }
     }, 250);
 
@@ -157,15 +192,24 @@ export default function ProductList() {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q]);
+  }, [q, categoriaFiltro, soloCajas, page]);
 
-  const productosFiltrados = useMemo(() => {
-    return productos.filter((p) => (!categoriaFiltro || p.categoria === categoriaFiltro) && (!soloCajas || p.publicarEnCajas === true));
-  }, [productos, categoriaFiltro, soloCajas]);
+  const productosFiltrados = productos;
 
   const categoriasUnicas = useMemo(() => {
-    return [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort();
-  }, [productos]);
+    const options = new Map();
+    for (const category of categoriasDB) {
+      const value = category?.slug || category?.nombre;
+      if (value) options.set(value, category?.nombre || value);
+    }
+    for (const product of productos) {
+      if (product.categoria && !options.has(product.categoria)) options.set(product.categoria, product.categoria);
+    }
+    return [...options.entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
+  }, [categoriasDB, productos]);
+
+  const firstVisible = pagination.total ? ((pagination.page - 1) * pagination.limit) + 1 : 0;
+  const lastVisible = pagination.total ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
 
   const showNotif = (type, text) => {
     if (type === "ok") {
@@ -270,6 +314,11 @@ export default function ProductList() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProductos((prev) => prev.filter((p) => p._id !== id));
+      setPagination((prev) => {
+        const total = Math.max(0, prev.total - 1);
+        return { ...prev, total, pages: Math.max(1, Math.ceil(total / prev.limit)) };
+      });
+      if (productos.length === 1 && page > 1) setPage((current) => current - 1);
       showNotif("ok", "Producto eliminado");
       deleted = true;
     } catch (e) {
@@ -536,7 +585,10 @@ export default function ProductList() {
             <BoxesIcon size={22} />
             <h2 className="ui-page-title">Control de Stock</h2>
           </div>
-          <Badge tone="neutral">{productosFiltrados.length} producto{productosFiltrados.length !== 1 ? "s" : ""}</Badge>
+          <div className="pl-header-stats">
+            <Badge tone="neutral">{pagination.total} producto{pagination.total !== 1 ? "s" : ""}</Badge>
+            <span>50 por página</span>
+          </div>
         </div>
 
         <div className="pl-filters">
@@ -544,39 +596,48 @@ export default function ProductList() {
             type="search"
             placeholder="Buscar productos…"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setPage(1); }}
             icon={<SearchIcon size={16} />}
             aria-label="Buscar productos"
           />
           <Select
             value={categoriaFiltro}
-            onChange={(e) => setCategoriaFiltro(e.target.value)}
+            onChange={(e) => { setCategoriaFiltro(e.target.value); setPage(1); }}
             aria-label="Filtrar por categoría"
           >
             <option value="">Todas las categorías</option>
-            {categoriasUnicas.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === "nuevos-ingresos"
-                  ? "Nuevos ingresos"
-                  : cat.charAt(0).toUpperCase() + cat.slice(1)}
+            {categoriasUnicas.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label === "nuevos-ingresos" ? "Nuevos ingresos" : label}
               </option>
             ))}
           </Select>
           <label className="pl-filter-check">
-            <input type="checkbox" checked={soloCajas} onChange={(e) => setSoloCajas(e.target.checked)} />
+            <input type="checkbox" checked={soloCajas} onChange={(e) => { setSoloCajas(e.target.checked); setPage(1); }} />
             Solo Packs / Cajas
           </label>
-          {categoriaFiltro && (
-            <Button size="sm" variant="ghost" onClick={() => setCategoriaFiltro("")}>
+          {(categoriaFiltro || soloCajas || q) && (
+            <Button size="sm" variant="ghost" onClick={() => { setCategoriaFiltro(""); setSoloCajas(false); setQ(""); setPage(1); }}>
               Limpiar filtro
             </Button>
           )}
         </div>
+        {loadingProducts && (
+          <div className="pl-fetching" role="status">
+            <Spinner size="sm" /> Actualizando productos…
+          </div>
+        )}
       </div>
 
       {/* ===== MOBILE CARDS ===== */}
       <div className="pl-cards">
-        {productosFiltrados.length === 0 ? (
+        {loadingProducts && productosFiltrados.length === 0 ? (
+          <div className="pl-loading-state" role="status">
+            <Spinner size="lg" />
+            <strong>Cargando productos</strong>
+            <span>Estamos preparando la primera página.</span>
+          </div>
+        ) : productosFiltrados.length === 0 ? (
           <EmptyState
             icon={<BoxesIcon size={24} />}
             title="No hay productos"
@@ -643,7 +704,13 @@ export default function ProductList() {
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
-      <div className="ui-table-wrap pl-table-wrap">
+      <div className={`ui-table-wrap pl-table-wrap ${loadingProducts ? "is-loading" : ""}`}>
+        {loadingProducts && productosFiltrados.length === 0 && (
+          <div className="pl-table-loading" role="status">
+            <Spinner size="lg" />
+            <strong>Cargando productos…</strong>
+          </div>
+        )}
         <table className="ui-table pl-table" role="table" aria-label="Productos">
           <thead>
             <tr>
@@ -700,7 +767,7 @@ export default function ProductList() {
             })}
           </tbody>
         </table>
-        {productosFiltrados.length === 0 && (
+        {!loadingProducts && productosFiltrados.length === 0 && (
           <EmptyState
             icon={<BoxesIcon size={24} />}
             title="No hay productos"
@@ -708,6 +775,33 @@ export default function ProductList() {
           />
         )}
       </div>
+
+      {pagination.total > 0 && (
+        <nav className="pl-pagination" aria-label="Paginación de productos">
+          <div className="pl-pagination-summary">
+            <strong>{firstVisible}–{lastVisible}</strong> de <strong>{pagination.total}</strong> productos
+          </div>
+          <div className="pl-pagination-controls">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={pagination.page <= 1 || loadingProducts}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Anterior
+            </Button>
+            <span className="pl-pagination-current">Página <strong>{pagination.page}</strong> de <strong>{pagination.pages}</strong></span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={pagination.page >= pagination.pages || loadingProducts}
+              onClick={() => setPage((current) => Math.min(pagination.pages, current + 1))}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

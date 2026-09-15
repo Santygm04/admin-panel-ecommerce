@@ -44,7 +44,7 @@ export const productImageUrls = (product) => {
 
 export const firstProductImage = (product) => productImageUrls(product)[0] || "";
 
-export const ProductImage = ({ product, alt = "", className = "", ...props }) => {
+export const ProductImage = ({ product, alt = "", className = "", loading = "lazy", decoding = "async", ...props }) => {
   const urls = productImageUrls(product);
   const handleError = (event) => {
     const currentIndex = Number(event.currentTarget.dataset.imageIndex || 0);
@@ -64,6 +64,8 @@ export const ProductImage = ({ product, alt = "", className = "", ...props }) =>
       alt={alt}
       className={className}
       onError={handleError}
+      loading={loading}
+      decoding={decoding}
       {...props}
     />
   ) : null;
