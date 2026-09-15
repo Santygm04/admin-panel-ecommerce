@@ -167,6 +167,7 @@
 .pl-pagination-controls { display: flex; align-items: center; gap: var(--sp-2); }
 .pl-pagination-current { min-width: 120px; color: var(--adm-muted); font: var(--t-small); text-align: center; }
 .pl-pagination-current strong { color: var(--adm-ink-2); }
+.pl-pagination--top { border-color: var(--adm-brand); background: var(--adm-brand-tint); }
 
 /* ── Responsive cards ↔ tabla ── */
 .pl-table-wrap { display: none; }

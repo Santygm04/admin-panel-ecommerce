@@ -13,6 +13,7 @@ import { ProductImage } from "../utils/image";
 
 const API = `${API_URL}/api`;
 const PAGE_SIZE = 50;
+const LEGACY_FETCH_LIMIT = 200;
 
 /* ===== Helpers promo ===== */
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -91,6 +92,39 @@ function PriceTiers({ producto }) {
   );
 }
 
+function ProductPagination({ pagination, loading, onPageChange, position = "" }) {
+  if (!pagination.total) return null;
+  const firstVisible = ((pagination.page - 1) * pagination.limit) + 1;
+  const lastVisible = Math.min(pagination.page * pagination.limit, pagination.total);
+
+  return (
+    <nav className={`pl-pagination ${position ? `pl-pagination--${position}` : ""}`} aria-label="Paginación de productos">
+      <div className="pl-pagination-summary">
+        <strong>{firstVisible}–{lastVisible}</strong> de <strong>{pagination.total}</strong> productos
+      </div>
+      <div className="pl-pagination-controls">
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={pagination.page <= 1 || loading}
+          onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+        >
+          Anterior
+        </Button>
+        <span className="pl-pagination-current">Página <strong>{pagination.page}</strong> de <strong>{pagination.pages}</strong></span>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={pagination.page >= pagination.pages || loading}
+          onClick={() => onPageChange(Math.min(pagination.pages, pagination.page + 1))}
+        >
+          Siguiente
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
 export default function ProductList() {
   const { user } = useAuth();
   const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
@@ -134,7 +168,7 @@ export default function ProductList() {
       try {
         const { data } = await axios.get(`${API}/productos`, {
           params: {
-            limit: PAGE_SIZE,
+            limit: LEGACY_FETCH_LIMIT,
             page,
             q,
             admin: true,
@@ -145,10 +179,19 @@ export default function ProductList() {
           signal: ctrl.signal,
         });
 
-        const items = Array.isArray(data) ? data : data.items || [];
+        const legacyItems = Array.isArray(data) ? data : null;
+        const legacyFiltered = legacyItems
+          ? legacyItems.filter((product) => (
+              (!categoriaFiltro || String(product.categoria || "").toLowerCase() === categoriaFiltro.toLowerCase())
+              && (!soloCajas || product.publicarEnCajas === true)
+            ))
+          : [];
+        const items = legacyItems
+          ? legacyFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+          : data.items || [];
         setProductos(items);
-        setPagination(Array.isArray(data)
-          ? { page: 1, pages: 1, total: items.length, limit: items.length || PAGE_SIZE }
+        setPagination(legacyItems
+          ? { page, pages: Math.max(1, Math.ceil(legacyFiltered.length / PAGE_SIZE)), total: legacyFiltered.length, limit: PAGE_SIZE }
           : {
               page: data.page || page,
               pages: data.pages || 1,
@@ -207,9 +250,6 @@ export default function ProductList() {
     }
     return [...options.entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
   }, [categoriasDB, productos]);
-
-  const firstVisible = pagination.total ? ((pagination.page - 1) * pagination.limit) + 1 : 0;
-  const lastVisible = pagination.total ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
 
   const showNotif = (type, text) => {
     if (type === "ok") {
@@ -587,7 +627,7 @@ export default function ProductList() {
           </div>
           <div className="pl-header-stats">
             <Badge tone="neutral">{pagination.total} producto{pagination.total !== 1 ? "s" : ""}</Badge>
-            <span>50 por página</span>
+            <span>50 por página · Página {pagination.page} de {pagination.pages}</span>
           </div>
         </div>
 
@@ -628,6 +668,8 @@ export default function ProductList() {
           </div>
         )}
       </div>
+
+      <ProductPagination pagination={pagination} loading={loadingProducts} position="top" onPageChange={setPage} />
 
       {/* ===== MOBILE CARDS ===== */}
       <div className="pl-cards">
@@ -776,32 +818,7 @@ export default function ProductList() {
         )}
       </div>
 
-      {pagination.total > 0 && (
-        <nav className="pl-pagination" aria-label="Paginación de productos">
-          <div className="pl-pagination-summary">
-            <strong>{firstVisible}–{lastVisible}</strong> de <strong>{pagination.total}</strong> productos
-          </div>
-          <div className="pl-pagination-controls">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={pagination.page <= 1 || loadingProducts}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-            >
-              Anterior
-            </Button>
-            <span className="pl-pagination-current">Página <strong>{pagination.page}</strong> de <strong>{pagination.pages}</strong></span>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={pagination.page >= pagination.pages || loadingProducts}
-              onClick={() => setPage((current) => Math.min(pagination.pages, current + 1))}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </nav>
-      )}
+      <ProductPagination pagination={pagination} loading={loadingProducts} onPageChange={setPage} />
     </div>
   );
 }
