@@ -5,7 +5,7 @@ import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
 import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "./ui";
-import { BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
+import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import { isLenceriaCategory } from "../utils/pricing";
@@ -14,6 +14,25 @@ import { ProductImage } from "../utils/image";
 const API = `${API_URL}/api`;
 const PAGE_SIZE = 50;
 const LEGACY_FETCH_LIMIT = 200;
+const DEFAULT_STOCK_MIN = 5;
+
+const stockState = (stock, stockMinimo) => {
+  const current = Math.max(0, Number(stock) || 0);
+  const minimumValue = Number(stockMinimo);
+  const minimum = Number.isFinite(minimumValue) && minimumValue >= 0
+    ? minimumValue
+    : DEFAULT_STOCK_MIN;
+
+  if (current === 0) return { key: "empty", tone: "danger", label: "Sin stock", current, minimum };
+  if (current <= minimum) return { key: "low", tone: "warning", label: "Stock bajo", current, minimum };
+  return { key: "available", tone: "success", label: "Stock suficiente", current, minimum };
+};
+
+const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
+  params: { admin: true },
+  headers: authHeaders(),
+  signal,
+}).then(({ data }) => data);
 
 /* ===== Helpers promo ===== */
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -125,6 +144,57 @@ function ProductPagination({ pagination, loading, onPageChange, position = "" })
   );
 }
 
+function StockAlerts({ alerts, loading }) {
+  if (loading) {
+    return <div className="pl-alerts pl-alerts--loading"><Spinner size="sm" /> Revisando alertas de stock…</div>;
+  }
+
+  const items = alerts?.items || [];
+  const outOfStock = Number(alerts?.outOfStock) || 0;
+  const lowStock = Number(alerts?.lowStock) || 0;
+  const hasAlerts = outOfStock > 0 || lowStock > 0;
+
+  return (
+    <section className={`pl-alerts ${hasAlerts ? "pl-alerts--active" : "pl-alerts--clear"}`} aria-label="Alertas de stock">
+      <div className="pl-alerts-heading">
+        <div className="pl-alerts-title">
+          <span className="pl-alerts-icon"><AlertIcon size={17} /></span>
+          <div>
+            <strong>Alertas de stock</strong>
+            <span>{hasAlerts ? "Revisá estos productos para reponer." : "Todo el catálogo está por encima del mínimo."}</span>
+          </div>
+        </div>
+        <Badge tone={hasAlerts ? "warning" : "success"}>{items.length} {items.length === 1 ? "alerta" : "alertas"}</Badge>
+      </div>
+
+      <div className="pl-alert-summary">
+        <div className="pl-alert-kpi pl-alert-kpi--danger">
+          <strong>{outOfStock}</strong>
+          <span>Sin stock</span>
+        </div>
+        <div className="pl-alert-kpi pl-alert-kpi--warning">
+          <strong>{lowStock}</strong>
+          <span>Stock bajo</span>
+        </div>
+      </div>
+
+      {items.length > 0 && (
+        <ul className="pl-alert-list">
+          {items.map((item) => (
+            <li key={item._id}>
+              <span className={`pl-alert-dot pl-alert-dot--${item.status}`} aria-hidden="true" />
+              <span className="pl-alert-name">{item.nombre}</span>
+              <span className="pl-alert-value">
+                {item.status === "empty" ? "Agotado" : `${item.stock} / mín. ${item.stockMinimo}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function ProductList() {
   const { user } = useAuth();
   const soloStock = user?.role === "vendedor" && !!user?.permissions?.editarStockSolo;
@@ -136,6 +206,8 @@ export default function ProductList() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: PAGE_SIZE });
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [stockAlerts, setStockAlerts] = useState({ items: [], total: 0, outOfStock: 0, lowStock: 0 });
+  const [loadingStockAlerts, setLoadingStockAlerts] = useState(true);
 
   const [saving, setSaving] = useState(new Set());
   const [drafts, setDrafts] = useState({});
@@ -147,6 +219,21 @@ export default function ProductList() {
 
   const [savingDel, setSavingDel] = useState(new Set());
   const [confirmData, setConfirmData] = useState(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    readStockAlerts(ctrl.signal)
+      .then((data) => {
+        if (!ctrl.signal.aborted) setStockAlerts(data);
+      })
+      .catch((err) => {
+        if (err.name !== "CanceledError") setStockAlerts({ items: [], total: 0, outOfStock: 0, lowStock: 0 });
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoadingStockAlerts(false);
+      });
+    return () => ctrl.abort();
+  }, []);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -284,6 +371,7 @@ export default function ProductList() {
         )
       );
       setStockDrafts((prev) => ({ ...prev, [id]: data.stock }));
+      readStockAlerts().then(setStockAlerts).catch(() => {});
     } catch (err) {
       showNotif("err", err?.response?.data?.message || "Error al actualizar stock");
     } finally {
@@ -525,6 +613,7 @@ export default function ProductList() {
 
   const StockControls = ({ producto, compact = false }) => {
     const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
+    const status = stockState(stockValue, producto.stockMinimo);
     const isSavingStock = savingStock.has(producto._id);
     const esVendedor = user?.role === "vendedor";
     const minus10Disabled = compact
@@ -541,6 +630,10 @@ export default function ProductList() {
       : isSavingStock || soloStock;
     return (
       <div className={`stock-actions ${compact ? "stock-actions--compact" : ""}`}>
+        <div className={`stock-status stock-status--${status.key}`}>
+          <Badge tone={status.tone} dot>{status.label}</Badge>
+          <span>{status.current} disponibles · mín. {status.minimum}</span>
+        </div>
         <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -10)}
           disabled={minus10Disabled}>-10</Button>
         <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -1)}
@@ -667,6 +760,7 @@ export default function ProductList() {
             <Spinner size="sm" /> Actualizando productos…
           </div>
         )}
+        <StockAlerts alerts={stockAlerts} loading={loadingStockAlerts} />
       </div>
 
       <ProductPagination pagination={pagination} loading={loadingProducts} position="top" onPageChange={setPage} />
@@ -688,9 +782,9 @@ export default function ProductList() {
         ) : (
           productosFiltrados.map((producto) => {
             const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
+            const status = stockState(stockValue, producto.stockMinimo);
             const oculto = producto.visible === false;
             const puedeOcultar = !oculto && Number(stockValue) <= 0;
-            const sinStock = Number(stockValue) <= 0;
 
             return (
               <Card key={producto._id} className="pl-card">
@@ -706,7 +800,7 @@ export default function ProductList() {
                       <h3>{producto.nombre}</h3>
                       <div className="ui-row">
                         {oculto && <Badge tone="neutral" outline>Oculto</Badge>}
-                        {sinStock && <Badge tone="danger">Sin stock</Badge>}
+                        <Badge tone={status.tone}>{status.label}</Badge>
                         {producto.syncToERP
                           ? <Badge tone="brand">En ERP</Badge>
                           : <Badge tone="neutral" outline>Solo tienda</Badge>}

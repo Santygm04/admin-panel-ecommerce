@@ -73,6 +73,7 @@ export default function EditProduct() {
           categoria:       p.categoria       || "",
           subcategoria:    p.subcategoria    || "",
           stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
+          stockMinimo:     p.stockMinimo === 0 || p.stockMinimo ? String(p.stockMinimo) : "5",
           destacado:       !!p.destacado,
           imagen:          imagenes[0] || "",
           imagenes,
@@ -141,7 +142,7 @@ export default function EditProduct() {
       return;
     }
 
-    const numericOptional = ["precioEspecial", "precioMayorista", "precioCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3"];
+    const numericOptional = ["precioEspecial", "precioMayorista", "precioCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
     if (numericOptional.includes(name)) {
       setProducto(prev => ({ ...prev, [name]: value }));
       return;
@@ -284,6 +285,7 @@ export default function EditProduct() {
         categoria:       (producto.categoria  || "").toLowerCase(),
         subcategoria:    (producto.subcategoria || "").toLowerCase(),
         stock:           parseOptionalIntegerInput(producto.stock) ?? 0,
+        stockMinimo:     parseOptionalIntegerInput(producto.stockMinimo) ?? 5,
         destacado:       !!producto.destacado,
         tags:            producto.tags || [],
         imagenes: imagenesActuales,
@@ -326,6 +328,7 @@ export default function EditProduct() {
             precioMayorista2: body.precioMayorista2,
             precioMayorista3: body.precioMayorista3,
             unidadesPorCaja: body.unidadesPorCaja,
+            stockMinimo: body.stockMinimo,
             publicarEnCajas: body.publicarEnCajas,
             ...(canEditStock ? { stock: body.stock } : {}),
           }
@@ -511,6 +514,13 @@ export default function EditProduct() {
                 value={producto.stock} onChange={handleChange}
                 onWheel={(e) => e.currentTarget.blur()}
                 disabled={soloPrecios} />
+            </Field>
+
+            <Field label="Stock mínimo" hint="Al llegar a este valor se muestra en amarillo.">
+              <Input name="stockMinimo" type="number" min="0" step="1"
+                value={producto.stockMinimo} onChange={handleChange}
+                onWheel={(e) => e.currentTarget.blur()}
+                disabled={soloStock} />
             </Field>
 
             <Field label="Unidades por caja" hint="El contador suma de a múltiplos. Vacío = unidad.">

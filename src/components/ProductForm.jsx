@@ -42,6 +42,7 @@ export default function ProductForm({ onCreated }) {
     categoria: "",
     subcategoria: "",
     stock: "",
+    stockMinimo: "5",
     destacado: false,
     tags: [],
     variants: [],
@@ -242,6 +243,7 @@ export default function ProductForm({ onCreated }) {
         precioMayorista,
         precioCaja,
         stock:           Number(producto.stock) || 0,
+        stockMinimo:     parseOptionalIntegerInput(producto.stockMinimo) ?? 5,
         categoria:    (producto.categoria    || "").toLowerCase(),
         subcategoria: (producto.subcategoria || "").toLowerCase(),
         variants: cleanVariants,
@@ -414,6 +416,11 @@ export default function ProductForm({ onCreated }) {
             <Field label="Stock" required>
               <Input name="stock" type="number" min="0" step="1"
                 value={producto.stock} onChange={handleChange} required />
+            </Field>
+
+            <Field label="Stock mínimo" hint="Al llegar a este valor se muestra en amarillo.">
+              <Input name="stockMinimo" type="number" min="0" step="1"
+                value={producto.stockMinimo} onChange={handleChange} required />
             </Field>
 
             <Field label="Unidades por caja" hint="El contador sumará de a este múltiplo. Vacío = unidad.">
