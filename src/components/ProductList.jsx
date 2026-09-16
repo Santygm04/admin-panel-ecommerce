@@ -168,7 +168,14 @@ function StockAlerts({ alerts, loading, stockFilter, onStockFilter }) {
   const items = alerts?.items || [];
   const outOfStock = Number(alerts?.outOfStock) || 0;
   const lowStock = Number(alerts?.lowStock) || 0;
+  const available = Number(alerts?.available) || 0;
   const hasAlerts = outOfStock > 0 || lowStock > 0;
+  const visibleItems = stockFilter && stockFilter !== "available"
+    ? items.filter((item) => item.status === stockFilter)
+    : stockFilter === "available" ? [] : items;
+  const summaryLabel = stockFilter === "available"
+    ? `${available} con stock`
+    : `${visibleItems.length} ${visibleItems.length === 1 ? "alerta" : "alertas"}`;
 
   return (
     <section className={`pl-alerts ${hasAlerts ? "pl-alerts--active" : "pl-alerts--clear"}`} aria-label="Alertas de stock">
@@ -177,10 +184,12 @@ function StockAlerts({ alerts, loading, stockFilter, onStockFilter }) {
           <span className="pl-alerts-icon"><AlertIcon size={17} /></span>
           <div>
             <strong>Alertas de stock</strong>
-            <span>{hasAlerts ? "Revisá estos productos para reponer." : "Todo el catálogo está por encima del mínimo."}</span>
+            <span>{stockFilter === "available"
+              ? "Productos por encima del mínimo configurado."
+              : hasAlerts ? "Revisá estos productos para reponer." : "Todo el catálogo está por encima del mínimo."}</span>
           </div>
         </div>
-        <Badge tone="neutral" outline>{items.length} {items.length === 1 ? "alerta" : "alertas"}</Badge>
+        <Badge tone="neutral" outline>{summaryLabel}</Badge>
       </div>
 
       <div className="pl-alert-summary">
@@ -202,11 +211,27 @@ function StockAlerts({ alerts, loading, stockFilter, onStockFilter }) {
           <strong>{lowStock}</strong>
           <span>Stock mínimo</span>
         </button>
+        <button
+          type="button"
+          className={`pl-alert-kpi pl-alert-kpi--success ${stockFilter === "available" ? "is-selected" : ""}`}
+          onClick={() => onStockFilter(stockFilter === "available" ? "" : "available")}
+          aria-pressed={stockFilter === "available"}
+        >
+          <strong>{available}</strong>
+          <span>Stock suficiente</span>
+        </button>
       </div>
 
-      {items.length > 0 && (
+      {stockFilter === "available" && (
+        <div className="pl-alert-filter-note">
+          <span className="pl-alert-dot pl-alert-dot--available" aria-hidden="true" />
+          Mostrando productos con stock suficiente.
+        </div>
+      )}
+
+      {visibleItems.length > 0 && (
         <ul className="pl-alert-list">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item._id} className={`pl-alert-item pl-alert-item--${item.status}`}>
               <span className={`pl-alert-dot pl-alert-dot--${item.status}`} aria-hidden="true" />
               <span className="pl-alert-name">{item.nombre}</span>
@@ -233,7 +258,7 @@ export default function ProductList() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: PAGE_SIZE });
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [stockAlerts, setStockAlerts] = useState({ items: [], total: 0, outOfStock: 0, lowStock: 0 });
+  const [stockAlerts, setStockAlerts] = useState({ items: [], total: 0, outOfStock: 0, lowStock: 0, available: 0 });
   const [loadingStockAlerts, setLoadingStockAlerts] = useState(true);
 
   const [saving, setSaving] = useState(new Set());
@@ -256,7 +281,7 @@ export default function ProductList() {
         if (!ctrl.signal.aborted) setStockAlerts(data);
       })
       .catch((err) => {
-        if (err.name !== "CanceledError") setStockAlerts({ items: [], total: 0, outOfStock: 0, lowStock: 0 });
+        if (err.name !== "CanceledError") setStockAlerts({ items: [], total: 0, outOfStock: 0, lowStock: 0, available: 0 });
       })
       .finally(() => {
         if (!ctrl.signal.aborted) setLoadingStockAlerts(false);
