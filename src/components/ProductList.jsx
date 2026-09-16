@@ -5,7 +5,7 @@ import "./ProductList.css";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAuth } from "./AuthContext";
 import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "./ui";
-import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "./ui/icons";
+import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon, RefreshIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import { isLenceriaCategory, normalizeSlug } from "../utils/pricing";
@@ -24,8 +24,13 @@ const stockState = (stock, stockMinimo) => {
     : DEFAULT_STOCK_MIN;
 
   if (current === 0) return { key: "empty", label: "Sin stock", current, minimum };
-  if (current <= minimum) return { key: "low", label: "Stock bajo", current, minimum };
+  if (current <= minimum) return { key: "low", label: "Stock mínimo", current, minimum };
   return { key: "available", label: "Stock suficiente", current, minimum };
+};
+
+const stockLevelPercent = (status) => {
+  if (status.minimum <= 0) return status.current > 0 ? 100 : 0;
+  return Math.min(100, Math.round((status.current / status.minimum) * 100));
 };
 
 const productSku = (producto) => String(producto?.sku || producto?.codigoInterno || "").trim();
@@ -155,7 +160,7 @@ function ProductPagination({ pagination, loading, onPageChange, position = "" })
   );
 }
 
-function StockAlerts({ alerts, loading }) {
+function StockAlerts({ alerts, loading, stockFilter, onStockFilter }) {
   if (loading) {
     return <div className="pl-alerts pl-alerts--loading"><Spinner size="sm" /> Revisando alertas de stock…</div>;
   }
@@ -179,20 +184,30 @@ function StockAlerts({ alerts, loading }) {
       </div>
 
       <div className="pl-alert-summary">
-        <div className="pl-alert-kpi pl-alert-kpi--danger">
+        <button
+          type="button"
+          className={`pl-alert-kpi pl-alert-kpi--danger ${stockFilter === "empty" ? "is-selected" : ""}`}
+          onClick={() => onStockFilter(stockFilter === "empty" ? "" : "empty")}
+          aria-pressed={stockFilter === "empty"}
+        >
           <strong>{outOfStock}</strong>
           <span>Sin stock</span>
-        </div>
-        <div className="pl-alert-kpi pl-alert-kpi--warning">
+        </button>
+        <button
+          type="button"
+          className={`pl-alert-kpi pl-alert-kpi--warning ${stockFilter === "low" ? "is-selected" : ""}`}
+          onClick={() => onStockFilter(stockFilter === "low" ? "" : "low")}
+          aria-pressed={stockFilter === "low"}
+        >
           <strong>{lowStock}</strong>
-          <span>Stock bajo</span>
-        </div>
+          <span>Stock mínimo</span>
+        </button>
       </div>
 
       {items.length > 0 && (
         <ul className="pl-alert-list">
           {items.map((item) => (
-            <li key={item._id}>
+            <li key={item._id} className={`pl-alert-item pl-alert-item--${item.status}`}>
               <span className={`pl-alert-dot pl-alert-dot--${item.status}`} aria-hidden="true" />
               <span className="pl-alert-name">{item.nombre}</span>
               <span className="pl-alert-value">
@@ -213,6 +228,7 @@ export default function ProductList() {
   const [categoriasDB, setCategoriasDB] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [soloCajas, setSoloCajas] = useState(false);
+  const [stockEstado, setStockEstado] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: PAGE_SIZE });
@@ -227,12 +243,14 @@ export default function ProductList() {
   const [savingStock, setSavingStock] = useState(new Set());
 
   const [savingVis, setSavingVis] = useState(new Set());
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const [savingDel, setSavingDel] = useState(new Set());
   const [confirmData, setConfirmData] = useState(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
+    setLoadingStockAlerts(true);
     readStockAlerts(ctrl.signal)
       .then((data) => {
         if (!ctrl.signal.aborted) setStockAlerts(data);
@@ -244,7 +262,7 @@ export default function ProductList() {
         if (!ctrl.signal.aborted) setLoadingStockAlerts(false);
       });
     return () => ctrl.abort();
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -272,6 +290,7 @@ export default function ProductList() {
             admin: true,
             ...(categoriaFiltro ? { categoria: categoriaFiltro } : {}),
             ...(soloCajas ? { publicarEnCajas: true } : {}),
+            ...(stockEstado ? { stockEstado } : {}),
           },
           headers: { Authorization: `Bearer ${sessionStorage.getItem("aesthetic:token") || ""}` },
           signal: ctrl.signal,
@@ -333,7 +352,7 @@ export default function ProductList() {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q, categoriaFiltro, soloCajas, page]);
+  }, [q, categoriaFiltro, soloCajas, stockEstado, page, refreshTick]);
 
   const productosFiltrados = productos;
 
@@ -640,17 +659,36 @@ export default function ProductList() {
     const plusDisabled = compact
       ? isSavingStock || esVendedor
       : isSavingStock || soloStock;
+    const levelPercent = stockLevelPercent(status);
     return (
-      <div className={`stock-actions ${compact ? "stock-actions--compact" : ""}`}>
-        <div className={`stock-status stock-status--${status.key}`}>
-          <StockStatusLabel status={status} />
-          <span>{status.current} disponibles · mín. {status.minimum}</span>
+      <div className={`stock-actions stock-actions--${status.key} ${compact ? "stock-actions--compact" : ""}`}>
+        <div className="stock-status">
+          <div className="stock-status-card">
+            <div className="stock-status-topline">
+              <StockStatusLabel status={status} />
+              <strong className="stock-current">{status.current}</strong>
+            </div>
+            <div className="stock-status-meta">
+              <span>unidades disponibles</span>
+              <span>mín. {status.minimum}</span>
+            </div>
+            <div
+              className="stock-level"
+              role="progressbar"
+              aria-label={`Nivel de stock: ${status.current} disponibles, mínimo ${status.minimum}`}
+              aria-valuemin="0"
+              aria-valuemax={Math.max(status.minimum, status.current, 1)}
+              aria-valuenow={status.current}
+            >
+              <span style={{ width: `${levelPercent}%` }} />
+            </div>
+          </div>
         </div>
         <div className="stock-stepper">
           <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -10)}
-            disabled={minus10Disabled}>-10</Button>
+            disabled={minus10Disabled} title="Restar 10 unidades">-10</Button>
           <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -1)}
-            disabled={minus1Disabled}>-1</Button>
+            disabled={minus1Disabled} title="Restar 1 unidad">-1</Button>
           <input
             type="number"
             min="0"
@@ -668,9 +706,9 @@ export default function ProductList() {
             aria-label="Stock"
           />
           <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +1)}
-            disabled={plusDisabled}>+1</Button>
+            disabled={plusDisabled} title="Sumar 1 unidad">+1</Button>
           <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +10)}
-            disabled={plusDisabled}>+10</Button>
+            disabled={plusDisabled} title="Sumar 10 unidades">+10</Button>
           {isSavingStock && <span className="stock-saving">Guardando…</span>}
         </div>
       </div>
@@ -759,22 +797,51 @@ export default function ProductList() {
               </option>
             ))}
           </Select>
+          <Select
+            value={stockEstado}
+            onChange={(e) => { setStockEstado(e.target.value); setPage(1); }}
+            aria-label="Filtrar por estado de stock"
+          >
+            <option value="">Todos los estados</option>
+            <option value="available">Stock suficiente</option>
+            <option value="low">Stock mínimo</option>
+            <option value="empty">Sin stock</option>
+          </Select>
           <label className="pl-filter-check">
             <input type="checkbox" checked={soloCajas} onChange={(e) => { setSoloCajas(e.target.checked); setPage(1); }} />
             Solo Packs / Cajas
           </label>
-          {(categoriaFiltro || soloCajas || q) && (
-            <Button size="sm" variant="ghost" onClick={() => { setCategoriaFiltro(""); setSoloCajas(false); setQ(""); setPage(1); }}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setRefreshTick((current) => current + 1)}
+            disabled={loadingProducts || loadingStockAlerts}
+            title="Actualizar productos y alertas"
+          >
+            <RefreshIcon size={15} /> Actualizar
+          </Button>
+          {(categoriaFiltro || soloCajas || stockEstado || q) && (
+            <Button size="sm" variant="ghost" onClick={() => { setCategoriaFiltro(""); setSoloCajas(false); setStockEstado(""); setQ(""); setPage(1); }}>
               Limpiar filtro
             </Button>
           )}
+        </div>
+        <div className="pl-stock-legend" aria-label="Leyenda de estados de stock">
+          <span><i className="pl-legend-dot pl-legend-dot--available" /> Verde: por encima del mínimo</span>
+          <span><i className="pl-legend-dot pl-legend-dot--low" /> Amarillo: llegó al mínimo</span>
+          <span><i className="pl-legend-dot pl-legend-dot--empty" /> Rojo: sin stock</span>
         </div>
         {loadingProducts && (
           <div className="pl-fetching" role="status">
             <Spinner size="sm" /> Actualizando productos…
           </div>
         )}
-        <StockAlerts alerts={stockAlerts} loading={loadingStockAlerts} />
+        <StockAlerts
+          alerts={stockAlerts}
+          loading={loadingStockAlerts}
+          stockFilter={stockEstado}
+          onStockFilter={(value) => { setStockEstado(value); setPage(1); }}
+        />
       </div>
 
       <ProductPagination pagination={pagination} loading={loadingProducts} position="top" onPageChange={setPage} />

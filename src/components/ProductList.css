@@ -39,6 +39,12 @@
 }
 .pl-filter-check input { accent-color: var(--adm-brand); }
 .pl-fetching { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--adm-muted); font: var(--t-small); }
+.pl-stock-legend { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; color: var(--adm-muted); font: var(--t-caption); }
+.pl-stock-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pl-legend-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent); }
+.pl-legend-dot--available { color: var(--adm-success); background: currentColor; }
+.pl-legend-dot--low { color: var(--adm-warning); background: currentColor; }
+.pl-legend-dot--empty { color: var(--adm-danger); background: currentColor; }
 
 /* ── Alertas de stock ── */
 .pl-alerts {
@@ -61,20 +67,30 @@
 .pl-alerts-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--adm-surface-3); color: var(--adm-muted); flex-shrink: 0; }
 .pl-alerts--clear .pl-alerts-icon { color: var(--adm-success); }
 .pl-alert-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: var(--sp-2); max-width: 340px; }
-.pl-alert-kpi { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--adm-border); border-left-width: 2px; border-radius: var(--r-md); background: var(--adm-surface-2); color: var(--adm-muted); }
+.pl-alert-kpi { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--adm-border); border-left-width: 2px; border-radius: var(--r-md); background: var(--adm-surface-2); color: var(--adm-muted); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.pl-alert-kpi:hover { transform: translateY(-1px); background: var(--adm-surface-3); }
+.pl-alert-kpi:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.pl-alert-kpi.is-selected { background: var(--adm-surface-3); box-shadow: 0 0 0 2px currentColor; }
 .pl-alert-kpi strong { font: var(--t-h2); line-height: 1; }
 .pl-alert-kpi span { font: var(--t-caption); font-weight: 700; }
 .pl-alert-kpi--danger { border-left-color: var(--adm-danger); }
 .pl-alert-kpi--danger strong { color: var(--adm-danger); }
+.pl-alert-kpi--danger.is-selected { box-shadow: 0 0 0 2px var(--adm-danger); }
 .pl-alert-kpi--warning { border-left-color: var(--adm-warning); }
 .pl-alert-kpi--warning strong { color: var(--adm-warning); }
+.pl-alert-kpi--warning.is-selected { box-shadow: 0 0 0 2px var(--adm-warning); }
 .pl-alert-list { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--adm-border-soft); }
-.pl-alert-list li { display: flex; align-items: center; gap: var(--sp-2); min-height: 34px; padding: 5px 0; color: var(--adm-ink-2); font: var(--t-small); }
+.pl-alert-list li { display: flex; align-items: center; gap: var(--sp-2); min-height: 42px; padding: 7px 8px; color: var(--adm-ink-2); font: var(--t-small); border-bottom: 1px solid var(--adm-border-soft); }
+.pl-alert-list li:last-child { border-bottom: 0; }
+.pl-alert-item--empty { background: linear-gradient(90deg, var(--adm-danger-soft), transparent 70%); }
+.pl-alert-item--low { background: linear-gradient(90deg, var(--adm-warning-soft), transparent 70%); }
 .pl-alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .pl-alert-dot--empty { background: var(--adm-danger); }
 .pl-alert-dot--low { background: var(--adm-warning); }
 .pl-alert-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-.pl-alert-value { color: var(--adm-muted); white-space: nowrap; }
+.pl-alert-value { padding: 4px 8px; border-radius: 999px; color: var(--adm-muted); white-space: nowrap; font-size: .72rem; font-weight: 800; background: var(--adm-surface-3); }
+.pl-alert-item--empty .pl-alert-value { color: var(--adm-danger); background: var(--adm-danger-soft); }
+.pl-alert-item--low .pl-alert-value { color: var(--adm-warning); background: var(--adm-warning-soft); }
 
 /* ── Tags de precio (tiers) ── */
 .price-tiers { display: flex; flex-direction: column; gap: 4px; font: var(--t-small); color: var(--adm-ink-2); }
@@ -142,18 +158,35 @@
 }
 
 /* ── Controles de stock ── */
-.stock-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px; border: 1px solid var(--adm-border); border-radius: var(--r-md); background: var(--adm-surface-2); }
+.stock-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; border: 1px solid var(--adm-border); border-radius: var(--r-md); background: var(--adm-surface-2); transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.stock-actions--empty { border-color: var(--adm-danger); background: linear-gradient(145deg, var(--adm-danger-soft), var(--adm-surface-2) 68%); }
+.stock-actions--low { border-color: var(--adm-warning); background: linear-gradient(145deg, var(--adm-warning-soft), var(--adm-surface-2) 68%); }
+.stock-actions--available { border-color: var(--adm-success); background: linear-gradient(145deg, var(--adm-success-soft), var(--adm-surface-2) 68%); }
 .stock-actions--compact { flex-wrap: wrap; }
-.stock-status { display: flex; align-items: center; gap: 6px; flex-basis: 100%; min-width: 0; }
-.stock-status > span { color: var(--adm-muted); font: var(--t-caption); white-space: nowrap; }
-.stock-status-label { display: inline-flex; align-items: center; gap: 6px; font: var(--t-caption); font-weight: 700; white-space: nowrap; }
+.stock-status { width: 100%; min-width: 0; }
+.stock-status-card { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px; border: 1px solid var(--adm-border); border-radius: var(--r-md); background: rgba(14, 11, 20, .3); }
+.stock-actions--empty .stock-status-card { border-color: var(--adm-danger); background: var(--adm-danger-soft); }
+.stock-actions--low .stock-status-card { border-color: var(--adm-warning); background: var(--adm-warning-soft); }
+.stock-actions--available .stock-status-card { border-color: var(--adm-success); background: var(--adm-success-soft); }
+.stock-status-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stock-status-label { display: inline-flex; align-items: center; gap: 6px; font: var(--t-small); font-weight: 800; white-space: nowrap; }
 .stock-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .stock-status-label--empty { color: var(--adm-danger); }
 .stock-status-label--low { color: var(--adm-warning); }
 .stock-status-label--available { color: var(--adm-success); }
-.stock-stepper { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; }
+.stock-current { color: var(--adm-ink); font: 800 1.45rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stock-actions--empty .stock-current { color: var(--adm-danger); }
+.stock-actions--low .stock-current { color: var(--adm-warning); }
+.stock-actions--available .stock-current { color: var(--adm-success); }
+.stock-status-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--adm-muted); font: var(--t-caption); }
+.stock-status-meta span:last-child { color: var(--adm-ink-2); font-weight: 800; }
+.stock-level { height: 5px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, .12); }
+.stock-level > span { display: block; height: 100%; border-radius: inherit; background: var(--adm-success); transition: width 180ms var(--ease); }
+.stock-actions--empty .stock-level > span { background: var(--adm-danger); }
+.stock-actions--low .stock-level > span { background: var(--adm-warning); }
+.stock-stepper { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(48px, .9fr) repeat(2, minmax(0, 1fr)); align-items: center; gap: 4px; min-width: 0; }
 .stock-input {
-  width: 64px;
+  width: 100%;
   text-align: center;
   background: var(--adm-surface-2);
   border: 1px solid var(--adm-border);
@@ -166,7 +199,7 @@
 }
 .stock-input:focus { outline: none; border-color: var(--adm-brand); box-shadow: 0 0 0 3px var(--adm-brand-soft); }
 .stock-input:disabled { opacity: 0.55; }
-.stock-saving { font: var(--t-caption); color: var(--adm-muted); }
+.stock-saving { grid-column: 1 / -1; font: var(--t-caption); color: var(--adm-muted); text-align: center; }
 
 /* ── Promo ── */
 .promo-wrap { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 150px; }
@@ -201,11 +234,10 @@
 .pl-ellipsis .pl-inline-badge { margin-left: 6px; vertical-align: middle; }
 .pl-promo-td { min-width: 0; }
 .pl-table .stock-actions--compact { gap: 3px; }
-.pl-table .stock-status { gap: 4px; margin-bottom: 2px; }
-.pl-table .stock-status > span { font-size: .68rem; }
+.pl-table .stock-status { margin-bottom: 0; }
 .pl-table .stock-stepper { gap: 3px; }
-.pl-table .stock-actions--compact .ui-btn { padding-inline: 7px; font-size: .72rem; }
-.pl-table .stock-actions--compact .stock-input { width: 48px; }
+.pl-table .stock-actions--compact .ui-btn { min-height: 30px; padding-inline: 5px; font-size: .7rem; }
+.pl-table .stock-actions--compact .stock-input { min-height: 30px; padding-inline: 2px; font-size: .78rem; }
 .pl-table .pl-actions { gap: 4px; }
 .pl-table .pl-actions .ui-btn { padding-inline: 8px; font-size: .72rem; }
 .pl-table-wrap { position: relative; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
