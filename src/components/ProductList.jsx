@@ -23,10 +23,21 @@ const stockState = (stock, stockMinimo) => {
     ? minimumValue
     : DEFAULT_STOCK_MIN;
 
-  if (current === 0) return { key: "empty", tone: "danger", label: "Sin stock", current, minimum };
-  if (current <= minimum) return { key: "low", tone: "warning", label: "Stock bajo", current, minimum };
-  return { key: "available", tone: "success", label: "Stock suficiente", current, minimum };
+  if (current === 0) return { key: "empty", label: "Sin stock", current, minimum };
+  if (current <= minimum) return { key: "low", label: "Stock bajo", current, minimum };
+  return { key: "available", label: "Stock suficiente", current, minimum };
 };
+
+const productSku = (producto) => String(producto?.sku || producto?.codigoInterno || "").trim();
+
+function StockStatusLabel({ status }) {
+  return (
+    <span className={`stock-status-label stock-status-label--${status.key}`}>
+      <span className="stock-status-dot" aria-hidden="true" />
+      {status.label}
+    </span>
+  );
+}
 
 const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
   params: { admin: true },
@@ -164,7 +175,7 @@ function StockAlerts({ alerts, loading }) {
             <span>{hasAlerts ? "Revisá estos productos para reponer." : "Todo el catálogo está por encima del mínimo."}</span>
           </div>
         </div>
-        <Badge tone={hasAlerts ? "warning" : "success"}>{items.length} {items.length === 1 ? "alerta" : "alertas"}</Badge>
+        <Badge tone="neutral" outline>{items.length} {items.length === 1 ? "alerta" : "alertas"}</Badge>
       </div>
 
       <div className="pl-alert-summary">
@@ -632,34 +643,36 @@ export default function ProductList() {
     return (
       <div className={`stock-actions ${compact ? "stock-actions--compact" : ""}`}>
         <div className={`stock-status stock-status--${status.key}`}>
-          <Badge tone={status.tone} dot>{status.label}</Badge>
+          <StockStatusLabel status={status} />
           <span>{status.current} disponibles · mín. {status.minimum}</span>
         </div>
-        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -10)}
-          disabled={minus10Disabled}>-10</Button>
-        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -1)}
-          disabled={minus1Disabled}>-1</Button>
-        <input
-          type="number"
-          min="0"
-          className="stock-input"
-          value={stockValue}
-          onChange={(e) => setStockDraft(producto._id, e.target.value)}
-          onBlur={() => commitStock(producto._id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitStock(producto._id);
-            if (e.key === "Escape")
-              setStockDraft(producto._id, producto.stock ?? 0);
-          }}
-          onWheel={(e) => e.currentTarget.blur()}
-          disabled={editDisabled}
-          aria-label="Stock"
-        />
-        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +1)}
-          disabled={plusDisabled}>+1</Button>
-        <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +10)}
-          disabled={plusDisabled}>+10</Button>
-        {isSavingStock && <span className="stock-saving">Guardando…</span>}
+        <div className="stock-stepper">
+          <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -10)}
+            disabled={minus10Disabled}>-10</Button>
+          <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, -1)}
+            disabled={minus1Disabled}>-1</Button>
+          <input
+            type="number"
+            min="0"
+            className="stock-input"
+            value={stockValue}
+            onChange={(e) => setStockDraft(producto._id, e.target.value)}
+            onBlur={() => commitStock(producto._id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitStock(producto._id);
+              if (e.key === "Escape")
+                setStockDraft(producto._id, producto.stock ?? 0);
+            }}
+            onWheel={(e) => e.currentTarget.blur()}
+            disabled={editDisabled}
+            aria-label="Stock"
+          />
+          <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +1)}
+            disabled={plusDisabled}>+1</Button>
+          <Button size="sm" variant="secondary" onClick={() => changeStockBy(producto._id, +10)}
+            disabled={plusDisabled}>+10</Button>
+          {isSavingStock && <span className="stock-saving">Guardando…</span>}
+        </div>
       </div>
     );
   };
@@ -784,6 +797,7 @@ export default function ProductList() {
           productosFiltrados.map((producto) => {
             const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
             const status = stockState(stockValue, producto.stockMinimo);
+            const sku = productSku(producto);
             const oculto = producto.visible === false;
             const puedeOcultar = !oculto && Number(stockValue) <= 0;
 
@@ -798,10 +812,13 @@ export default function ProductList() {
                   />
                   <div className="pl-card-info">
                     <div className="pl-card-title-row">
-                      <h3>{producto.nombre}</h3>
+                      <div className="pl-product-title-block">
+                        <h3>{producto.nombre}</h3>
+                        <span className="pl-product-sku">{sku ? `SKU: ${sku}` : "SKU no asignado"}</span>
+                      </div>
                       <div className="ui-row">
                         {oculto && <Badge tone="neutral" outline>Oculto</Badge>}
-                        <Badge tone={status.tone}>{status.label}</Badge>
+                        <StockStatusLabel status={status} />
                         {producto.syncToERP
                           ? <Badge tone="brand">En ERP</Badge>
                           : <Badge tone="neutral" outline>Solo tienda</Badge>}
@@ -865,6 +882,7 @@ export default function ProductList() {
           <tbody>
             {productosFiltrados.map((producto) => {
               const stockValue = stockDrafts[producto._id] ?? producto.stock ?? 0;
+              const sku = productSku(producto);
               const oculto = producto.visible === false;
               const puedeOcultar = !oculto && Number(stockValue) <= 0;
 
@@ -879,12 +897,15 @@ export default function ProductList() {
                     />
                   </td>
                   <td className="pl-ellipsis">
-                    {producto.nombre}
-                    {oculto && <Badge tone="neutral" outline className="pl-inline-badge">Oculto</Badge>}
-                    {producto.syncToERP
-                      ? <Badge tone="brand" className="pl-inline-badge">En ERP</Badge>
-                      : <Badge tone="neutral" outline className="pl-inline-badge">Solo tienda</Badge>}
-                    {producto.publicarEnCajas && <Badge tone="gold" className="pl-inline-badge">Packs / Cajas</Badge>}
+                    <div className="pl-product-name">{producto.nombre}</div>
+                    <div className="pl-product-sku">{sku ? `SKU: ${sku}` : "SKU no asignado"}</div>
+                    <div className="pl-product-badges">
+                      {oculto && <Badge tone="neutral" outline>Oculto</Badge>}
+                      {producto.syncToERP
+                        ? <Badge tone="brand">En ERP</Badge>
+                        : <Badge tone="neutral" outline>Solo tienda</Badge>}
+                      {producto.publicarEnCajas && <Badge tone="gold">Packs / Cajas</Badge>}
+                    </div>
                   </td>
                   <td><PriceTiers producto={producto} /></td>
                   <td>

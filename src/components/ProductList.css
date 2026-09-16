@@ -50,27 +50,29 @@
   border-radius: var(--r-lg);
   background: var(--adm-surface);
 }
-.pl-alerts--active { border-color: var(--adm-warning); background: var(--adm-warning-soft); }
-.pl-alerts--clear { border-color: var(--adm-success); background: var(--adm-success-soft); }
+.pl-alerts--active { border-left: 3px solid var(--adm-warning); }
+.pl-alerts--clear { border-left: 3px solid var(--adm-success); }
 .pl-alerts--loading { flex-direction: row; align-items: center; color: var(--adm-muted); font: var(--t-small); }
 .pl-alerts-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .pl-alerts-title { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
 .pl-alerts-title > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pl-alerts-title strong { color: var(--adm-ink); font: var(--t-body-strong); }
 .pl-alerts-title span:not(.pl-alerts-icon) { color: var(--adm-muted); font: var(--t-small); }
-.pl-alerts-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--adm-warning-soft); color: var(--adm-warning); flex-shrink: 0; }
-.pl-alerts--clear .pl-alerts-icon { background: var(--adm-success-soft); color: var(--adm-success); }
-.pl-alert-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: var(--sp-2); }
-.pl-alert-kpi { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid currentColor; border-radius: var(--r-md); background: var(--adm-surface); }
+.pl-alerts-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--adm-surface-3); color: var(--adm-muted); flex-shrink: 0; }
+.pl-alerts--clear .pl-alerts-icon { color: var(--adm-success); }
+.pl-alert-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: var(--sp-2); max-width: 340px; }
+.pl-alert-kpi { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--adm-border); border-left-width: 2px; border-radius: var(--r-md); background: var(--adm-surface-2); color: var(--adm-muted); }
 .pl-alert-kpi strong { font: var(--t-h2); line-height: 1; }
 .pl-alert-kpi span { font: var(--t-caption); font-weight: 700; }
-.pl-alert-kpi--danger { color: var(--adm-danger); }
-.pl-alert-kpi--warning { color: var(--adm-warning); }
+.pl-alert-kpi--danger { border-left-color: var(--adm-danger); }
+.pl-alert-kpi--danger strong { color: var(--adm-danger); }
+.pl-alert-kpi--warning { border-left-color: var(--adm-warning); }
+.pl-alert-kpi--warning strong { color: var(--adm-warning); }
 .pl-alert-list { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--adm-border-soft); }
 .pl-alert-list li { display: flex; align-items: center; gap: var(--sp-2); min-height: 34px; padding: 5px 0; color: var(--adm-ink-2); font: var(--t-small); }
 .pl-alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.pl-alert-dot--empty { background: var(--adm-danger); box-shadow: 0 0 0 3px var(--adm-danger-soft); }
-.pl-alert-dot--low { background: var(--adm-warning); box-shadow: 0 0 0 3px var(--adm-warning-soft); }
+.pl-alert-dot--empty { background: var(--adm-danger); }
+.pl-alert-dot--low { background: var(--adm-warning); }
 .pl-alert-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .pl-alert-value { color: var(--adm-muted); white-space: nowrap; }
 
@@ -112,7 +114,11 @@
 }
 .pl-card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .pl-card-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
-.pl-card-title-row h3 { font: var(--t-body-strong); font-weight: 700; color: var(--adm-ink); margin: 0; }
+.pl-product-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-card-title-row h3, .pl-product-name { font: var(--t-body-strong); font-weight: 700; color: var(--adm-ink); margin: 0; }
+.pl-product-sku { display: block; color: var(--adm-muted); font: var(--t-mono); font-size: .7rem; line-height: 1.35; letter-spacing: .02em; }
+.pl-product-badges { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.pl-product-badges .ui-badge { font-size: .65rem; padding: 2px 7px; }
 .pl-card-meta {
   display: flex;
   flex-direction: column;
@@ -136,13 +142,16 @@
 }
 
 /* ── Controles de stock ── */
-.stock-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stock-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px; border: 1px solid var(--adm-border); border-radius: var(--r-md); background: var(--adm-surface-2); }
 .stock-actions--compact { flex-wrap: wrap; }
 .stock-status { display: flex; align-items: center; gap: 6px; flex-basis: 100%; min-width: 0; }
 .stock-status > span { color: var(--adm-muted); font: var(--t-caption); white-space: nowrap; }
-.stock-status--empty > span { color: var(--adm-danger); }
-.stock-status--low > span { color: var(--adm-warning); }
-.stock-status--available > span { color: var(--adm-success); }
+.stock-status-label { display: inline-flex; align-items: center; gap: 6px; font: var(--t-caption); font-weight: 700; white-space: nowrap; }
+.stock-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.stock-status-label--empty { color: var(--adm-danger); }
+.stock-status-label--low { color: var(--adm-warning); }
+.stock-status-label--available { color: var(--adm-success); }
+.stock-stepper { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; }
 .stock-input {
   width: 64px;
   text-align: center;
@@ -194,6 +203,7 @@
 .pl-table .stock-actions--compact { gap: 3px; }
 .pl-table .stock-status { gap: 4px; margin-bottom: 2px; }
 .pl-table .stock-status > span { font-size: .68rem; }
+.pl-table .stock-stepper { gap: 3px; }
 .pl-table .stock-actions--compact .ui-btn { padding-inline: 7px; font-size: .72rem; }
 .pl-table .stock-actions--compact .stock-input { width: 48px; }
 .pl-table .pl-actions { gap: 4px; }
