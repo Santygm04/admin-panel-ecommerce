@@ -36,6 +36,7 @@ const ACTION_LABELS = {
   "erp.product.create": "Producto creado en ERP",
   "erp.product.update": "Producto actualizado en ERP",
   "erp.product.archive": "Producto archivado en ERP",
+  "erp.stock.sync": "Stock sincronizado desde Pitukas",
   "stats.snapshot.run": "Snapshots reconstruidos",
   "stats.snapshot.clear": "Snapshots eliminados",
   "stats.snapshot.reset": "Snapshots reiniciados",
@@ -58,11 +59,11 @@ const QUICK_EVENT_FILTERS = [
 const ACTION_GROUPS = [
   { label: "Usuarios y permisos", actions: ["user.create", "user.update", "user.delete", "permission.request"] },
   { label: "Autenticación", actions: ["auth.login", "auth.logout", "auth.denied", "auth.forbidden", "auth.profile.update", "auth.password.change"] },
-  { label: "Productos", actions: ["product.create", "product.update", "product.visibility.update", "product.delete"] },
+  { label: "Productos", actions: ["product.create", "product.update", "product.visibility.update", "product.delete", "erp.stock.sync"] },
   { label: "Categorías", actions: ["category.create", "category.update", "category.delete"] },
   { label: "Promociones", actions: ["promotion.create", "promotion.update", "promotion.toggle", "promotion.delete"] },
   { label: "Ventas y envíos", actions: ["order.confirm", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
-  { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive"] },
+  { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive", "erp.stock.sync"] },
   { label: "Estadísticas", actions: ["stats.snapshot.run", "stats.snapshot.clear", "stats.snapshot.reset", "stats.snapshot.refresh_day"] },
 ];
 
