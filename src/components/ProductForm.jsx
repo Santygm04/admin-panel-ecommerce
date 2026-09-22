@@ -359,7 +359,7 @@ export default function ProductForm({ onCreated }) {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio por unidad de cada nivel. El total final de x2, x6 o x12 se calcula automáticamente.
+                Lencería: cargá el precio de 1 unidad. El panel calcula el total final multiplicando ese valor por x2, x6 o x12.
               </div>
 
               <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
@@ -369,14 +369,14 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio por unidad x2</>}
-                  hint="Precio unitario que se aplica desde x2 unidades.">
+                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio por unidad</>}
+                  hint="Este valor se multiplica automáticamente por x2 unidades.">
                  <Input name="precioMayorista" type="text" inputMode="decimal"
                    placeholder="Ej: 900"
                    value={producto.precioMayorista ?? ""} onChange={handleChange}
                    onWheel={e => e.currentTarget.blur()} />
                  <span className="pf-price-preview">
-                   Total x{tierX2.minimum}: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                   Total calculado: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.unitPrice)} × ${tierX2.minimum} = $${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
                  </span>
                </Field>
 
@@ -387,14 +387,14 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio por unidad x6</>}
-                  hint="Precio unitario que se aplica desde x6 unidades.">
+                <Field label={<><span className="price-tag price-tag--success">x6</span> Precio por unidad</>}
+                  hint="Este valor se multiplica automáticamente por x6 unidades.">
                  <Input name="precioMayorista2" type="text" inputMode="decimal"
                    placeholder="Ej: 850"
                    value={producto.precioMayorista2 ?? ""} onChange={handleChange}
                    onWheel={e => e.currentTarget.blur()} />
                  <span className="pf-price-preview">
-                   Total x{tierX6.minimum}: <strong>{tierX6.totalPrice != null ? `$${formatARS(tierX6.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                   Total calculado: <strong>{tierX6.totalPrice != null ? `$${formatARS(tierX6.unitPrice)} × ${tierX6.minimum} = $${formatARS(tierX6.totalPrice)}` : "Ingresá un precio unitario"}</strong>
                  </span>
                </Field>
 
@@ -405,14 +405,14 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio por unidad x12</>}
-                  hint="Precio unitario que se aplica desde x12 unidades.">
+                <Field label={<><span className="price-tag price-tag--brand">x12</span> Precio por unidad</>}
+                  hint="Este valor se multiplica automáticamente por x12 unidades.">
                  <Input name="precioMayorista3" type="text" inputMode="decimal"
                    placeholder="Ej: 800"
                    value={producto.precioMayorista3 ?? ""} onChange={handleChange}
                    onWheel={e => e.currentTarget.blur()} />
                  <span className="pf-price-preview">
-                   Total x{tierX12.minimum}: <strong>{tierX12.totalPrice != null ? `$${formatARS(tierX12.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                   Total calculado: <strong>{tierX12.totalPrice != null ? `$${formatARS(tierX12.unitPrice)} × ${tierX12.minimum} = $${formatARS(tierX12.totalPrice)}` : "Ingresá un precio unitario"}</strong>
                  </span>
                </Field>
             </>
