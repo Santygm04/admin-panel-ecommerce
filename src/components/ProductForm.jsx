@@ -10,9 +10,9 @@ import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudina
 import { notify } from "../utils/toast";
 import { isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 
-// Subcategorías con precio unitario "desde 2 unidades"
+// Subcategorías que ofrecen packs de lencería.
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
-// Subcategorías con precio x2 y x6
+// Medias también utiliza los tiers x2/x6/x12.
 const SUBCAT_MEDIAS  = ["medias"];
 
 // Devuelve el mínimo sugerido según subcategoría
@@ -358,7 +358,7 @@ export default function ProductForm({ onCreated }) {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio por unidad de cada tier. El ecommerce calcula el total según x2, x6 o x12.
+                Lencería: cargá el precio total de cada pack. El ecommerce multiplica únicamente por la cantidad de packs.
               </div>
 
               <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
@@ -368,8 +368,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista ?? ""} onChange={handleChange} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio por unidad x2</>}
-                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista) * Number(producto.minimoMayorista || 2)).toLocaleString("es-AR")}`}>
+               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total del pack x2</>}
+                 hint="Importe final de un pack de 2 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista" type="text" inputMode="decimal"
                   placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
@@ -383,8 +383,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio por unidad x6</>}
-                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista2) * Number(producto.minimoMayorista2 || 6)).toLocaleString("es-AR")}`}>
+               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total del pack x6</>}
+                 hint="Importe final de un pack de 6 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista2" type="text" inputMode="decimal"
                   placeholder="Ej: 850"
                   value={producto.precioMayorista2 ?? ""} onChange={handleChange}
@@ -398,8 +398,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
               </Field>
 
-              <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio por unidad x12</>}
-                hint={`Total estimado: $${(parseMoneyInput(producto.precioMayorista3) * Number(producto.minimoMayorista3 || 12)).toLocaleString("es-AR")}`}>
+               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total del pack x12</>}
+                 hint="Importe final de un pack de 12 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista3" type="text" inputMode="decimal"
                   placeholder="Ej: 800"
                   value={producto.precioMayorista3 ?? ""} onChange={handleChange}

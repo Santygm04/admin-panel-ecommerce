@@ -24,6 +24,9 @@ const shrt = (id) => id ? String(id).slice(-8) : "—";
 const num  = (o) => o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || `#${shrt(o?._id)}`;
 const fd   = (d) => d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 const ft   = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+const itemQuantityLabel = (item) => Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
+  ? `${item.packQuantity} pack${item.packQuantity === 1 ? "" : "s"} x${item.packSize} (${item.totalUnits || item.cantidad} u.)`
+  : `x${item?.cantidad || 0}`;
 
 const ST = {
   pending:   { lbl: "Pendiente",  tone: "warning" },
@@ -65,7 +68,9 @@ const waTxt = (o) => {
       : "";
     const boxUnits = Number(it?.unidadesPorCaja) || 0;
     const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
-    const quantityLabel = boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`;
+    const quantityLabel = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0
+      ? itemQuantityLabel(it)
+      : boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`;
     return `- ${it.nombre}${vp} ${quantityLabel} --- ${$m(it.subtotal)}${tonosPart}`;
   }).join("\n");
   return [
@@ -635,7 +640,10 @@ export default function AdminOrders() {
               <b>Detalle completo del pedido</b>
               <div className="ao-items">
                 {(detail.items || []).map((it, i) => {
-                  const precioUnit = it.cantidad ? it.subtotal / it.cantidad : 0;
+                   const isPack = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0;
+                   const precioUnit = isPack
+                     ? (Number(it.precioPack ?? it.precio) || 0)
+                     : (it.cantidad ? it.subtotal / it.cantidad : 0);
                   const boxUnits = Number(it?.unidadesPorCaja) || 0;
                   const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
                   return (
@@ -649,8 +657,12 @@ export default function AdminOrders() {
                         )}
                       </div>
                       <div className="ao-item-row">
-                        <span>Unitario: <b>{$m(precioUnit)}</b></span>
-                        <span>Cantidad total: <b>{it.cantidad}</b></span>
+                         <span>{isPack ? "Precio del pack" : "Unitario"}: <b>{$m(precioUnit)}</b></span>
+                         {isPack ? (
+                           <span>Packs: <b>{it.packQuantity} x{it.packSize}</b> ({it.totalUnits || it.cantidad} unidades)</span>
+                         ) : (
+                           <span>Cantidad total: <b>{it.cantidad}</b></span>
+                         )}
                         {boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
                         <span>Subtotal: <b>{$m(it.subtotal)}</b></span>
                       </div>

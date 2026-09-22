@@ -106,11 +106,11 @@ function PriceTiers({ producto }) {
       show: producto.precioMayorista != null,
       tone: "info",
       label: isLenceria ? `x${minimoMayorista || 2}` : "M",
-      detail: isLenceria ? null : `mín. $${money(minimoMayorista || 30000)}`,
+       detail: isLenceria ? "total del pack" : `mín. $${money(minimoMayorista || 30000)}`,
       value: producto.precioMayorista,
     },
-    { show: isLenceria && producto.precioMayorista2 != null, tone: "success", label: `x${producto.minimoMayorista2 || 6}`, value: producto.precioMayorista2 },
-    { show: isLenceria && producto.precioMayorista3 != null, tone: "brand", label: `x${producto.minimoMayorista3 || 12}`, value: producto.precioMayorista3 },
+    { show: isLenceria && producto.precioMayorista2 != null, tone: "success", label: `x${producto.minimoMayorista2 || 6}`, detail: "total del pack", value: producto.precioMayorista2 },
+    { show: isLenceria && producto.precioMayorista3 != null, tone: "brand", label: `x${producto.minimoMayorista3 || 12}`, detail: "total del pack", value: producto.precioMayorista3 },
   ];
   const visible = tiers.filter((t) => t.show);
   if (!visible.length) return <span className="pl-muted">Sin precios</span>;
