@@ -358,7 +358,7 @@ export default function ProductForm({ onCreated }) {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio total de cada pack. El ecommerce multiplica únicamente por la cantidad de packs.
+                Lencería: cargá el precio total para cada cantidad (x2, x6 o x12). No lo cargues por unidad.
               </div>
 
               <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
@@ -368,8 +368,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista ?? ""} onChange={handleChange} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total del pack x2</>}
-                 hint="Importe final de un pack de 2 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total x2</>}
+                 hint="Importe final de x2 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista" type="text" inputMode="decimal"
                   placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
@@ -383,8 +383,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total del pack x6</>}
-                 hint="Importe final de un pack de 6 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total x6</>}
+                 hint="Importe final de x6 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista2" type="text" inputMode="decimal"
                   placeholder="Ej: 850"
                   value={producto.precioMayorista2 ?? ""} onChange={handleChange}
@@ -398,8 +398,8 @@ export default function ProductForm({ onCreated }) {
                   value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total del pack x12</>}
-                 hint="Importe final de un pack de 12 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total x12</>}
+                 hint="Importe final de x12 unidades. No lo cargues por unidad.">
                 <Input name="precioMayorista3" type="text" inputMode="decimal"
                   placeholder="Ej: 800"
                   value={producto.precioMayorista3 ?? ""} onChange={handleChange}

@@ -799,7 +799,7 @@ function SalesBreakdownModal({ state, granularity, onClose, onRetry }) {
                         <div className="stats-sale-item" key={`${order._id}-${index}`}>
                           <span><b>{item.nombre || "Producto"}</b><small>{[item?.variant?.size, item?.variant?.color, item?.variant?.tono].filter(Boolean).join(" / ")}</small></span>
                            <span>{Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
-                             ? `${item.packQuantity} pack${item.packQuantity === 1 ? "" : "s"} x${item.packSize} (${item.totalUnits || item.cantidad} u.)`
+                             ? `x${item.totalUnits || item.cantidad}`
                              : `${item.cantidad || 0} × ${money(item.cantidad ? Number(item.subtotal || 0) / item.cantidad : 0)}`}</span>
                           <strong>{money(item.subtotal)}</strong>
                         </div>

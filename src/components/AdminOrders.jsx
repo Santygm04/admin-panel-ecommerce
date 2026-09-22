@@ -25,7 +25,7 @@ const num  = (o) => o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || 
 const fd   = (d) => d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 const ft   = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 const itemQuantityLabel = (item) => Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
-  ? `${item.packQuantity} pack${item.packQuantity === 1 ? "" : "s"} x${item.packSize} (${item.totalUnits || item.cantidad} u.)`
+  ? `x${item.totalUnits || item.cantidad}`
   : `x${item?.cantidad || 0}`;
 
 const ST = {
@@ -657,9 +657,9 @@ export default function AdminOrders() {
                         )}
                       </div>
                       <div className="ao-item-row">
-                         <span>{isPack ? "Precio del pack" : "Unitario"}: <b>{$m(precioUnit)}</b></span>
+                         <span>{isPack ? `Precio x${it.packSize}` : "Unitario"}: <b>{$m(precioUnit)}</b></span>
                          {isPack ? (
-                           <span>Packs: <b>{it.packQuantity} x{it.packSize}</b> ({it.totalUnits || it.cantidad} unidades)</span>
+                           <span>Cantidad total: <b>x{it.totalUnits || it.cantidad}</b></span>
                          ) : (
                            <span>Cantidad total: <b>{it.cantidad}</b></span>
                          )}
