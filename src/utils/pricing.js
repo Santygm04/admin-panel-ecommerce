@@ -46,3 +46,35 @@ export const parseOptionalIntegerInput = (value) => {
   const parsed = parseMoneyInput(value);
   return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
 };
+
+const LENCERIA_TIER_DEFINITIONS = [
+  { key: "mayorista", priceField: "precioMayorista", minimumField: "minimoMayorista", defaultMinimum: 2 },
+  { key: "mayorista2", priceField: "precioMayorista2", minimumField: "minimoMayorista2", defaultMinimum: 6 },
+  { key: "mayorista3", priceField: "precioMayorista3", minimumField: "minimoMayorista3", defaultMinimum: 12 },
+];
+
+export const formatARS = (value) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "—";
+
+  return amount.toLocaleString("es-AR", {
+    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+export const getLenceriaPricePreview = (product = {}) =>
+  LENCERIA_TIER_DEFINITIONS.map(({ key, priceField, minimumField, defaultMinimum }) => {
+    const unitPrice = parseOptionalMoneyInput(product?.[priceField]);
+    const minimum = parseOptionalIntegerInput(product?.[minimumField]) ?? defaultMinimum;
+    const hasPrice = unitPrice != null && unitPrice > 0;
+
+    return {
+      key,
+      priceField,
+      minimumField,
+      minimum,
+      unitPrice: hasPrice ? unitPrice : null,
+      totalPrice: hasPrice ? Number((unitPrice * minimum).toFixed(2)) : null,
+    };
+  });

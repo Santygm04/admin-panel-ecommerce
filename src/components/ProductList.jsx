@@ -8,7 +8,7 @@ import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "./ui";
 import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashIcon, RefreshIcon } from "./ui/icons";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
-import { isLenceriaCategory, normalizeSlug } from "../utils/pricing";
+import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug } from "../utils/pricing";
 import { ProductImage } from "../utils/image";
 
 const API = `${API_URL}/api`;
@@ -52,8 +52,7 @@ const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
 
 /* ===== Helpers promo ===== */
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-const money = (n) =>
-  Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+const money = (n) => formatARS(n);
 
 function parsePromoInput(input, basePrice) {
   const base = Number(basePrice || 0);
@@ -92,6 +91,7 @@ function PriceTiers({ producto }) {
   const isLenceria = isLenceriaCategory(producto.categoria);
   const minimoMayorista = Number(producto.minimoMayorista) || 0;
   const hasUnit = Number(producto.precio) > 0;
+  const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
     { show: producto.precioEspecial != null, tone: "gold", label: "Esp", value: producto.precioEspecial },
@@ -103,14 +103,26 @@ function PriceTiers({ producto }) {
       value: producto.precioCaja,
     },
     {
-      show: producto.precioMayorista != null,
+      show: isLenceria ? tierX2.unitPrice != null : producto.precioMayorista != null,
       tone: "info",
-      label: isLenceria ? `x${minimoMayorista || 2}` : "M",
-       detail: isLenceria ? "total x2" : `mín. $${money(minimoMayorista || 30000)}`,
-      value: producto.precioMayorista,
+      label: isLenceria ? `x${tierX2.minimum}` : "M",
+      detail: isLenceria ? `total · $${formatARS(tierX2.unitPrice)}/u` : `mín. $${money(minimoMayorista || 30000)}`,
+      value: isLenceria ? tierX2.totalPrice : producto.precioMayorista,
     },
-    { show: isLenceria && producto.precioMayorista2 != null, tone: "success", label: `x${producto.minimoMayorista2 || 6}`, detail: "total x6", value: producto.precioMayorista2 },
-    { show: isLenceria && producto.precioMayorista3 != null, tone: "brand", label: `x${producto.minimoMayorista3 || 12}`, detail: "total x12", value: producto.precioMayorista3 },
+    {
+      show: isLenceria && tierX6.unitPrice != null,
+      tone: "success",
+      label: `x${tierX6.minimum}`,
+      detail: `total · $${formatARS(tierX6.unitPrice)}/u`,
+      value: tierX6.totalPrice,
+    },
+    {
+      show: isLenceria && tierX12.unitPrice != null,
+      tone: "brand",
+      label: `x${tierX12.minimum}`,
+      detail: `total · $${formatARS(tierX12.unitPrice)}/u`,
+      value: tierX12.totalPrice,
+    },
   ];
   const visible = tiers.filter((t) => t.show);
   if (!visible.length) return <span className="pl-muted">Sin precios</span>;
@@ -119,7 +131,7 @@ function PriceTiers({ producto }) {
       {visible.map((t) => (
         <span key={t.label} className={`price-row ${t.tone === "neutral" ? "price-row--main" : ""}`}>
           <PriceTag label={t.label} tone={t.tone} />
-          ${Number(t.value).toLocaleString("es-AR")}
+          ${formatARS(t.value)}
           {t.detail && <span className="price-row-detail">{t.detail}</span>}
         </span>
       ))}

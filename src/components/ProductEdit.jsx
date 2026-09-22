@@ -9,7 +9,7 @@ import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
-import { isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { normalizeImageUrl } from "../utils/image";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
@@ -373,6 +373,7 @@ export default function EditProduct() {
   }
 
   const isNuevoIngreso = (producto.tags || []).includes("nuevos-ingresos");
+  const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
 
   return (
     <form className="product-form" onSubmit={handleSubmit} autoComplete="off">
@@ -451,7 +452,7 @@ export default function EditProduct() {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio total para cada cantidad (x2, x6 o x12). No lo cargues por unidad.
+                Lencería: cargá el precio por unidad de cada nivel. El total final de x2, x6 o x12 se calcula automáticamente.
               </div>
 
               <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
@@ -462,13 +463,16 @@ export default function EditProduct() {
                    disabled={isVendedor && !canEditCatalog} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio total x2</>}
-                 hint="Importe final de x2 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--info">x2$</span> Precio por unidad x2</>}
+                 hint="Precio unitario que se aplica desde x2 unidades.">
                 <Input name="precioMayorista" type="text" inputMode="decimal"
                   placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
-              </Field>
+                <span className="pf-price-preview">
+                  Total x{tierX2.minimum}: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                </span>
+               </Field>
 
               <Field label={<><span className="price-tag price-tag--success">x6</span> Mínimo x6</>}
                 hint="Cantidad mínima (ej: 6)">
@@ -478,13 +482,16 @@ export default function EditProduct() {
                    disabled={isVendedor && !canEditCatalog} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio total x6</>}
-                 hint="Importe final de x6 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--success">x6$</span> Precio por unidad x6</>}
+                 hint="Precio unitario que se aplica desde x6 unidades.">
                 <Input name="precioMayorista2" type="text" inputMode="decimal"
                   placeholder="Ej: 850"
                   value={producto.precioMayorista2 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
-              </Field>
+                <span className="pf-price-preview">
+                  Total x{tierX6.minimum}: <strong>{tierX6.totalPrice != null ? `$${formatARS(tierX6.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                </span>
+               </Field>
 
               <Field label={<><span className="price-tag price-tag--brand">x12</span> Mínimo x12</>}
                 hint="Cantidad mínima (ej: 12)">
@@ -494,13 +501,16 @@ export default function EditProduct() {
                    disabled={isVendedor && !canEditCatalog} />
               </Field>
 
-               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio total x12</>}
-                 hint="Importe final de x12 unidades. No lo cargues por unidad.">
+               <Field label={<><span className="price-tag price-tag--brand">x12$</span> Precio por unidad x12</>}
+                 hint="Precio unitario que se aplica desde x12 unidades.">
                 <Input name="precioMayorista3" type="text" inputMode="decimal"
                   placeholder="Ej: 800"
                   value={producto.precioMayorista3 ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
-              </Field>
+                <span className="pf-price-preview">
+                  Total x{tierX12.minimum}: <strong>{tierX12.totalPrice != null ? `$${formatARS(tierX12.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                </span>
+               </Field>
             </>
           )}
         </div>

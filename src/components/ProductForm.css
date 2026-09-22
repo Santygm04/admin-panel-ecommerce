@@ -18,6 +18,14 @@
 .pf-req { color: var(--adm-brand); }
 .pf-hint { font: var(--t-caption); color: var(--adm-muted); }
 .pf-full { grid-column: 1 / -1; }
+.pf-price-preview {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--adm-brand);
+  font: var(--t-caption);
+  font-weight: 700;
+}
+.pf-price-preview strong { color: var(--adm-ink); }
 
 /* ── Bloques ── */
 .pf-block {
