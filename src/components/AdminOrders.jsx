@@ -24,9 +24,17 @@ const shrt = (id) => id ? String(id).slice(-8) : "—";
 const num  = (o) => o?.orderNumber ? `#${o.orderNumber}` : o?.shippingTicket || `#${shrt(o?._id)}`;
 const fd   = (d) => d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 const ft   = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-const itemQuantityLabel = (item) => Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
-  ? `x${item.totalUnits || item.cantidad}`
-  : `x${item?.cantidad || 0}`;
+const itemQuantityLabel = (item) => {
+  if (item?.saleUnit === "caja") {
+    return `${item.saleQuantity || item.cantidadCajas || 0} caja${Number(item.saleQuantity || item.cantidadCajas) === 1 ? "" : "s"} (${item.totalUnits || item.cantidad} u.)`;
+  }
+  if (item?.saleUnit === "media_caja") {
+    return `${item.saleQuantity || 0} media caja${Number(item.saleQuantity) === 1 ? "" : "s"} (${item.totalUnits || item.cantidad} u.)`;
+  }
+  return Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
+    ? `x${item.totalUnits || item.cantidad}`
+    : null;
+};
 
 const ST = {
   pending:   { lbl: "Pendiente",  tone: "warning" },
@@ -67,10 +75,8 @@ const waTxt = (o) => {
       ? "\n   " + it.distribucionTonos.map(t => `${t.tono}: ${t.cantidad} u.`).join(" | ")
       : "";
     const boxUnits = Number(it?.unidadesPorCaja) || 0;
-    const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
-    const quantityLabel = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0
-      ? itemQuantityLabel(it)
-      : boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`;
+     const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+     const quantityLabel = itemQuantityLabel(it) || (boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`);
     return `- ${it.nombre}${vp} ${quantityLabel} --- ${$m(it.subtotal)}${tonosPart}`;
   }).join("\n");
   return [
@@ -644,8 +650,13 @@ export default function AdminOrders() {
                    const precioUnit = isPack
                      ? (Number(it.precioPack ?? it.precio) || 0)
                      : (it.cantidad ? it.subtotal / it.cantidad : 0);
-                  const boxUnits = Number(it?.unidadesPorCaja) || 0;
-                  const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+                   const boxUnits = Number(it?.unidadesPorCaja) || 0;
+                   const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+                   const saleUnitLabel = it?.saleUnit === "caja"
+                     ? `${it.saleQuantity || boxCount} caja${Number(it.saleQuantity || boxCount) === 1 ? "" : "s"}`
+                     : it?.saleUnit === "media_caja"
+                       ? `${it.saleQuantity || 0} media caja${Number(it.saleQuantity) === 1 ? "" : "s"}`
+                       : null;
                   return (
                     <div key={i} className="ao-item">
                       <div className="ao-item-head">
@@ -663,7 +674,8 @@ export default function AdminOrders() {
                          ) : (
                            <span>Cantidad total: <b>{it.cantidad}</b></span>
                          )}
-                        {boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
+                         {saleUnitLabel && <span>Venta: <b>{saleUnitLabel}</b> · {$m(it.salePrice)}</span>}
+                         {!saleUnitLabel && boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
                         <span>Subtotal: <b>{$m(it.subtotal)}</b></span>
                       </div>
                       {Array.isArray(it.distribucionTonos) && it.distribucionTonos.length > 0 && (

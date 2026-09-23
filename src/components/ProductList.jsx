@@ -91,6 +91,12 @@ function PriceTiers({ producto }) {
   const isLenceria = isLenceriaCategory(producto.categoria);
   const minimoMayorista = Number(producto.minimoMayorista) || 0;
   const hasUnit = Number(producto.precio) > 0;
+  const boxUnits = Number(producto.unidadesPorCaja);
+  const halfBoxPrice = Number(producto.precioMediaCaja) > 0
+    ? Number(producto.precioMediaCaja)
+    : boxUnits > 1 && boxUnits % 2 === 0 && Number(producto.precioCaja) > 0
+      ? Number(producto.precioCaja) / 2
+      : 0;
   const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
@@ -101,6 +107,13 @@ function PriceTiers({ producto }) {
       label: "Caja",
       detail: producto.unidadesPorCaja ? `${producto.unidadesPorCaja} uds.` : null,
       value: producto.precioCaja,
+    },
+    {
+      show: producto.publicarEnCajas && boxUnits > 1 && boxUnits % 2 === 0 && halfBoxPrice > 0,
+      tone: "info",
+      label: "½ caja",
+      detail: `${boxUnits / 2} uds.`,
+      value: halfBoxPrice,
     },
     {
       show: isLenceria ? tierX2.unitPrice != null : producto.precioMayorista != null,

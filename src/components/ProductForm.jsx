@@ -39,6 +39,7 @@ export default function ProductForm({ onCreated }) {
     precioEspecial: "",
     precioMayorista: "",
     precioCaja: "",
+    precioMediaCaja: "",
     descripcion: "",
     categoria: "",
     subcategoria: "",
@@ -193,6 +194,7 @@ export default function ProductForm({ onCreated }) {
     const toneCount = Number(producto.cantidadTonos) || 0;
     const boxUnits = Number(producto.unidadesPorCaja) || 0;
     const precioCaja = parseOptionalMoneyInput(producto.precioCaja);
+    const precioMediaCaja = parseOptionalMoneyInput(producto.precioMediaCaja);
     const toneNames = (producto.tonosDisponibles || []).map((tone) => String(tone).trim()).filter(Boolean);
     if (producto.publicarEnCajas && boxUnits < 1) {
       notify.warning("Para publicar una caja indicá cuántas unidades trae.");
@@ -200,6 +202,10 @@ export default function ProductForm({ onCreated }) {
     }
     if (producto.publicarEnCajas && boxUnits > 1 && !(precioCaja > 0)) {
       notify.warning("Para publicar una caja indicá el precio del bloque completo.");
+      return;
+    }
+    if (precioMediaCaja > 0 && (!producto.publicarEnCajas || boxUnits <= 1 || boxUnits % 2 !== 0 || !(precioCaja > 0))) {
+      notify.warning("La media caja requiere una caja publicada, unidades pares y precio de caja.");
       return;
     }
     if (toneCount > 0 && boxUnits > 0 && toneCount > boxUnits) {
@@ -243,6 +249,7 @@ export default function ProductForm({ onCreated }) {
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
         precioCaja,
+        precioMediaCaja,
         stock:           Number(producto.stock) || 0,
         stockMinimo:     parseOptionalIntegerInput(producto.stockMinimo) ?? 5,
         categoria:    (producto.categoria    || "").toLowerCase(),
@@ -441,12 +448,22 @@ export default function ProductForm({ onCreated }) {
             </Field>
 
             {(producto.publicarEnCajas || Number(producto.unidadesPorCaja) > 1) && (
-              <Field label={<><span className="price-tag price-tag--brand">C</span> Precio por caja</>}
-                hint="Precio final por el bloque completo, no por unidad. Ej: $7.200 por caja de 8.">
-                <Input name="precioCaja" type="text" inputMode="decimal"
-                  placeholder="Ej: 7200"
-                  value={producto.precioCaja ?? ""} onChange={handleChange} />
-              </Field>
+              <div className="pf-box-pricing">
+                <Field label={<><span className="price-tag price-tag--brand">C</span> Precio por caja</>}
+                  hint="Precio final por el bloque completo, no por unidad. Ej: $7.200 por caja de 8.">
+                  <Input name="precioCaja" type="text" inputMode="decimal"
+                    placeholder="Ej: 7200"
+                    value={producto.precioCaja ?? ""} onChange={handleChange} />
+                </Field>
+                {Number(producto.unidadesPorCaja) > 1 && (
+                  <Field label={<><span className="price-tag price-tag--brand">½</span> Precio por media caja</>}
+                    hint="Precio total de la mitad de unidades. Si queda vacío, usa la mitad del precio de caja.">
+                    <Input name="precioMediaCaja" type="text" inputMode="decimal"
+                      placeholder="Ej: 3000"
+                      value={producto.precioMediaCaja ?? ""} onChange={handleChange} />
+                  </Field>
+                )}
+              </div>
             )}
           </div>
 

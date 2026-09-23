@@ -70,6 +70,16 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--sp-4);
 }
+.pf-box-pricing {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  padding: var(--sp-3);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--r-md);
+  background: var(--adm-surface-2);
+}
 
 /* ── Tonos ── */
 .pf-tonos-grid {

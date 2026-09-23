@@ -68,8 +68,9 @@ export default function EditProduct() {
           codigoInterno:   p.codigoInterno    || "",
           precio:          p.precio === 0 || p.precio ? String(p.precio) : "",
           precioEspecial:  p.precioEspecial  != null ? String(p.precioEspecial)  : "",
-          precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
-          precioCaja:      p.precioCaja      != null ? String(p.precioCaja)      : "",
+           precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
+           precioCaja:      p.precioCaja      != null ? String(p.precioCaja)      : "",
+           precioMediaCaja: p.precioMediaCaja != null ? String(p.precioMediaCaja) : "",
           descripcion:     p.descripcion     || "",
           categoria:       normalizeSlug(p.categoria),
           subcategoria:    p.subcategoria    || "",
@@ -143,7 +144,7 @@ export default function EditProduct() {
       return;
     }
 
-    const numericOptional = ["precioEspecial", "precioMayorista", "precioCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
+    const numericOptional = ["precioEspecial", "precioMayorista", "precioCaja", "precioMediaCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
     if (numericOptional.includes(name)) {
       setProducto(prev => ({ ...prev, [name]: value }));
       return;
@@ -231,6 +232,7 @@ export default function EditProduct() {
     const toneCount = Number(producto.cantidadTonos) || 0;
     const boxUnits = Number(producto.unidadesPorCaja) || 0;
     const precioCaja = parseOptionalMoneyInput(producto.precioCaja);
+    const precioMediaCaja = parseOptionalMoneyInput(producto.precioMediaCaja);
     const toneNames = (producto.tonosDisponibles || []).map((tone) => String(tone).trim()).filter(Boolean);
     if (producto.publicarEnCajas && boxUnits < 1) {
       notify.warning("Para publicar una caja indicá cuántas unidades trae.");
@@ -238,6 +240,10 @@ export default function EditProduct() {
     }
     if (producto.publicarEnCajas && boxUnits > 1 && !(precioCaja > 0)) {
       notify.warning("Para publicar una caja indicá el precio del bloque completo.");
+      return;
+    }
+    if (precioMediaCaja > 0 && (!producto.publicarEnCajas || boxUnits <= 1 || boxUnits % 2 !== 0 || !(precioCaja > 0))) {
+      notify.warning("La media caja requiere una caja publicada, unidades pares y precio de caja.");
       return;
     }
     if (toneCount > 0 && boxUnits > 0 && toneCount > boxUnits) {
@@ -282,6 +288,7 @@ export default function EditProduct() {
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
         precioCaja,
+        precioMediaCaja,
         descripcion:     producto.descripcion,
         categoria:       (producto.categoria  || "").toLowerCase(),
         subcategoria:    (producto.subcategoria || "").toLowerCase(),
@@ -321,8 +328,9 @@ export default function EditProduct() {
             tonosDisponibles: body.tonosDisponibles,
             precio: body.precio,
             precioEspecial: body.precioEspecial,
-            precioMayorista: body.precioMayorista,
-            precioCaja: body.precioCaja,
+             precioMayorista: body.precioMayorista,
+             precioCaja: body.precioCaja,
+             precioMediaCaja: body.precioMediaCaja,
             minimoMayorista: body.minimoMayorista,
             minimoMayorista2: body.minimoMayorista2,
             minimoMayorista3: body.minimoMayorista3,
@@ -542,13 +550,24 @@ export default function EditProduct() {
             </Field>
 
             {(producto.publicarEnCajas || Number(producto.unidadesPorCaja) > 1) && (
-              <Field label={<><span className="price-tag price-tag--brand">C</span> Precio por caja</>}
-                hint="Precio final por el bloque completo, no por unidad. Ej: $7.200 por caja de 8.">
-                <Input name="precioCaja" type="text" inputMode="decimal"
-                  placeholder="Ej: 7200"
-                  value={producto.precioCaja ?? ""} onChange={handleChange}
-                  onWheel={(e) => e.currentTarget.blur()} />
-              </Field>
+              <div className="pf-box-pricing">
+                <Field label={<><span className="price-tag price-tag--brand">C</span> Precio por caja</>}
+                  hint="Precio final por el bloque completo, no por unidad. Ej: $7.200 por caja de 8.">
+                  <Input name="precioCaja" type="text" inputMode="decimal"
+                    placeholder="Ej: 7200"
+                    value={producto.precioCaja ?? ""} onChange={handleChange}
+                    onWheel={(e) => e.currentTarget.blur()} />
+                </Field>
+                {Number(producto.unidadesPorCaja) > 1 && (
+                  <Field label={<><span className="price-tag price-tag--brand">½</span> Precio por media caja</>}
+                    hint="Precio total de la mitad de unidades. Si queda vacío, usa la mitad del precio de caja.">
+                    <Input name="precioMediaCaja" type="text" inputMode="decimal"
+                      placeholder="Ej: 3000"
+                      value={producto.precioMediaCaja ?? ""} onChange={handleChange}
+                      onWheel={(e) => e.currentTarget.blur()} />
+                  </Field>
+                )}
+              </div>
             )}
           </div>
 
