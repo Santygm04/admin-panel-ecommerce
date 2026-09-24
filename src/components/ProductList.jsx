@@ -781,7 +781,7 @@ export default function ProductList() {
             <EyeIcon size={15} /> {isSavingVis ? "Mostrando…" : "Mostrar"}
           </Button>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => setVisible(producto._id, false)}
+          <Button size="sm" variant="secondary" className="pl-action-hide" onClick={() => setVisible(producto._id, false)}
             disabled={isSavingVis || !puedeOcultar}
             title={puedeOcultar ? "Ocultar (sin stock)" : "Solo cuando stock = 0"}>
             <EyeOffIcon size={15} /> {isSavingVis ? "Ocultando…" : "Ocultar"}

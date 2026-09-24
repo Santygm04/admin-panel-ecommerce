@@ -214,7 +214,18 @@
 .promo-preview.err { color: var(--adm-warning); }
 
 /* ── Acciones por fila ── */
-.pl-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pl-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.pl-actions > .ui-btn { width: 100%; }
+.pl-action-hide {
+  border-color: var(--adm-brand);
+  background: var(--adm-brand-soft);
+  color: var(--adm-brand);
+}
+.pl-action-hide:hover:not(:disabled) {
+  border-color: var(--adm-brand-600);
+  background: var(--adm-brand-tint);
+  color: var(--adm-brand-700);
+}
 
 /* ── Tabla desktop ── */
 .pl-table .pl-thumb {
