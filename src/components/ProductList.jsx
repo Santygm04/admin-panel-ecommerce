@@ -292,6 +292,7 @@ export default function ProductList() {
   const [productos, setProductos] = useState([]);
   const [categoriasDB, setCategoriasDB] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [subcategoriaFiltro, setSubcategoriaFiltro] = useState("");
   const [soloCajas, setSoloCajas] = useState(false);
   const [stockEstado, setStockEstado] = useState("");
   const [q, setQ] = useState("");
@@ -354,6 +355,7 @@ export default function ProductList() {
             q,
             admin: true,
             ...(categoriaFiltro ? { categoria: categoriaFiltro } : {}),
+            ...(subcategoriaFiltro ? { subcategoria: subcategoriaFiltro } : {}),
             ...(soloCajas ? { publicarEnCajas: true } : {}),
             ...(stockEstado ? { stockEstado } : {}),
           },
@@ -366,6 +368,7 @@ export default function ProductList() {
           ? legacyItems.filter((product) => (
               matchesProductSearch(product, q)
               && (!categoriaFiltro || normalizeSlug(product.categoria) === normalizeSlug(categoriaFiltro))
+              && (!subcategoriaFiltro || normalizeSlug(product.subcategoria) === normalizeSlug(subcategoriaFiltro))
               && (!soloCajas || product.publicarEnCajas === true)
             ))
           : [];
@@ -418,7 +421,7 @@ export default function ProductList() {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q, categoriaFiltro, soloCajas, stockEstado, page, refreshTick]);
+  }, [q, categoriaFiltro, subcategoriaFiltro, soloCajas, stockEstado, page, refreshTick]);
 
   const productosFiltrados = productos;
 
@@ -434,6 +437,32 @@ export default function ProductList() {
     }
     return [...options.entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
   }, [categoriasDB, productos]);
+
+  const subcategoriasUnicas = useMemo(() => {
+    const options = new Map();
+    const selectedCategory = normalizeSlug(categoriaFiltro);
+
+    for (const category of categoriasDB) {
+      const categoryValue = normalizeSlug(category?.slug || category?.nombre);
+      if (selectedCategory && categoryValue !== selectedCategory) continue;
+
+      for (const subcategoria of category?.subcategorias || []) {
+        const label = String(subcategoria || "").trim();
+        const value = normalizeSlug(label);
+        if (value && !options.has(value)) options.set(value, label);
+      }
+    }
+
+    // Keep the selector useful if a product has a subcategory not yet in the catalog.
+    for (const product of productos) {
+      if (selectedCategory && normalizeSlug(product.categoria) !== selectedCategory) continue;
+      const label = String(product.subcategoria || "").trim();
+      const value = normalizeSlug(label);
+      if (value && !options.has(value)) options.set(value, label);
+    }
+
+    return [...options.values()].sort((a, b) => a.localeCompare(b, "es"));
+  }, [categoriasDB, productos, categoriaFiltro]);
 
   const showNotif = (type, text) => {
     if (type === "ok") {
@@ -853,13 +882,30 @@ export default function ProductList() {
           />
           <Select
             value={categoriaFiltro}
-            onChange={(e) => { setCategoriaFiltro(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setCategoriaFiltro(e.target.value);
+              setSubcategoriaFiltro("");
+              setPage(1);
+            }}
             aria-label="Filtrar por categoría"
           >
             <option value="">Todas las categorías</option>
             {categoriasUnicas.map(([value, label]) => (
               <option key={value} value={value}>
                 {label === "nuevos-ingresos" ? "Nuevos ingresos" : label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={subcategoriaFiltro}
+            onChange={(e) => { setSubcategoriaFiltro(e.target.value); setPage(1); }}
+            aria-label="Filtrar por subcategoría"
+            disabled={!subcategoriasUnicas.length}
+          >
+            <option value="">Todas las subcategorías</option>
+            {subcategoriasUnicas.map((subcategoria) => (
+              <option key={normalizeSlug(subcategoria)} value={subcategoria}>
+                {subcategoria}
               </option>
             ))}
           </Select>
@@ -886,8 +932,8 @@ export default function ProductList() {
           >
             <RefreshIcon size={15} /> Actualizar
           </Button>
-          {(categoriaFiltro || soloCajas || stockEstado || q) && (
-            <Button size="sm" variant="ghost" onClick={() => { setCategoriaFiltro(""); setSoloCajas(false); setStockEstado(""); setQ(""); setPage(1); }}>
+          {(categoriaFiltro || subcategoriaFiltro || soloCajas || stockEstado || q) && (
+            <Button size="sm" variant="ghost" onClick={() => { setCategoriaFiltro(""); setSubcategoriaFiltro(""); setSoloCajas(false); setStockEstado(""); setQ(""); setPage(1); }}>
               Limpiar filtro
             </Button>
           )}
