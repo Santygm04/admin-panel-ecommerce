@@ -35,6 +35,21 @@ const stockLevelPercent = (status) => {
 
 const productSku = (producto) => String(producto?.sku || producto?.codigoInterno || "").trim();
 
+const matchesProductSearch = (producto, query) => {
+  const term = normalizeSlug(query);
+  if (!term) return true;
+
+  return [
+    producto?.nombre,
+    producto?.descripcion,
+    producto?.categoria,
+    producto?.subcategoria,
+    producto?.sku,
+    producto?.codigoInterno,
+    ...(Array.isArray(producto?.tags) ? producto.tags : []),
+  ].some((value) => normalizeSlug(value).includes(term));
+};
+
 function StockStatusLabel({ status }) {
   return (
     <span className={`stock-status-label stock-status-label--${status.key}`}>
@@ -349,7 +364,8 @@ export default function ProductList() {
         const legacyItems = Array.isArray(data) ? data : null;
         const legacyFiltered = legacyItems
           ? legacyItems.filter((product) => (
-              (!categoriaFiltro || normalizeSlug(product.categoria) === normalizeSlug(categoriaFiltro))
+              matchesProductSearch(product, q)
+              && (!categoriaFiltro || normalizeSlug(product.categoria) === normalizeSlug(categoriaFiltro))
               && (!soloCajas || product.publicarEnCajas === true)
             ))
           : [];
@@ -829,11 +845,11 @@ export default function ProductList() {
         <div className="pl-filters">
           <Input
             type="search"
-            placeholder="Buscar productos…"
+            placeholder="Buscar por nombre, SKU o subcategoría…"
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
             icon={<SearchIcon size={16} />}
-            aria-label="Buscar productos"
+            aria-label="Buscar por nombre, SKU o subcategoría"
           />
           <Select
             value={categoriaFiltro}
