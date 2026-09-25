@@ -1,0 +1,48 @@
+.aesthetic-days-page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.aesthetic-days-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.aesthetic-days-eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--adm-brand); font: var(--t-caption); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.aesthetic-days-head .ui-page-sub { max-width: 680px; }
+.aesthetic-days-status { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-4); border-left: 3px solid var(--adm-border); }
+.aesthetic-days-status--success { border-left-color: var(--adm-success); }
+.aesthetic-days-status--info { border-left-color: var(--adm-info); }
+.aesthetic-days-status--warning { border-left-color: var(--adm-warning); }
+.aesthetic-days-status-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-md); background: var(--adm-surface-3); color: var(--adm-muted); }
+.aesthetic-days-status--success .aesthetic-days-status-icon { color: var(--adm-success); background: var(--adm-success-soft); }
+.aesthetic-days-status--info .aesthetic-days-status-icon { color: var(--adm-info); background: var(--adm-info-soft); }
+.aesthetic-days-status--warning .aesthetic-days-status-icon { color: var(--adm-warning); background: var(--adm-warning-soft); }
+.aesthetic-days-status-copy { min-width: 0; }
+.aesthetic-days-status-topline { display: flex; align-items: center; gap: var(--sp-2); color: var(--adm-muted); font: var(--t-small); }
+.aesthetic-days-status-copy h2 { margin: 7px 0 3px; color: var(--adm-ink); font: var(--t-h3); }
+.aesthetic-days-status-copy p { margin: 0; color: var(--adm-muted); font: var(--t-small); }
+.aesthetic-days-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.aesthetic-days-kpi { display: flex; flex-direction: column; gap: 4px; }
+.aesthetic-days-kpi-label { color: var(--adm-muted); font: var(--t-small); font-weight: 700; }
+.aesthetic-days-kpi strong { color: var(--adm-ink); font: var(--t-display); line-height: 1; }
+.aesthetic-days-kpi small { color: var(--adm-muted); font: var(--t-caption); }
+.aesthetic-days-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: var(--sp-3); }
+.aesthetic-days-card { min-width: 0; }
+.aesthetic-days-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); color: var(--adm-brand); }
+.aesthetic-days-card-heading h2 { margin: 0; color: var(--adm-ink); font: var(--t-h3); }
+.aesthetic-days-card-heading p { margin: 4px 0 0; color: var(--adm-muted); font: var(--t-small); }
+.aesthetic-days-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.aesthetic-days-card-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); color: var(--adm-muted); font: var(--t-caption); }
+.aesthetic-days-rule-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+.aesthetic-days-rule-list > div { display: flex; flex-direction: column; gap: 3px; padding-bottom: var(--sp-3); border-bottom: 1px solid var(--adm-border-soft); }
+.aesthetic-days-rule-list > div:last-child { padding-bottom: 0; border-bottom: 0; }
+.aesthetic-days-rule-list strong { color: var(--adm-muted); font: var(--t-caption); text-transform: uppercase; letter-spacing: .05em; }
+.aesthetic-days-rule-list span { color: var(--adm-ink-2); font: var(--t-small); }
+.aesthetic-days-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.aesthetic-days-note { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--adm-border); border-radius: var(--r-lg); background: var(--adm-surface-2); color: var(--adm-info); }
+.aesthetic-days-note--warning { color: var(--adm-warning); border-color: color-mix(in srgb, var(--adm-warning) 45%, var(--adm-border)); background: var(--adm-warning-soft); }
+.aesthetic-days-note strong { color: var(--adm-ink); font: var(--t-body-strong); }
+.aesthetic-days-note p { margin: 4px 0 0; color: var(--adm-muted); font: var(--t-small); }
+.aesthetic-days-refresh { display: flex; justify-content: flex-end; }
+.aesthetic-days-loading { display: flex; flex-direction: column; gap: var(--sp-3); }
+@media (max-width: 760px) {
+  .aesthetic-days-status { grid-template-columns: auto minmax(0, 1fr); }
+  .aesthetic-days-status > .ui-btn { grid-column: 1 / -1; width: 100%; }
+  .aesthetic-days-kpis, .aesthetic-days-grid, .aesthetic-days-notes { grid-template-columns: 1fr; }
+  .aesthetic-days-form-grid { grid-template-columns: 1fr; }
+  .aesthetic-days-card-footer { align-items: flex-start; flex-direction: column; }
+  .aesthetic-days-card-footer .ui-btn { width: 100%; }
+}

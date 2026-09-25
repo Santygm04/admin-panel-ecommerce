@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
-  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone, ClipboardList,
+  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone, ClipboardList, Sparkles,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';

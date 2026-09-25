@@ -88,6 +88,7 @@
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .layout-nav-item:hover { background: var(--adm-surface-2); color: var(--adm-ink); }
+.layout-nav-item--sub { margin-left: var(--sp-3); padding-left: var(--sp-3); font-size: .84rem; }
 .layout-nav-item.is-active {
   background: var(--adm-brand-soft);
   color: var(--adm-brand);
