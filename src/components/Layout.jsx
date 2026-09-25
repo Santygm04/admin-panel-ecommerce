@@ -61,10 +61,10 @@ export default function Layout({ children }) {
     { to: '/dashboard?tab=estadisticas', label: 'Estadísticas', icon: <BarChart3 size={18} />, show: can('verEstadisticas') },
     { to: '/dashboard?tab=cuenta', label: 'Mi cuenta', icon: <LockKeyhole size={18} />, show: true },
     { to: '/dashboard?tab=usuarios', label: 'Usuarios', icon: <Users size={18} />, show: user?.role === 'admin' },
-     { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: user?.role === 'admin' },
-      { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, show: user?.role === 'admin' },
-      { to: '/promociones/aesthetic-days', label: 'Aesthetic Days', icon: <Sparkles size={18} />, show: user?.role === 'admin' },
-      { to: '/auditoria', label: 'Auditoría', icon: <ClipboardList size={18} />, show: user?.role === 'admin' },
+    { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: user?.role === 'admin' },
+    { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, exact: true, show: user?.role === 'admin' },
+    { to: '/promociones/aesthetic-days', label: 'Aesthetic Days', icon: <Sparkles size={18} />, exact: true, show: user?.role === 'admin' },
+    { to: '/auditoria', label: 'Auditoría', icon: <ClipboardList size={18} />, show: user?.role === 'admin' },
   ].filter((n) => n.show);
 
   const currentFull = `${location.pathname}${location.search}`;
@@ -74,9 +74,11 @@ export default function Layout({ children }) {
       {nav.map((item) => {
         const isActive = item.to.includes('?')
           ? currentFull === item.to
-          : item.to === '/dashboard'
-            ? location.pathname === '/dashboard' && !location.search
-            : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+          : item.exact
+            ? location.pathname === item.to
+            : item.to === '/dashboard'
+              ? location.pathname === '/dashboard' && !location.search
+              : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
         return (
           <Link
             key={item.to}

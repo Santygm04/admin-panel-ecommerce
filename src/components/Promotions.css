@@ -1,6 +1,5 @@
 .promotions-page { max-width: 1440px; }
 .promotions-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); margin-bottom: var(--sp-6); }
-.promotions-head-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
 .promotions-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: var(--adm-brand); font: var(--t-caption); font-weight: 800; letter-spacing: .08em; margin-bottom: var(--sp-2); }
 .promotions-error { justify-content: space-between; margin-bottom: var(--sp-4); }
 .promotions-loading { display: grid; gap: var(--sp-4); }
@@ -41,8 +40,7 @@
 
 @media (max-width: 760px) {
   .promotions-head { align-items: stretch; flex-direction: column; }
-  .promotions-head-actions { display: grid; grid-template-columns: 1fr; }
-  .promotions-head-actions > button { width: 100%; }
+  .promotions-head > button { width: 100%; }
   .promotion-form-grid, .promotion-form-grid--destination, .promotion-form-grid--colors { grid-template-columns: 1fr; }
   .promotion-counter { margin-top: -22px; }
   .promotion-destination-help__options { grid-template-columns: 1fr; }

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, Info, Megaphone, Power, Plus, Search, Sparkles, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Edit3, Info, Megaphone, Power, Plus, Search, Trash2 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton, Table, TBody, Td, Th, THead, Textarea } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
@@ -351,7 +350,6 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
 }
 
 export default function Promotions() {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -456,10 +454,7 @@ export default function Promotions() {
           <h1 className="ui-page-title">Cinta promocional</h1>
           <p className="ui-page-sub">Mensajes visibles en la parte superior de tu tienda, con vigencia y destinos configurables.</p>
         </div>
-         <div className="promotions-head-actions">
-           <Button variant="secondary" onClick={() => navigate("/promociones/aesthetic-days")}><Sparkles size={16} /> Aesthetic Days</Button>
-           <Button onClick={openCreate}><Plus size={17} /> Nueva promoción</Button>
-         </div>
+        <Button onClick={openCreate}><Plus size={17} /> Nueva promoción</Button>
       </div>
 
       {error && <div className="ui-banner ui-banner--danger promotions-error" role="alert">{error}<Button size="sm" variant="secondary" onClick={load}>Reintentar</Button></div>}
