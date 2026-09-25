@@ -647,6 +647,7 @@ export default function AdminOrders() {
               <div className="ao-items">
                 {(detail.items || []).map((it, i) => {
                    const isPack = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0;
+                   const itemSku = String(it?.sku || it?.codigoInterno || "").trim();
                    const precioUnit = isPack
                      ? (Number(it.precioPack ?? it.precio) || 0)
                      : (it.cantidad ? it.subtotal / it.cantidad : 0);
@@ -660,7 +661,10 @@ export default function AdminOrders() {
                   return (
                     <div key={i} className="ao-item">
                       <div className="ao-item-head">
-                        <span>{it.nombre}</span>
+                        <div className="ao-item-title">
+                          <span>{it.nombre}</span>
+                          {itemSku && <code className="ao-item-sku">SKU: {itemSku}</code>}
+                        </div>
                         {(it?.variant?.size || it?.variant?.color || it?.variant?.tono) && (
                           <small>
                             ({[it?.variant?.size, it?.variant?.color, it?.variant?.tono].filter(Boolean).join(" / ")})

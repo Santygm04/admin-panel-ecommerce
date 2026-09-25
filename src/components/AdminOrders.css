@@ -176,6 +176,8 @@
 }
 .ao-item-head { display: flex; align-items: baseline; gap: 6px; font-weight: 800; color: var(--adm-ink); flex-wrap: wrap; }
 .ao-item-head small { font-weight: 600; color: var(--adm-muted); }
+.ao-item-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ao-item-sku { color: var(--adm-brand); font: var(--t-mono); font-size: .72rem; font-weight: 700; letter-spacing: .03em; }
 .ao-item-row {
   display: flex;
   gap: var(--sp-4);
