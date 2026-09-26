@@ -8,7 +8,7 @@ import {
 import "./AdminOrders.css";
 import { API_URL } from "../utils/api";
 
-const ADMIN_WA = (import.meta.env.VITE_ADMIN_PHONE || "").replace(/\D/g, "");
+const ADMIN_WA = "5493855902832";
 
 const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
 const adr  = (a = {}) =>
