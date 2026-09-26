@@ -11,6 +11,7 @@ import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudina
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { normalizeImageUrl } from "../utils/image";
+import useProductStockStream from "../hooks/useProductStockStream";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
 const COLORS = ["negro","blanco","beige","nude","rojo","rosa","fucsia","azul","celeste","verde","lila","gris","marrón","multicolor"];
@@ -43,6 +44,23 @@ export default function EditProduct() {
     setArr((list) => (list.includes(val) ? list.filter((x) => x !== val) : [...list, val]));
 
   const [categoriasDB, setCategoriasDB] = useState([]);
+
+  useProductStockStream((event) => {
+    const eventId = event?._id || event?.id;
+    if (!eventId || String(eventId) !== String(id)) return;
+    if (event.stock !== undefined) {
+      setProducto((current) => (current ? { ...current, stock: String(event.stock) } : current));
+    }
+    if (Array.isArray(event.variants)) {
+      setVariantes(event.variants.map((variant) => ({
+        vid: String(variant.vid || variant.variantId || "").trim(),
+        talle: String(variant.talle || variant.size || "").trim(),
+        color: String(variant.color || "").trim(),
+        stock: Number(variant.stock || 0),
+        ...(variant.sku ? { sku: String(variant.sku).trim() } : {}),
+      })));
+    }
+  });
 
   useEffect(() => {
     (async () => {

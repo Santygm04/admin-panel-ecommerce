@@ -10,6 +10,7 @@ import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug } from "../utils/pricing";
 import { ProductImage } from "../utils/image";
+import useProductStockStream from "../hooks/useProductStockStream";
 
 const API = `${API_URL}/api`;
 const PAGE_SIZE = 50;
@@ -313,6 +314,26 @@ export default function ProductList() {
 
   const [savingDel, setSavingDel] = useState(new Set());
   const [confirmData, setConfirmData] = useState(null);
+
+  useProductStockStream((event) => {
+    const id = event?._id || event?.id;
+    if (!id) return;
+
+    setProductos((current) => current.map((product) => (
+      String(product._id) === String(id)
+        ? {
+            ...product,
+            stock: event.stock,
+            variants: event.variants || product.variants,
+            stockMinimo: event.stockMinimo ?? product.stockMinimo,
+            updatedAt: event.updatedAt || product.updatedAt,
+          }
+        : product
+    )));
+    if (event.stock !== undefined) {
+      setStockDrafts((current) => ({ ...current, [id]: event.stock }));
+    }
+  });
 
   useEffect(() => {
     const ctrl = new AbortController();
