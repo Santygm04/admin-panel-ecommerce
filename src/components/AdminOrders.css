@@ -67,9 +67,9 @@
   gap: var(--sp-3);
   flex-wrap: wrap;
   padding: var(--sp-3);
-  border: 1px solid var(--adm-danger);
+  border: 1px solid var(--adm-border);
   border-radius: var(--r-md);
-  background: var(--adm-danger-soft);
+  background: var(--adm-surface-2);
 }
 .ao-bulk-select,
 .ao-card-select {

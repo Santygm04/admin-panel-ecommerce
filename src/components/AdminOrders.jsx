@@ -235,13 +235,11 @@ export default function AdminOrders() {
   }, [token, tab, autoR]);
 
   useEffect(() => {
-    if (tab !== "deleted") setSelectedIds(new Set());
+    setSelectedIds(new Set());
   }, [tab]);
 
   useEffect(() => {
-    const availableIds = new Set(
-      orders.filter((order) => order.status === "deleted").map((order) => String(order._id))
-    );
+    const availableIds = new Set(orders.map((order) => String(order._id)));
     setSelectedIds((current) => {
       const next = new Set([...current].filter((id) => availableIds.has(id)));
       return next.size === current.size ? current : next;
@@ -302,13 +300,17 @@ export default function AdminOrders() {
     if (uniqueIds.length) setBulkDelM({ open: true, ids: uniqueIds, loading: false });
   };
 
-  const doBulkDelPerm = async () => {
+  const doBulkDelete = async () => {
     if (!token || !bulkDelM.ids.length) return;
     const ids = bulkDelM.ids;
+    const permanent = tab === "deleted";
     setBulkDelM((current) => ({ ...current, loading: true }));
 
     const deleteOne = async (id) => {
-      const response = await fetch(`${API_URL}/api/payments/order/${id}/permanent`, {
+      const endpoint = permanent
+        ? `${API_URL}/api/payments/order/${id}/permanent`
+        : `${API_URL}/api/payments/order/${id}`;
+      const response = await fetch(endpoint, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -329,7 +331,9 @@ export default function AdminOrders() {
     const deletedSet = new Set(deletedIds);
 
     if (deletedIds.length) {
-      setOrders((current) => current.filter((order) => !deletedSet.has(String(order._id))));
+      setOrders((current) => permanent
+        ? current.filter((order) => !deletedSet.has(String(order._id)))
+        : current.map((order) => deletedSet.has(String(order._id)) ? { ...order, status: "deleted" } : order));
       setSelectedIds((current) => new Set([...current].filter((id) => !deletedSet.has(id))));
       if (detail?._id && deletedSet.has(String(detail._id))) setDetail(null);
     }
@@ -337,7 +341,9 @@ export default function AdminOrders() {
     if (failedCount) {
       setErr(`${deletedIds.length} eliminada${deletedIds.length === 1 ? "" : "s"}; ${failedCount} no se pudo${failedCount === 1 ? "" : "ieron"} eliminar.`);
     } else {
-      setOk(`${deletedIds.length} orden${deletedIds.length === 1 ? "" : "es"} eliminada${deletedIds.length === 1 ? "" : "s"} permanentemente`);
+      setOk(permanent
+        ? `${deletedIds.length} orden${deletedIds.length === 1 ? "" : "es"} eliminada${deletedIds.length === 1 ? "" : "s"} permanentemente`
+        : `${deletedIds.length} orden${deletedIds.length === 1 ? "" : "es"} enviada${deletedIds.length === 1 ? "" : "s"} a Eliminadas`);
     }
     closeBulkDel();
   };
@@ -543,8 +549,7 @@ export default function AdminOrders() {
         />
       </div>
 
-      {tab === "deleted" && (
-        <div className="ao-bulk-toolbar" role="region" aria-label="Eliminación masiva de órdenes">
+      <div className="ao-bulk-toolbar" role="region" aria-label="Selección masiva de órdenes">
           <label className="ao-bulk-select">
             <input
               ref={selectAllRef}
@@ -552,7 +557,7 @@ export default function AdminOrders() {
               checked={allRowsSelected}
               onChange={toggleAllRows}
               disabled={!rows.length}
-              aria-label="Seleccionar todas las órdenes eliminadas visibles"
+              aria-label="Seleccionar todas las órdenes visibles"
             />
             <span>Seleccionar todas</span>
           </label>
@@ -566,7 +571,7 @@ export default function AdminOrders() {
               onClick={() => openBulkDel([...selectedIds])}
               disabled={!selectedCount}
             >
-              <TrashIcon size={14} /> Eliminar seleccionadas
+              <TrashIcon size={14} /> {tab === "deleted" ? "Eliminar seleccionadas" : "Enviar a eliminadas"}
             </Button>
             <Button
               size="sm"
@@ -574,11 +579,10 @@ export default function AdminOrders() {
               onClick={() => openBulkDel(rowIds)}
               disabled={!rows.length}
             >
-              <TrashIcon size={14} /> Eliminar todas
+              <TrashIcon size={14} /> {tab === "deleted" ? "Eliminar todas" : "Enviar todas a eliminadas"}
             </Button>
           </div>
-        </div>
-      )}
+      </div>
 
       {msg.text && (
         <div className={`ui-banner ${msg.ok ? "ui-banner--success" : "ui-banner--danger"}`} role="status">
@@ -603,17 +607,15 @@ export default function AdminOrders() {
                 <Card key={o._id} className="ao-card">
                   <div className="ao-card-top">
                     <div>
-                      {tab === "deleted" && (
-                        <label className="ao-card-select">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(String(o._id))}
-                            onChange={() => toggleRowSelection(o._id)}
-                            aria-label={`Seleccionar ${num(o)}`}
-                          />
-                          <span>Seleccionar</span>
-                        </label>
-                      )}
+                      <label className="ao-card-select">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(String(o._id))}
+                          onChange={() => toggleRowSelection(o._id)}
+                          aria-label={`Seleccionar ${num(o)}`}
+                        />
+                        <span>Seleccionar</span>
+                      </label>
                       <div className="ao-card-num">{num(o)}</div>
                       {o.shippingTicket && <span className="ao-card-ticket">{o.shippingTicket}</span>}
                       {o.hasLocalProducts && (
@@ -666,6 +668,7 @@ export default function AdminOrders() {
             <table className="ui-table ao-table" role="table" aria-label="Órdenes">
               <thead>
                 <tr>
+                  <th className="ao-select-col" aria-label="Selección" />
                   <th>Fecha</th><th>Pedido</th><th>Cliente</th><th>Teléfono</th>
                   <th>Método</th><th>Estado</th><th style={{ textAlign: "right" }}>Total</th>
                   <th>Entrega</th><th className="ao-actions-head">Acciones</th>
@@ -677,16 +680,14 @@ export default function AdminOrders() {
                   const envio = o?.shipping?.method === "envio";
                   return (
                     <tr key={o._id}>
-                      {tab === "deleted" && (
-                        <td className="ao-select-col">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(String(o._id))}
-                            onChange={() => toggleRowSelection(o._id)}
-                            aria-label={`Seleccionar ${num(o)}`}
-                          />
-                        </td>
-                      )}
+                      <td className="ao-select-col">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(String(o._id))}
+                          onChange={() => toggleRowSelection(o._id)}
+                          aria-label={`Seleccionar ${num(o)}`}
+                        />
+                      </td>
                       <td>
                         <div className="ao-cell-main">{fd(d)}</div>
                         <div className="ao-cell-sub">{ft(d)}</div>
@@ -915,24 +916,26 @@ export default function AdminOrders() {
 
       <Modal
         open={bulkDelM.open}
-        title="Eliminar órdenes permanentemente"
+        title={tab === "deleted" ? "Eliminar órdenes permanentemente" : "Enviar órdenes a Eliminadas"}
         onClose={bulkDelM.loading ? undefined : closeBulkDel}
         footer={
           <>
             <Button variant="secondary" onClick={closeBulkDel} disabled={bulkDelM.loading}>Cancelar</Button>
-            <Button variant="danger" onClick={doBulkDelPerm} disabled={bulkDelM.loading} loading={bulkDelM.loading}>
+            <Button variant="danger" onClick={doBulkDelete} disabled={bulkDelM.loading} loading={bulkDelM.loading}>
               {bulkDelM.loading ? "Eliminando…" : "Sí, eliminar"}
             </Button>
           </>
         }
       >
         <p className="ao-modal-text">
-          Vas a eliminar permanentemente <b>{bulkDelM.ids.length}</b> orden{bulkDelM.ids.length === 1 ? "" : "es"}.
+          {tab === "deleted"
+            ? <>Vas a eliminar permanentemente <b>{bulkDelM.ids.length}</b> orden{bulkDelM.ids.length === 1 ? "" : "es"}.</>
+            : <>Vas a enviar <b>{bulkDelM.ids.length}</b> orden{bulkDelM.ids.length === 1 ? "" : "es"} a Eliminadas.</>}
           Esta acción no se puede deshacer.
         </p>
         <div className="ao-confirm-box ao-confirm-box--danger">
           <div><b>Órdenes seleccionadas:</b> {bulkDelM.ids.length}</div>
-          <div>Se quitarán de la papelera y no volverán a aparecer en el panel.</div>
+          <div>{tab === "deleted" ? "Se quitarán de la papelera y no volverán a aparecer en el panel." : "Podrás eliminarlas permanentemente desde la pestaña Eliminadas."}</div>
         </div>
       </Modal>
 
