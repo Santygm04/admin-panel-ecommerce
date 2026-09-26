@@ -99,9 +99,11 @@ export default function EditProduct() {
                       : [];
         setVariantes(
           rawVars.map(v => ({
+            vid:   String(v.vid ?? v.variantId ?? "").trim(),
             talle: String(v.talle ?? v.size ?? "").trim(),
             color: String(v.color ?? "").trim(),
             stock: Number(v.stock ?? 0),
+            ...(v.sku ? { sku: String(v.sku).trim() } : {}),
           }))
         );
       } catch (e) {
@@ -275,9 +277,11 @@ export default function EditProduct() {
 
       const clean = variantes
         .map(v => ({
+          ...(v.vid ? { vid: String(v.vid).trim() } : {}),
           size:  String(v.talle || "").trim(),
           color: String(v.color || "").trim(),
           stock: Number(v.stock ?? 0),
+          ...(v.sku ? { sku: String(v.sku).trim() } : {}),
         }))
         .filter(v => v.size || v.color);
 
