@@ -60,6 +60,42 @@
 }
 .ao-search-clear:hover { color: var(--adm-ink); }
 
+/* ── Eliminación masiva ── */
+.ao-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-3);
+  border: 1px solid var(--adm-danger);
+  border-radius: var(--r-md);
+  background: var(--adm-danger-soft);
+}
+.ao-bulk-select,
+.ao-card-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--adm-ink);
+  font: var(--t-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ao-bulk-select input,
+.ao-card-select input,
+.ao-select-col input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--adm-brand);
+  cursor: pointer;
+}
+.ao-bulk-select input:disabled { cursor: not-allowed; }
+.ao-bulk-count { color: var(--adm-muted); font: var(--t-small); }
+.ao-bulk-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-left: auto; }
+.ao-select-col { width: 46px; text-align: center; }
+.ao-card-select { margin-bottom: 6px; color: var(--adm-muted); font-size: .78rem; }
+
 /* ── Cards móvil ── */
 .ao-cards { display: flex; flex-direction: column; gap: var(--sp-3); }
 .ao-card { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
@@ -132,6 +168,10 @@
 
 @media (max-width: 900px) {
   .ao-table-wrap { display: none; }
+}
+@media (max-width: 600px) {
+  .ao-bulk-actions { width: 100%; margin-left: 0; }
+  .ao-bulk-actions .ui-btn { flex: 1; justify-content: center; }
 }
 @media (min-width: 901px) {
   .ao-cards { display: none; }

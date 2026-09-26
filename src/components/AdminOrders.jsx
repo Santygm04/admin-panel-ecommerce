@@ -1,5 +1,5 @@
 // AdminOrders.jsx — rediseño con UI kit (misma lógica de negocio)
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, EmptyState, Input, Modal, Tabs } from "./ui";
 import {
   EyeIcon, CheckIcon, XIcon, TrashIcon, TruckIcon, RefreshIcon, SearchIcon,
@@ -196,10 +196,13 @@ export default function AdminOrders() {
   const [detail, setDetail] = useState(null);
   const [actM,   setActM]   = useState({ open: false, type: null, order: null, loading: false });
   const [delM,   setDelM]   = useState({ open: false, order: null, loading: false });
+  const [bulkDelM, setBulkDelM] = useState({ open: false, ids: [], loading: false });
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [waM,    setWaM]    = useState({ open: false, link: null, order: null });
   const [trackM, setTrackM] = useState({ open: false, order: null });
   const [timeFilter, setTimeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
   const setOk = (text) => setMsg({ text, ok: true });
@@ -231,10 +234,25 @@ export default function AdminOrders() {
     // eslint-disable-next-line
   }, [token, tab, autoR]);
 
+  useEffect(() => {
+    if (tab !== "deleted") setSelectedIds(new Set());
+  }, [tab]);
+
+  useEffect(() => {
+    const availableIds = new Set(
+      orders.filter((order) => order.status === "deleted").map((order) => String(order._id))
+    );
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => availableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [orders]);
+
   const openAct  = (type, order) => setActM({ open: true, type, order, loading: false });
   const closeAct = () => setActM({ open: false, type: null, order: null, loading: false });
   const openDel  = (order) => setDelM({ open: true, order, loading: false });
   const closeDel = () => setDelM({ open: false, order: null, loading: false });
+  const closeBulkDel = () => setBulkDelM({ open: false, ids: [], loading: false });
 
   const doAction = async () => {
     if (!token || !actM.order) return;
@@ -277,6 +295,51 @@ export default function AdminOrders() {
       setOk("Orden eliminada permanentemente");
       closeDel();
     } catch (e) { setErr(e.message); setDelM(m => ({ ...m, loading: false })); }
+  };
+
+  const openBulkDel = (ids) => {
+    const uniqueIds = [...new Set(ids.map((id) => String(id)).filter(Boolean))];
+    if (uniqueIds.length) setBulkDelM({ open: true, ids: uniqueIds, loading: false });
+  };
+
+  const doBulkDelPerm = async () => {
+    if (!token || !bulkDelM.ids.length) return;
+    const ids = bulkDelM.ids;
+    setBulkDelM((current) => ({ ...current, loading: true }));
+
+    const deleteOne = async (id) => {
+      const response = await fetch(`${API_URL}/api/payments/order/${id}/permanent`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.message || "No se pudo eliminar");
+      return id;
+    };
+
+    const results = [];
+    for (let i = 0; i < ids.length; i += 8) {
+      results.push(...await Promise.allSettled(ids.slice(i, i + 8).map(deleteOne)));
+    }
+
+    const deletedIds = results
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    const failedCount = results.length - deletedIds.length;
+    const deletedSet = new Set(deletedIds);
+
+    if (deletedIds.length) {
+      setOrders((current) => current.filter((order) => !deletedSet.has(String(order._id))));
+      setSelectedIds((current) => new Set([...current].filter((id) => !deletedSet.has(id))));
+      if (detail?._id && deletedSet.has(String(detail._id))) setDetail(null);
+    }
+
+    if (failedCount) {
+      setErr(`${deletedIds.length} eliminada${deletedIds.length === 1 ? "" : "s"}; ${failedCount} no se pudo${failedCount === 1 ? "" : "ieron"} eliminar.`);
+    } else {
+      setOk(`${deletedIds.length} orden${deletedIds.length === 1 ? "" : "es"} eliminada${deletedIds.length === 1 ? "" : "s"} permanentemente`);
+    }
+    closeBulkDel();
   };
 
   const doDel = async () => {
@@ -349,6 +412,34 @@ export default function AdminOrders() {
     }
     return filtered;
   }, [orders, tab, timeFilter, search]);
+
+  const rowIds = useMemo(() => rows.map((order) => String(order._id)), [rows]);
+  const selectedCount = selectedIds.size;
+  const allRowsSelected = rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
+  const someRowsSelected = rowIds.some((id) => selectedIds.has(id));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someRowsSelected && !allRowsSelected;
+  }, [someRowsSelected, allRowsSelected]);
+
+  const toggleRowSelection = (id) => {
+    const key = String(id);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAllRows = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allRowsSelected) rowIds.forEach((id) => next.delete(id));
+      else rowIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   const OrderActions = ({ o, compact = false }) => {
     const envio = o?.shipping?.method === "envio";
@@ -452,6 +543,43 @@ export default function AdminOrders() {
         />
       </div>
 
+      {tab === "deleted" && (
+        <div className="ao-bulk-toolbar" role="region" aria-label="Eliminación masiva de órdenes">
+          <label className="ao-bulk-select">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allRowsSelected}
+              onChange={toggleAllRows}
+              disabled={!rows.length}
+              aria-label="Seleccionar todas las órdenes eliminadas visibles"
+            />
+            <span>Seleccionar todas</span>
+          </label>
+          <span className="ao-bulk-count" aria-live="polite">
+            {selectedCount} seleccionada{selectedCount === 1 ? "" : "s"}
+          </span>
+          <div className="ao-bulk-actions">
+            <Button
+              size="sm"
+              variant="danger-ghost"
+              onClick={() => openBulkDel([...selectedIds])}
+              disabled={!selectedCount}
+            >
+              <TrashIcon size={14} /> Eliminar seleccionadas
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => openBulkDel(rowIds)}
+              disabled={!rows.length}
+            >
+              <TrashIcon size={14} /> Eliminar todas
+            </Button>
+          </div>
+        </div>
+      )}
+
       {msg.text && (
         <div className={`ui-banner ${msg.ok ? "ui-banner--success" : "ui-banner--danger"}`} role="status">
           {msg.text}
@@ -475,6 +603,17 @@ export default function AdminOrders() {
                 <Card key={o._id} className="ao-card">
                   <div className="ao-card-top">
                     <div>
+                      {tab === "deleted" && (
+                        <label className="ao-card-select">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(String(o._id))}
+                            onChange={() => toggleRowSelection(o._id)}
+                            aria-label={`Seleccionar ${num(o)}`}
+                          />
+                          <span>Seleccionar</span>
+                        </label>
+                      )}
                       <div className="ao-card-num">{num(o)}</div>
                       {o.shippingTicket && <span className="ao-card-ticket">{o.shippingTicket}</span>}
                       {o.hasLocalProducts && (
@@ -538,6 +677,16 @@ export default function AdminOrders() {
                   const envio = o?.shipping?.method === "envio";
                   return (
                     <tr key={o._id}>
+                      {tab === "deleted" && (
+                        <td className="ao-select-col">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(String(o._id))}
+                            onChange={() => toggleRowSelection(o._id)}
+                            aria-label={`Seleccionar ${num(o)}`}
+                          />
+                        </td>
+                      )}
                       <td>
                         <div className="ao-cell-main">{fd(d)}</div>
                         <div className="ao-cell-sub">{ft(d)}</div>
@@ -761,6 +910,29 @@ export default function AdminOrders() {
           <div><b>Cliente:</b> {delM.order?.buyer?.nombre || "—"}</div>
           <div><b>Estado:</b> <StatusBadge s={delM.order?.status} /></div>
           <div><b>Total:</b> {$m(delM.order?.total)}</div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={bulkDelM.open}
+        title="Eliminar órdenes permanentemente"
+        onClose={bulkDelM.loading ? undefined : closeBulkDel}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeBulkDel} disabled={bulkDelM.loading}>Cancelar</Button>
+            <Button variant="danger" onClick={doBulkDelPerm} disabled={bulkDelM.loading} loading={bulkDelM.loading}>
+              {bulkDelM.loading ? "Eliminando…" : "Sí, eliminar"}
+            </Button>
+          </>
+        }
+      >
+        <p className="ao-modal-text">
+          Vas a eliminar permanentemente <b>{bulkDelM.ids.length}</b> orden{bulkDelM.ids.length === 1 ? "" : "es"}.
+          Esta acción no se puede deshacer.
+        </p>
+        <div className="ao-confirm-box ao-confirm-box--danger">
+          <div><b>Órdenes seleccionadas:</b> {bulkDelM.ids.length}</div>
+          <div>Se quitarán de la papelera y no volverán a aparecer en el panel.</div>
         </div>
       </Modal>
 
