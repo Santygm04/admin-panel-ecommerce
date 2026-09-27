@@ -69,6 +69,8 @@ export default function EditProduct() {
         for (const field of REALTIME_PRICE_FIELDS) {
           if (Object.hasOwn(event, field)) next[field] = event[field] != null ? String(event[field]) : "";
         }
+        const incomingUnitSlug = event.erpUnitSlug ?? event.unitSlug;
+        if (incomingUnitSlug !== undefined) next.erpUnitSlug = normalizeSlug(incomingUnitSlug);
         if (event.publicarEnCajas !== undefined) next.publicarEnCajas = event.publicarEnCajas === true;
       }
       return next;
@@ -108,7 +110,8 @@ export default function EditProduct() {
           codigoInterno:   p.codigoInterno    || "",
           precio:          p.precio === 0 || p.precio ? String(p.precio) : "",
           precioEspecial:  p.precioEspecial  != null ? String(p.precioEspecial)  : "",
-           precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
+          erpUnitSlug:     normalizeSlug(p.erpUnitSlug || p.unitSlug),
+          precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
            precioCaja:      p.precioCaja      != null ? String(p.precioCaja)      : "",
            precioMediaCaja: p.precioMediaCaja != null ? String(p.precioMediaCaja) : "",
           descripcion:     p.descripcion     || "",
@@ -168,6 +171,8 @@ export default function EditProduct() {
     return match || producto.subcategoria;
   }, [subcategorias, producto?.subcategoria]);
 
+  const isPitukasMayorista = normalizeSlug(producto?.erpUnitSlug) === "pitukas-mayorista";
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -198,7 +203,10 @@ export default function EditProduct() {
         const wasLenceria = isLenceriaCategory(prev.categoria);
         const nextIsLenceria = isLenceriaCategory(value);
         base.subcategoria = "";
-        base.minimoMayorista = nextIsLenceria ? (wasLenceria ? prev.minimoMayorista : "2") : (wasLenceria ? "30000" : (prev.minimoMayorista || "30000"));
+        const wasPitukasMayorista = normalizeSlug(prev.erpUnitSlug) === "pitukas-mayorista";
+        base.minimoMayorista = nextIsLenceria
+          ? (wasLenceria ? prev.minimoMayorista : "2")
+          : (wasPitukasMayorista ? (prev.minimoMayorista || "2") : (wasLenceria ? "30000" : (prev.minimoMayorista || "30000")));
         base.minimoMayorista2 = nextIsLenceria ? (prev.minimoMayorista2 || "6") : "";
         base.minimoMayorista3 = nextIsLenceria ? (prev.minimoMayorista3 || "12") : "";
       }
@@ -344,7 +352,7 @@ export default function EditProduct() {
         imagen: imagenesActuales[0] || "",
         variants:        clean,
         unidadesPorCaja: parseOptionalIntegerInput(producto.unidadesPorCaja),
-        minimoMayorista:  parseOptionalIntegerInput(producto.minimoMayorista) ?? (precioMayorista != null ? (isLenceria ? 2 : 30000) : null),
+        minimoMayorista:  parseOptionalIntegerInput(producto.minimoMayorista) ?? (precioMayorista != null ? (isLenceria || isPitukasMayorista ? 2 : 30000) : null),
         minimoMayorista2: parseOptionalIntegerInput(producto.minimoMayorista2) ?? (isLenceria && precioMayorista2 != null ? 6 : null),
         precioMayorista2,
         minimoMayorista3: parseOptionalIntegerInput(producto.minimoMayorista3) ?? (isLenceria && precioMayorista3 != null ? 12 : null),
@@ -485,19 +493,25 @@ export default function EditProduct() {
 
           {!isLenceriaCategory(producto.categoria) && (
             <>
-              <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
-                hint="Precio por unidad al alcanzar el mínimo">
+              <Field label={<><span className="price-tag price-tag--info">{isPitukasMayorista ? "x2" : "M"}</span> {isPitukasMayorista ? "Precio x2" : "Precio Mayorista"}</>}
+                hint={isPitukasMayorista ? "Precio de la lista x2 de Pitukas Mayorista" : "Precio por unidad al alcanzar el mínimo"}>
                 <Input name="precioMayorista" type="text" inputMode="decimal"
                   placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange} />
               </Field>
-              <Field label="Mínimo mayorista ($)"
-                hint="Subtotal mínimo de compra para activar el precio mayorista">
-                <Input name="minimoMayorista" type="number" min="0" step="1"
-                  placeholder="30000"
-                  value={producto.minimoMayorista ?? ""} onChange={handleChange}
-                   disabled={isVendedor && !canEditCatalog} />
-              </Field>
+              {isPitukasMayorista ? (
+                <Field label="Mínimo x2" hint="La lista se aplica al llevar 2 unidades">
+                  <Input value="2 unidades" readOnly />
+                </Field>
+              ) : (
+                <Field label="Mínimo mayorista ($)"
+                  hint="Subtotal mínimo de compra para activar el precio mayorista">
+                  <Input name="minimoMayorista" type="number" min="0" step="1"
+                    placeholder="30000"
+                    value={producto.minimoMayorista ?? ""} onChange={handleChange}
+                    disabled={isVendedor && !canEditCatalog} />
+                </Field>
+              )}
             </>
           )}
 

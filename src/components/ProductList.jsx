@@ -105,6 +105,7 @@ function PriceTag({ label, tone = "neutral" }) {
 
 function PriceTiers({ producto }) {
   const isLenceria = isLenceriaCategory(producto.categoria);
+  const isPitukasMayorista = normalizeSlug(producto.erpUnitSlug || producto.unitSlug) === "pitukas-mayorista";
   const minimoMayorista = Number(producto.minimoMayorista) || 0;
   const hasUnit = Number(producto.precio) > 0;
   const boxUnits = Number(producto.unidadesPorCaja);
@@ -132,11 +133,15 @@ function PriceTiers({ producto }) {
       value: halfBoxPrice,
     },
     {
-      show: isLenceria ? tierX2.unitPrice != null : producto.precioMayorista != null,
+      show: isPitukasMayorista
+        ? Number(producto.precioMayorista) > 0
+        : isLenceria ? tierX2.unitPrice != null : producto.precioMayorista != null,
       tone: "info",
-      label: isLenceria ? `x${tierX2.minimum}` : "M",
-      detail: isLenceria ? `total · $${formatARS(tierX2.unitPrice)}/u` : `mín. $${money(minimoMayorista || 30000)}`,
-      value: isLenceria ? tierX2.totalPrice : producto.precioMayorista,
+      label: isPitukasMayorista ? "x2" : isLenceria ? `x${tierX2.minimum}` : "M",
+      detail: isPitukasMayorista
+        ? "2 unidades"
+        : isLenceria ? `total · $${formatARS(tierX2.unitPrice)}/u` : `mín. $${money(minimoMayorista || 30000)}`,
+      value: isPitukasMayorista ? producto.precioMayorista : isLenceria ? tierX2.totalPrice : producto.precioMayorista,
     },
     {
       show: isLenceria && tierX6.unitPrice != null,
