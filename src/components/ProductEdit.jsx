@@ -19,6 +19,19 @@ const TONE_COUNTS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 const API = `${API_URL}/api`;
 const categorySlug = (category) => normalizeSlug(category?.slug || category?.nombre);
+const REALTIME_PRICE_FIELDS = [
+  "precio",
+  "precioEspecial",
+  "precioMayorista",
+  "precioCaja",
+  "precioMediaCaja",
+  "minimoMayorista",
+  "minimoMayorista2",
+  "precioMayorista2",
+  "minimoMayorista3",
+  "precioMayorista3",
+  "unidadesPorCaja",
+];
 
 export default function EditProduct() {
   const { user } = useAuth();
@@ -45,12 +58,21 @@ export default function EditProduct() {
 
   const [categoriasDB, setCategoriasDB] = useState([]);
 
-  useProductStockStream((event) => {
+  useProductStockStream((event, eventType) => {
     const eventId = event?._id || event?.id;
     if (!eventId || String(eventId) !== String(id)) return;
-    if (event.stock !== undefined) {
-      setProducto((current) => (current ? { ...current, stock: String(event.stock) } : current));
-    }
+    setProducto((current) => {
+      if (!current) return current;
+      const next = { ...current };
+      if (event.stock !== undefined) next.stock = String(event.stock);
+      if (eventType === "product:upsert") {
+        for (const field of REALTIME_PRICE_FIELDS) {
+          if (Object.hasOwn(event, field)) next[field] = event[field] != null ? String(event[field]) : "";
+        }
+        if (event.publicarEnCajas !== undefined) next.publicarEnCajas = event.publicarEnCajas === true;
+      }
+      return next;
+    });
     if (Array.isArray(event.variants)) {
       setVariantes(event.variants.map((variant) => ({
         vid: String(variant.vid || variant.variantId || "").trim(),

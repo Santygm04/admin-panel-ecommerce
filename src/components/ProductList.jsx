@@ -116,7 +116,7 @@ function PriceTiers({ producto }) {
   const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
-    { show: producto.precioEspecial != null, tone: "gold", label: "Esp", value: producto.precioEspecial },
+    { show: Number(producto.precioEspecial) > 0, tone: "gold", label: "Esp", value: producto.precioEspecial },
     {
       show: producto.publicarEnCajas && Number(producto.precioCaja) > 0,
       tone: "brand",
@@ -323,10 +323,7 @@ export default function ProductList() {
       String(product._id) === String(id)
         ? {
             ...product,
-            stock: event.stock,
-            variants: event.variants || product.variants,
-            stockMinimo: event.stockMinimo ?? product.stockMinimo,
-            updatedAt: event.updatedAt || product.updatedAt,
+            ...event,
           }
         : product
     )));
