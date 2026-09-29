@@ -1,5 +1,6 @@
 // AdminOrders.jsx — rediseño con UI kit (misma lógica de negocio)
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Badge, Button, Card, EmptyState, Input, Modal, Tabs } from "./ui";
 import {
   EyeIcon, CheckIcon, XIcon, TrashIcon, TruckIcon, RefreshIcon, SearchIcon,
@@ -131,6 +132,67 @@ function OrderTimeline({ order }) {
   );
 }
 
+function OrderImagePreview({ preview, onClose }) {
+  const closeButtonRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current?.();
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown, true);
+    closeButtonRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown, true);
+      previousFocus?.focus?.();
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="ao-image-viewer-backdrop"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <figure
+        className="ao-image-viewer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Imagen ampliada de ${preview.name}`}
+      >
+        <button
+          ref={closeButtonRef}
+          type="button"
+          className="ao-image-viewer-close"
+          onClick={onClose}
+          aria-label="Cerrar imagen ampliada"
+        >
+          <XIcon size={22} />
+        </button>
+        <img className="ao-image-viewer-photo" src={preview.url} alt={`Foto ampliada de ${preview.name}`} />
+        <figcaption>{preview.name}</figcaption>
+      </figure>
+    </div>,
+    document.body
+  );
+}
+
 function TrackModal({ order, onClose, onConfirm }) {
   const [tn, setTn] = useState(order?.shipping?.trackingNumber || "");
   const [co, setCo] = useState(order?.shipping?.company || "andreani");
@@ -212,6 +274,7 @@ export default function AdminOrders() {
   const [timeFilter, setTimeFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [detailProducts, setDetailProducts] = useState({});
+  const [imagePreview, setImagePreview] = useState(null);
   const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
@@ -856,10 +919,11 @@ export default function AdminOrders() {
               <div className="ao-items">
                  {(detail.items || []).map((it, i) => {
                     const isPack = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0;
-                    const itemSku = String(it?.sku || it?.codigoInterno || "").trim();
-                    const itemKey = itemImageKey(it, i);
-                    const imageProduct = firstProductImage(it) ? it : detailProducts[itemKey];
-                    const precioUnit = isPack
+                     const itemSku = String(it?.sku || it?.codigoInterno || "").trim();
+                     const itemKey = itemImageKey(it, i);
+                     const imageProduct = firstProductImage(it) ? it : detailProducts[itemKey];
+                     const imageUrl = firstProductImage(imageProduct);
+                     const precioUnit = isPack
                      ? (Number(it.precioPack ?? it.precio) || 0)
                      : (it.cantidad ? it.subtotal / it.cantidad : 0);
                    const boxUnits = Number(it?.unidadesPorCaja) || 0;
@@ -877,11 +941,29 @@ export default function AdminOrders() {
                              <ShoppingBagIcon size={22} />
                              <small>Sin foto</small>
                            </span>
-                           <ProductImage
-                             product={imageProduct}
-                             alt={`Foto de ${it.nombre || "producto"}`}
-                             className="ao-item-photo"
-                           />
+                            {imageUrl && (
+                              <button
+                                type="button"
+                                className="ao-item-image-button"
+                                onClick={(event) => {
+                                  const displayedImage = event.currentTarget.querySelector("img")?.currentSrc;
+                                  setImagePreview({
+                                    url: displayedImage || imageUrl,
+                                    name: it.nombre || "Producto",
+                                  });
+                                }}
+                                aria-label={`Ampliar imagen de ${it.nombre || "producto"}`}
+                              >
+                                <ProductImage
+                                  product={imageProduct}
+                                  alt={`Foto de ${it.nombre || "producto"}`}
+                                  className="ao-item-photo"
+                                />
+                                <span className="ao-item-image-action" aria-hidden="true">
+                                  <EyeIcon size={15} />
+                                </span>
+                              </button>
+                            )}
                          </div>
                          <div className="ao-item-content">
                            <div className="ao-item-head">
@@ -928,6 +1010,10 @@ export default function AdminOrders() {
           </div>
         )}
       </Modal>
+
+      {imagePreview && (
+        <OrderImagePreview preview={imagePreview} onClose={() => setImagePreview(null)} />
+      )}
 
       {/* MODAL CONFIRMAR/RECHAZAR */}
       <Modal
