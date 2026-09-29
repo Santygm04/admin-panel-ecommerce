@@ -109,6 +109,7 @@ export default function EditProduct() {
           nombre:          p.nombre          || "",
           codigoInterno:   p.codigoInterno    || "",
           precio:          p.precio === 0 || p.precio ? String(p.precio) : "",
+          precioX2:        p.precioX2        != null ? String(p.precioX2)        : "",
           precioEspecial:  p.precioEspecial  != null ? String(p.precioEspecial)  : "",
           erpUnitSlug:     normalizeSlug(p.erpUnitSlug || p.unitSlug),
           precioMayorista: p.precioMayorista != null ? String(p.precioMayorista) : "",
@@ -191,7 +192,7 @@ export default function EditProduct() {
       return;
     }
 
-    const numericOptional = ["precioEspecial", "precioMayorista", "precioCaja", "precioMediaCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
+    const numericOptional = ["precioX2", "precioEspecial", "precioMayorista", "precioCaja", "precioMediaCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
     if (numericOptional.includes(name)) {
       setProducto(prev => ({ ...prev, [name]: value }));
       return;
@@ -337,6 +338,7 @@ export default function EditProduct() {
         nombre: producto.nombre,
         codigoInterno: (producto.codigoInterno || "").toUpperCase().trim(),
         precio: parseMoneyInput(producto.precio),
+        precioX2: parseOptionalMoneyInput(producto.precioX2),
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
         precioCaja,
@@ -493,6 +495,14 @@ export default function EditProduct() {
 
           {!isLenceriaCategory(producto.categoria) && (
             <>
+              {!isPitukasMayorista && normalizeSlug(producto.categoria) === "marroquineria" && (
+                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (2+ unidades)</>}
+                  hint="Marroquinería: precio al llevar 2 unidades. Se publica también en la tienda.">
+                  <Input name="precioX2" type="text" inputMode="decimal"
+                    placeholder="Ej: 7500"
+                    value={producto.precioX2 ?? ""} onChange={handleChange} />
+                </Field>
+              )}
               <Field label={<><span className="price-tag price-tag--info">{isPitukasMayorista ? "x2" : "M"}</span> {isPitukasMayorista ? "Precio x2" : "Precio Mayorista"}</>}
                 hint={isPitukasMayorista ? "Precio de la lista x2 de Pitukas Mayorista" : "Precio por unidad al alcanzar el mínimo"}>
                 <Input name="precioMayorista" type="text" inputMode="decimal"
