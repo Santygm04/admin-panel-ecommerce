@@ -2,7 +2,7 @@
    AdminOrders.css — gestión de órdenes (tokens DS)
    ===================================================== */
 
-.ao-page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ao-page { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
 
 /* ── Login de clave admin ── */
 .ao-login-page {
@@ -45,7 +45,7 @@
 
 /* ── Filtros ── */
 .ao-filters { display: flex; flex-direction: column; gap: var(--sp-3); }
-.ao-filters .ui-input-wrap { max-width: 420px; }
+.ao-filters .ui-input-wrap { width: min(100%, 420px); max-width: 420px; }
 .ao-time-filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .ao-search-clear {
   border: none;
@@ -98,7 +98,7 @@
 
 /* ── Cards móvil ── */
 .ao-cards { display: flex; flex-direction: column; gap: var(--sp-3); }
-.ao-card { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
+.ao-card { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); min-width: 0; }
 .ao-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
 .ao-card-num { font: var(--t-body-strong); font-weight: 800; color: var(--adm-ink); }
 .ao-card-ticket {
@@ -146,7 +146,7 @@
 .ao-actions .ui-btn { justify-content: center; text-align: center; }
 .ao-actions--compact .ui-btn { width: 100%; min-width: 0; }
 .ao-actions-head { text-align: center; }
-.ao-actions-cell { min-width: 320px; }
+.ao-actions-cell { min-width: 0; }
 
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
@@ -166,15 +166,47 @@
   padding: 2px 8px;
 }
 
-@media (max-width: 900px) {
+/* La tabla completa solo se muestra cuando hay espacio real para todas sus columnas. */
+@media (max-width: 1600px) {
   .ao-table-wrap { display: none; }
+  .ao-cards { display: flex; }
 }
 @media (max-width: 600px) {
   .ao-bulk-actions { width: 100%; margin-left: 0; }
   .ao-bulk-actions .ui-btn { flex: 1; justify-content: center; }
 }
-@media (min-width: 901px) {
+@media (min-width: 1601px) {
   .ao-cards { display: none; }
+}
+
+@media (min-width: 1601px) {
+  .ao-table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .ao-table th,
+  .ao-table td { padding-left: 10px; padding-right: 10px; }
+  .ao-table th:nth-child(1), .ao-table td:nth-child(1) { width: 40px; }
+  .ao-table th:nth-child(2), .ao-table td:nth-child(2) { width: 88px; }
+  .ao-table th:nth-child(3), .ao-table td:nth-child(3) { width: 140px; }
+  .ao-table th:nth-child(4), .ao-table td:nth-child(4) { width: 180px; }
+  .ao-table th:nth-child(5), .ao-table td:nth-child(5) { width: 128px; }
+  .ao-table th:nth-child(6), .ao-table td:nth-child(6) { width: 135px; }
+  .ao-table th:nth-child(7), .ao-table td:nth-child(7) { width: 130px; }
+  .ao-table th:nth-child(8), .ao-table td:nth-child(8) { width: 90px; }
+  .ao-table th:nth-child(9), .ao-table td:nth-child(9) { width: 185px; }
+  .ao-table th:nth-child(10), .ao-table td:nth-child(10) { width: 250px; }
+  .ao-table td { overflow-wrap: anywhere; }
+  .ao-table .ao-cell-mono { overflow-wrap: anywhere; }
+  .ao-actions-cell { width: 250px; }
+  .ao-actions--compact { gap: 6px; }
+  .ao-actions--compact .ui-btn {
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: .75rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
 }
 
 /* ── Cajas de info ── */

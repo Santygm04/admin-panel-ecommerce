@@ -193,6 +193,7 @@
 
 .layout-content {
   flex: 1;
+  min-width: 0;
   padding: var(--sp-5);
   max-width: 1680px;
   width: 100%;
@@ -248,7 +249,9 @@
   color: var(--adm-brand);
   box-shadow: var(--shadow-xs);
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
+  .layout-topbar { flex-wrap: wrap; }
+  .layout-topbar .ui-spacer { display: none; }
   .layout-topbar-title { min-width: 0; flex: 1; }
   .layout-topbar-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .layout-view-switch { order: 3; width: 100%; }
