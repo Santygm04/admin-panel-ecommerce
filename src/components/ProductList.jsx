@@ -118,11 +118,13 @@ function PriceTiers({ producto }) {
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
     {
-      // Marroquinería: precio por llevar 2+ unidades (campo propio de la tienda).
-      show: !isLenceria && !isPitukasMayorista && Number(producto.precioX2) > 0,
+      // Carteras y mochilas: el x2 es el precio mayorista de 2 artículos.
+      show: !isLenceria && !isPitukasMayorista
+        && ["cartera", "carteras", "mochila", "mochilas"].includes(normalizeSlug(producto.subcategoria))
+        && Number(producto.precioX2) > 0,
       tone: "info",
       label: "x2",
-      detail: "2 uds.",
+      detail: "2 art.",
       value: producto.precioX2,
     },
     { show: Number(producto.precioEspecial) > 0, tone: "gold", label: "Esp", value: producto.precioEspecial },

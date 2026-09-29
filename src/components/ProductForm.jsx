@@ -350,9 +350,9 @@ export default function ProductForm({ onCreated }) {
 
           {!isLenceriaCategory(producto.categoria) && (
             <>
-              {normalizeSlug(producto.categoria) === "marroquineria" && (
-                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (2+ unidades)</>}
-                  hint="Marroquinería: precio al llevar 2 unidades. Se publica también en la tienda.">
+              {["cartera", "carteras", "mochila", "mochilas"].includes(normalizeSlug(producto.subcategoria)) && (
+                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (mayorista cartera/mochila)</>}
+                  hint="Solo carteras y mochilas · es el precio mayorista al llevar 2 artículos de cartera o mochila. Se publica también en la tienda.">
                   <Input name="precioX2" type="text" inputMode="decimal"
                     placeholder="Ej: 7500"
                     value={producto.precioX2 ?? ""} onChange={handleChange} />
