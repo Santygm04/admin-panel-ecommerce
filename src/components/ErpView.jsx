@@ -128,7 +128,7 @@ export default function ErpView() {
 
   // Alta de producto
   const [creatingProduct, setCreatingProduct] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios' });
+  const [createForm, setCreateForm] = useState({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios', unitSlug: '' });
 
   // Detalle de venta
   const [orderDetail, setOrderDetail] = useState(null);
@@ -246,6 +246,7 @@ export default function ErpView() {
           costPrice: Number(editForm.costPrice) || 0,
           stock: Number(editForm.stock) || 0,
           active: !!editForm.active,
+          unitSlug: editingProduct.unitSlug || undefined,
         },
       });
       setEditingProduct(null);
@@ -262,7 +263,9 @@ export default function ErpView() {
     if (!deletingProduct) return;
     setDeleting(true);
     try {
-      await api(`/api/integration/aesthetic/products/${deletingProduct.id}`, { method: 'DELETE' });
+      await api(apiPath(`/api/integration/aesthetic/products/${deletingProduct.id}`, {
+        unitSlug: deletingProduct.unitSlug,
+      }), { method: 'DELETE' });
       setDeletingProduct(null);
       notify.success('Producto archivado en el ERP');
       refresh();
@@ -275,7 +278,11 @@ export default function ErpView() {
 
   // ── Alta de producto ──
   const openCreate = () => {
-    setCreateForm({ name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios', subcategory: '', description: '', minStock: 5 });
+    setCreateForm({
+      name: '', sku: '', price: 0, costPrice: 0, stock: 0, category: 'Accesorios',
+      subcategory: '', description: '', minStock: 5,
+      unitSlug: unitId ? (units.find((u) => u.id === unitId)?.slug || '') : (units[0]?.slug || ''),
+    });
     setCreatingProduct(true);
   };
 
@@ -298,6 +305,7 @@ export default function ErpView() {
           subcategory: createForm.subcategory?.trim() || '',
           description: createForm.description?.trim() || '',
           minStock: Number(createForm.minStock) || 5,
+          unitSlug: createForm.unitSlug || undefined,
         },
       });
       setCreatingProduct(false);
@@ -310,12 +318,12 @@ export default function ErpView() {
     }
   };
 
-  // ── Detalle de venta ──
-  const openOrder = async (id) => {
+  // ── Detalle de venta (unitId permite abrir ventas de Mayorista) ──
+  const openOrder = async (id, unitId) => {
     setDetailLoading(true);
     setOrderDetail({ id });
     try {
-      const d = await api(`/api/integration/aesthetic/orders/${id}`);
+      const d = await api(apiPath(`/api/integration/aesthetic/orders/${id}`, { unitId }));
       setOrderDetail(d.order || null);
     } catch (e) {
       setOrderDetail(null);
@@ -345,7 +353,7 @@ export default function ErpView() {
           items={[
             { key: 'resumen', label: 'Resumen' },
             { key: 'productos', label: 'Productos' },
-            { key: 'ventas', label: 'Ventas' },
+            { key: 'ventas', label: 'Ventas del local' },
             { key: 'stats', label: 'Stats' },
           ]}
         />
@@ -354,8 +362,8 @@ export default function ErpView() {
           setUnitId(e.target.value);
           setProducts((current) => ({ ...current, page: 1 }));
           setOrders((current) => ({ ...current, page: 1 }));
-        }} style={{ maxWidth: 220 }}>
-          <option value="">Todas las unidades Aesthetic</option>
+        }} style={{ maxWidth: 240 }}>
+          <option value="">Todas las unidades (Santiago y Mayorista)</option>
           {unitOptions.map((u) => (
             <option key={u.value} value={u.value}>{u.label}</option>
           ))}
@@ -408,7 +416,7 @@ export default function ErpView() {
       <Modal
         open={!!editingProduct}
         title={editingProduct ? `Editar ${editingProduct.name}` : 'Editar producto'}
-        subtitle="Los cambios se aplican en el ERP de Santiago"
+        subtitle={`Los cambios se aplican en el ERP de ${editingProduct?.unitName || 'la unidad del producto'}`}
         onClose={() => setEditingProduct(null)}
         footer={
           <>
@@ -447,7 +455,7 @@ export default function ErpView() {
       <Modal
         open={creatingProduct}
         title="Nuevo producto en el ERP"
-        subtitle="Se crea en la unidad Aesthetic habilitada (Santiago)"
+        subtitle="Se crea en la unidad seleccionada del ERP"
         onClose={() => setCreatingProduct(false)}
         footer={
           <>
@@ -460,6 +468,17 @@ export default function ErpView() {
           <Field label="Nombre" required>
             <Input value={createForm.name || ''} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: Labial mate rosa" />
           </Field>
+          {units.length > 0 && (
+            <Field label="Unidad del ERP" required>
+              <Select
+                aria-label="Unidad del ERP donde se crea el producto"
+                value={createForm.unitSlug || ''}
+                onChange={(e) => setCreateForm((f) => ({ ...f, unitSlug: e.target.value }))}
+              >
+                {units.map((u) => <option key={u.id} value={u.slug}>{u.name}</option>)}
+              </Select>
+            </Field>
+          )}
           <div className="ui-grid ui-grid--2">
             <Field label="SKU / Código interno" required>
               <Input value={createForm.sku || ''} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} placeholder="AES-0001" />
@@ -505,7 +524,7 @@ export default function ErpView() {
       <ConfirmDialog
         open={!!deletingProduct}
         title="Eliminar producto del ERP"
-        message={`¿Eliminás "${deletingProduct?.name}" del ERP de Santiago? Queda archivado (se puede reactivar desde el ERP).`}
+        message={`¿Eliminás "${deletingProduct?.name}" del ERP de ${deletingProduct?.unitName || 'su unidad'}? Queda archivado (se puede reactivar desde el ERP).`}
         confirmText="Eliminar"
         onConfirm={confirmDelete}
         onCancel={() => setDeletingProduct(null)}
@@ -565,6 +584,7 @@ export default function ErpView() {
                   return <Badge tone={st.tone} dot>{st.lbl}</Badge>;
                 })()}
                 <span>Origen: <b>{orderDetail.origen === 'ecommerce' ? 'Online' : 'Local'}</b></span>
+                {orderDetail.unitName && <span>Unidad: <b>{orderDetail.unitName}</b></span>}
               </div>
             </div>
 
@@ -900,7 +920,7 @@ function ProductsTab({ products, search, setSearch, onPage, onEdit, onDelete, on
 function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
-  const [origin, setOrigin] = useState('all');
+  const [origin, setOrigin] = useState('local');
   const [payment, setPayment] = useState('all');
   const [visibility, setVisibility] = useState('visible');
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
@@ -937,7 +957,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
     const hidden = hiddenSet.has(orderKey(order));
     return (
       <div className={`erp-order-actions ${compact ? 'erp-order-actions--compact' : ''}`}>
-        <Button size="sm" variant="ghost" onClick={() => onOpen(order.id ?? order._id)} title="Ver detalle de la venta">
+        <Button size="sm" variant="ghost" onClick={() => onOpen(order.id ?? order._id, order.unitId)} title="Ver detalle de la venta">
           <EyeIcon size={14} /> Ver
         </Button>
         {hidden ? (
@@ -1005,6 +1025,9 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
           </div>
         </div>
         <div className="erp-view-note" role="note">
+          <ShoppingBagIcon size={15} /> Estas son las ventas del <b>local</b> registradas en el ERP. Las ventas de la <b>tienda online</b> quedan registradas en la tienda (solo descuentan stock en el ERP) y se gestionan en <a href="/orders">Órdenes</a>.
+        </div>
+        <div className="erp-view-note" role="note">
           <EyeOffIcon size={15} /> Ocultar una venta solo la quita de esta vista en este navegador. La venta y sus importes permanecen intactos en el ERP.
         </div>
       </div>
@@ -1034,9 +1057,11 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
                   <div className="erp-order-card-badges">
                     <Badge tone={st.tone} dot>{st.lbl}</Badge>
                     {order.origen === 'ecommerce' ? <Badge tone="brand">Online</Badge> : <Badge tone="neutral" outline>Local</Badge>}
+                    {order.unitName && <Badge tone="gold" outline>{order.unitName}</Badge>}
                     {hidden && <Badge tone="info" outline>Oculta en panel</Badge>}
                   </div>
                   <dl className="erp-order-card-data">
+                    <div><dt>Unidad</dt><dd>{order.unitName || '—'}</dd></div>
                     <div><dt>Cliente</dt><dd>{order.customerName || 'Sin identificar'}</dd></div>
                     <div><dt>Vendedor</dt><dd>{order.sellerName || '—'}</dd></div>
                     <div><dt>Pago</dt><dd>{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod || '—'}</dd></div>
@@ -1052,7 +1077,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
             <table className="ui-table erp-orders-table" role="table" aria-label="Ventas del ERP">
           <thead>
             <tr>
-              <th>#</th><th>Fecha y hora</th><th>Cliente</th><th>Vendedor</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Acciones</th>
+              <th>#</th><th>Fecha y hora</th><th>Unidad</th><th>Cliente</th><th>Vendedor</th><th>Método</th><th>Ítems</th><th>Estado</th><th style={{ textAlign: 'right' }}>Total</th><th>Origen</th><th style={{ textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -1063,6 +1088,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
                 <tr key={orderKey(o)} className={hidden ? 'erp-order-row--hidden' : ''}>
                   <td>{o.orderNumber}</td>
                   <td>{new Date(o.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>{o.unitName ? <Badge tone="gold" outline>{o.unitName}</Badge> : '—'}</td>
                   <td>{o.customerName}</td>
                   <td>{o.sellerName || '—'}</td>
                   <td>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || '—'}</td>

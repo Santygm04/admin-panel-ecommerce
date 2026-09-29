@@ -36,6 +36,7 @@ export default function ProductForm({ onCreated }) {
     nombre: "",
     codigoInterno: "",
     precio: "",
+    precioX2: "",
     precioEspecial: "",
     precioMayorista: "",
     precioCaja: "",
@@ -246,6 +247,7 @@ export default function ProductForm({ onCreated }) {
         imagenes,
         imagen: imagenes[0] || "",
         precio:          parseMoneyInput(producto.precio),
+        precioX2:        parseOptionalMoneyInput(producto.precioX2),
         precioEspecial:  parseOptionalMoneyInput(producto.precioEspecial),
         precioMayorista,
         precioCaja,
@@ -348,6 +350,14 @@ export default function ProductForm({ onCreated }) {
 
           {!isLenceriaCategory(producto.categoria) && (
             <>
+              {normalizeSlug(producto.categoria) === "marroquineria" && (
+                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (2+ unidades)</>}
+                  hint="Marroquinería: precio al llevar 2 unidades. Se publica también en la tienda.">
+                  <Input name="precioX2" type="text" inputMode="decimal"
+                    placeholder="Ej: 7500"
+                    value={producto.precioX2 ?? ""} onChange={handleChange} />
+                </Field>
+              )}
               <Field label={<><span className="price-tag price-tag--info">M</span> Precio Mayorista</>}
                 hint="Precio por unidad al alcanzar el mínimo">
                 <Input name="precioMayorista" type="text" inputMode="decimal"
