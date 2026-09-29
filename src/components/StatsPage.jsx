@@ -11,6 +11,7 @@ import {
 } from "./ui/icons";
 import { useTheme } from "../theme/ThemeContext";
 import { API_URL } from "../utils/api";
+import { firstProductImage, ProductImage } from "../utils/image";
 import "./StatsPage.css";
 
 const RANGE_OPTIONS = [
@@ -184,6 +185,16 @@ const paymentLabel = (method) => ({
   mercadopago: "Mercado Pago",
   transfer: "Transferencia",
 }[method] || method || "Sin especificar");
+
+const catalogItems = (data) => Array.isArray(data) ? data : data?.items || data?.productos || data?.products || [];
+const productId = (item) => {
+  const value = item?.productId?._id || item?.productId?.id || item?.productId
+    || item?.productoId?._id || item?.productoId?.id || item?.productoId
+    || item?.producto?._id || item?.producto?.id || item?.idProducto || item?._id;
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+};
+const productSku = (item) => String(item?.sku || item?.codigoInterno || item?.producto?.sku || item?.producto?.codigoInterno || "").trim();
+const productName = (item) => String(item?.nombre || item?.producto?.nombre || "").trim();
 
 function useChartPalette() {
   useTheme();
@@ -606,6 +617,7 @@ export default function StatsPage() {
       <SalesBreakdownModal
         state={salesModal}
         granularity={granularity}
+        token={token}
         onClose={closeSales}
         onRetry={() => salesModal.row && openSales(salesModal.row)}
       />
@@ -729,8 +741,10 @@ function StatsDayCard({ row, onOpen }) {
   );
 }
 
-function SalesBreakdownModal({ state, granularity, onClose, onRetry }) {
+function SalesBreakdownModal({ state, granularity, token, onClose, onRetry }) {
   const { row, orders, loading, error } = state;
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const paidOrders = orders.filter((order) => PAID_STATUSES.has(order.status));
   const paidTotal = paidOrders.reduce((total, order) => total + (Number(order.total) || 0), 0);
   const periodLabel = row
@@ -738,6 +752,64 @@ function SalesBreakdownModal({ state, granularity, onClose, onRetry }) {
       ? `${formatDay(row.date, { day: "2-digit", month: "long" })} al ${formatDay(row.endDate, { day: "2-digit", month: "long", year: "numeric" })}`
       : formatDay(row.date, { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
     : "";
+
+  useEffect(() => {
+    if (!row || loading || !orders.length || catalogLoaded || !token) return undefined;
+
+    const needsCatalog = orders.some((order) => (order.items || []).some((item) => (
+      !firstProductImage(item) || !productSku(item)
+    )));
+    if (!needsCatalog) return undefined;
+
+    const controller = new AbortController();
+    const fetchPage = async (page) => {
+      const url = new URL(`${API_URL}/api/productos`);
+      url.searchParams.set("admin", "true");
+      url.searchParams.set("limit", "500");
+      url.searchParams.set("page", String(page));
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("No se pudo cargar el catálogo");
+      return response.json();
+    };
+
+    fetchPage(1)
+      .then(async (firstPage) => {
+        const totalPages = Array.isArray(firstPage) ? 1 : Math.max(1, Number(firstPage?.pages) || 1);
+        const remainingPages = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, index) => fetchPage(index + 2))
+        );
+        return [firstPage, ...remainingPages].flatMap(catalogItems);
+      })
+      .then((products) => {
+        if (!controller.signal.aborted) {
+          setCatalogProducts(products);
+          setCatalogLoaded(true);
+        }
+      })
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setCatalogProducts([]);
+      });
+
+    return () => controller.abort();
+  }, [catalogLoaded, loading, orders, row, token]);
+
+  const catalogLookup = useMemo(() => {
+    const byId = new Map();
+    const bySku = new Map();
+    const byName = new Map();
+    catalogProducts.forEach((product) => {
+      const id = productId(product);
+      const sku = productSku(product).toLowerCase();
+      const name = productName(product).toLowerCase();
+      if (id) byId.set(id, product);
+      if (sku) bySku.set(sku, product);
+      if (name) byName.set(name, product);
+    });
+    return { byId, bySku, byName };
+  }, [catalogProducts]);
 
   return (
     <Modal
@@ -795,15 +867,41 @@ function SalesBreakdownModal({ state, granularity, onClose, onRetry }) {
                     </dl>
                     <div className="stats-sale-items">
                       <h4>Productos</h4>
-                      {(order.items || []).map((item, index) => (
-                        <div className="stats-sale-item" key={`${order._id}-${index}`}>
-                          <span><b>{item.nombre || "Producto"}</b><small>{[item?.variant?.size, item?.variant?.color, item?.variant?.tono].filter(Boolean).join(" / ")}</small></span>
-                           <span>{Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
-                             ? `x${item.totalUnits || item.cantidad}`
-                             : `${item.cantidad || 0} × ${money(item.cantidad ? Number(item.subtotal || 0) / item.cantidad : 0)}`}</span>
-                          <strong>{money(item.subtotal)}</strong>
-                        </div>
-                      ))}
+                      {(order.items || []).map((item, index) => {
+                        const id = productId(item);
+                        const itemSku = productSku(item);
+                        const itemName = productName(item);
+                        const catalogProduct = (id && catalogLookup.byId.get(id))
+                          || (itemSku && catalogLookup.bySku.get(itemSku.toLowerCase()))
+                          || (itemName && catalogLookup.byName.get(itemName.toLowerCase()));
+                        const embeddedProduct = item?.producto && typeof item.producto === "object" ? item.producto : item;
+                        const imageProduct = firstProductImage(item)
+                          ? item
+                          : firstProductImage(embeddedProduct) ? embeddedProduct : catalogProduct;
+                        const displaySku = itemSku || productSku(catalogProduct);
+                        const variant = [item?.variant?.size, item?.variant?.color, item?.variant?.tono].filter(Boolean).join(" / ");
+                        return (
+                          <div className="stats-sale-item" key={`${order._id}-${index}`}>
+                            <div className="stats-sale-item-image">
+                              <span aria-hidden="true"><ShoppingBagIcon size={18} /></span>
+                              <ProductImage
+                                product={imageProduct}
+                                alt={`Foto de ${itemName || "producto"}`}
+                                className="stats-sale-item-photo"
+                              />
+                            </div>
+                            <span className="stats-sale-item-info">
+                              <b>{itemName || "Producto"}</b>
+                              {displaySku && <code>SKU: {displaySku}</code>}
+                              {variant && <small>{variant}</small>}
+                            </span>
+                            <span className="stats-sale-item-quantity">{Number(item?.packSize) > 1 && Number(item?.packQuantity) > 0
+                              ? `x${item.totalUnits || item.cantidad}`
+                              : `${item.cantidad || 0} × ${money(item.cantidad ? Number(item.subtotal || 0) / item.cantidad : 0)}`}</span>
+                            <strong>{money(item.subtotal)}</strong>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </details>
