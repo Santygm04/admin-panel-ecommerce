@@ -37,7 +37,11 @@ export const normalizeImageUrl = (value) => {
 export const productImageUrls = (product) => {
   const values = [
     ...(Array.isArray(product?.imagenes) ? product.imagenes : []),
+    ...(Array.isArray(product?.images) ? product.images : []),
     product?.imagen,
+    product?.image,
+    product?.imageUrl,
+    product?.thumbnail,
   ];
   return [...new Set(values.map(normalizeImageUrl).filter(Boolean))];
 };

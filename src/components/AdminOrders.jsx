@@ -7,6 +7,7 @@ import {
 } from "./ui/icons";
 import "./AdminOrders.css";
 import { API_URL } from "../utils/api";
+import { firstProductImage, ProductImage } from "../utils/image";
 
 const ADMIN_WA = "5493855902832";
 
@@ -35,6 +36,14 @@ const itemQuantityLabel = (item) => {
     ? `x${item.totalUnits || item.cantidad}`
     : null;
 };
+
+const itemProductId = (item) => String(
+  item?.productId?._id || item?.productId ||
+  item?.productoId?._id || item?.productoId ||
+  item?.producto?._id || item?.idProducto || ""
+).trim();
+const itemImageKey = (item, index) => itemProductId(item) || String(item?.sku || item?.codigoInterno || item?._id || index).trim();
+const catalogItems = (data) => Array.isArray(data) ? data : data?.items || data?.productos || data?.products || [];
 
 const ST = {
   pending:   { lbl: "Pendiente",  tone: "warning" },
@@ -202,6 +211,7 @@ export default function AdminOrders() {
   const [trackM, setTrackM] = useState({ open: false, order: null });
   const [timeFilter, setTimeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [detailProducts, setDetailProducts] = useState({});
   const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
@@ -237,6 +247,55 @@ export default function AdminOrders() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [tab]);
+
+  useEffect(() => {
+    setDetailProducts({});
+    if (!detail) return undefined;
+
+    const pendingItems = (detail.items || [])
+      .map((item, index) => ({ item, key: itemImageKey(item, index) }))
+      .filter(({ item }) => !firstProductImage(item));
+    if (!pendingItems.length) return undefined;
+
+    const controller = new AbortController();
+    Promise.all(pendingItems.map(async ({ item, key }) => {
+      const lookup = String(item?.sku || item?.codigoInterno || item?.nombre || "").trim();
+      if (!lookup) return null;
+
+      try {
+        const url = new URL(`${API_URL}/api/productos`);
+        url.searchParams.set("q", lookup);
+        url.searchParams.set("limit", "20");
+        url.searchParams.set("admin", "true");
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!response.ok) return null;
+
+        const products = catalogItems(await response.json());
+        const wantedId = itemProductId(item);
+        const wantedSku = String(item?.sku || item?.codigoInterno || "").trim().toLowerCase();
+        const wantedName = String(item?.nombre || "").trim().toLowerCase();
+        const product = products.find((candidate) => wantedId && String(candidate?._id) === wantedId)
+          || products.find((candidate) => wantedSku && String(candidate?.sku || candidate?.codigoInterno || "").trim().toLowerCase() === wantedSku)
+          || products.find((candidate) => wantedName && String(candidate?.nombre || "").trim().toLowerCase() === wantedName)
+          || products[0];
+        return product ? [key, product] : null;
+      } catch (error) {
+        if (error.name === "AbortError") throw error;
+        return null;
+      }
+    }))
+      .then((entries) => {
+        if (!controller.signal.aborted) setDetailProducts(Object.fromEntries(entries.filter(Boolean)));
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setDetailProducts({});
+      });
+
+    return () => controller.abort();
+  }, [detail?._id, token]);
 
   useEffect(() => {
     const availableIds = new Set(orders.map((order) => String(order._id)));
@@ -795,10 +854,12 @@ export default function AdminOrders() {
             <div className="ao-confirm-box">
               <b>Detalle completo del pedido</b>
               <div className="ao-items">
-                {(detail.items || []).map((it, i) => {
-                   const isPack = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0;
-                   const itemSku = String(it?.sku || it?.codigoInterno || "").trim();
-                   const precioUnit = isPack
+                 {(detail.items || []).map((it, i) => {
+                    const isPack = Number(it?.packSize) > 1 && Number(it?.packQuantity) > 0;
+                    const itemSku = String(it?.sku || it?.codigoInterno || "").trim();
+                    const itemKey = itemImageKey(it, i);
+                    const imageProduct = firstProductImage(it) ? it : detailProducts[itemKey];
+                    const precioUnit = isPack
                      ? (Number(it.precioPack ?? it.precio) || 0)
                      : (it.cantidad ? it.subtotal / it.cantidad : 0);
                    const boxUnits = Number(it?.unidadesPorCaja) || 0;
@@ -808,44 +869,59 @@ export default function AdminOrders() {
                      : it?.saleUnit === "media_caja"
                        ? `${it.saleQuantity || 0} media caja${Number(it.saleQuantity) === 1 ? "" : "s"}`
                        : null;
-                  return (
-                    <div key={i} className="ao-item">
-                      <div className="ao-item-head">
-                        <div className="ao-item-title">
-                          <span>{it.nombre}</span>
-                          {itemSku && <code className="ao-item-sku">SKU: {itemSku}</code>}
-                        </div>
-                        {(it?.variant?.size || it?.variant?.color || it?.variant?.tono) && (
-                          <small>
-                            ({[it?.variant?.size, it?.variant?.color, it?.variant?.tono].filter(Boolean).join(" / ")})
-                          </small>
-                        )}
-                      </div>
-                      <div className="ao-item-row">
-                         <span>{isPack ? `Precio x${it.packSize}` : "Unitario"}: <b>{$m(precioUnit)}</b></span>
-                         {isPack ? (
-                           <span>Cantidad total: <b>x{it.totalUnits || it.cantidad}</b></span>
-                         ) : (
-                           <span>Cantidad total: <b>{it.cantidad}</b></span>
-                         )}
-                         {saleUnitLabel && <span>Venta: <b>{saleUnitLabel}</b> · {$m(it.salePrice)}</span>}
-                         {!saleUnitLabel && boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
-                        <span>Subtotal: <b>{$m(it.subtotal)}</b></span>
-                      </div>
-                      {Array.isArray(it.distribucionTonos) && it.distribucionTonos.length > 0 && (
-                        <div className="ao-tonos">
-                          <span className="ao-tonos-title">Distribución de tonos</span>
-                          <div className="ao-tonos-list">
-                            {it.distribucionTonos.map((t, j) => (
-                              <span key={j} className="ao-tono-chip">
-                                {t.tono}: <b>{t.cantidad}</b>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
+                   return (
+                     <div key={i} className="ao-item">
+                       <div className="ao-item-main">
+                         <div className="ao-item-image">
+                           <span className="ao-item-image-placeholder" aria-hidden="true">
+                             <ShoppingBagIcon size={22} />
+                             <small>Sin foto</small>
+                           </span>
+                           <ProductImage
+                             product={imageProduct}
+                             alt={`Foto de ${it.nombre || "producto"}`}
+                             className="ao-item-photo"
+                           />
+                         </div>
+                         <div className="ao-item-content">
+                           <div className="ao-item-head">
+                             <div className="ao-item-title">
+                               <span>{it.nombre}</span>
+                               {itemSku && <code className="ao-item-sku">SKU: {itemSku}</code>}
+                             </div>
+                             {(it?.variant?.size || it?.variant?.color || it?.variant?.tono) && (
+                               <small>
+                                 ({[it?.variant?.size, it?.variant?.color, it?.variant?.tono].filter(Boolean).join(" / ")})
+                               </small>
+                             )}
+                           </div>
+                           <div className="ao-item-row">
+                              <span>{isPack ? `Precio x${it.packSize}` : "Unitario"}: <b>{$m(precioUnit)}</b></span>
+                              {isPack ? (
+                                <span>Cantidad total: <b>x{it.totalUnits || it.cantidad}</b></span>
+                              ) : (
+                                <span>Cantidad total: <b>{it.cantidad}</b></span>
+                              )}
+                              {saleUnitLabel && <span>Venta: <b>{saleUnitLabel}</b> · {$m(it.salePrice)}</span>}
+                              {!saleUnitLabel && boxCount > 0 && <span>Precio por caja: <b>{$m(it.precioCaja)}</b> · {boxCount} caja{boxCount === 1 ? "" : "s"}</span>}
+                             <span>Subtotal: <b>{$m(it.subtotal)}</b></span>
+                           </div>
+                           {Array.isArray(it.distribucionTonos) && it.distribucionTonos.length > 0 && (
+                             <div className="ao-tonos">
+                               <span className="ao-tonos-title">Distribución de tonos</span>
+                               <div className="ao-tonos-list">
+                                 {it.distribucionTonos.map((t, j) => (
+                                   <span key={j} className="ao-tono-chip">
+                                     {t.tono}: <b>{t.cantidad}</b>
+                                   </span>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     </div>
+                   );
                 })}
               </div>
             </div>
