@@ -117,6 +117,14 @@ function PriceTiers({ producto }) {
   const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
   const tiers = [
     { show: isLenceria ? hasUnit : hasUnit, tone: "neutral", label: "x1", value: producto.precio },
+    {
+      // Marroquinería: precio por llevar 2+ unidades (campo propio de la tienda).
+      show: !isLenceria && !isPitukasMayorista && Number(producto.precioX2) > 0,
+      tone: "info",
+      label: "x2",
+      detail: "2 uds.",
+      value: producto.precioX2,
+    },
     { show: Number(producto.precioEspecial) > 0, tone: "gold", label: "Esp", value: producto.precioEspecial },
     {
       show: producto.publicarEnCajas && Number(producto.precioCaja) > 0,
