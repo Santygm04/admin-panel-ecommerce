@@ -4,7 +4,7 @@
 // - Productos: EDITABLES (nombre, precio, costo, stock, activo) + archivar.
 // - Ventas: detalle completo de cada venta online.
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { notify } from '../utils/toast';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -55,6 +55,10 @@ const orderKey = (order) => String(order?.id ?? order?._id ?? order?.orderNumber
 const catalogItems = (data) => Array.isArray(data) ? data : data?.items || data?.productos || data?.products || [];
 const productSku = (product) => String(product?.productSku || product?.sku || product?.codigoInterno || '').trim();
 const productName = (product) => String(product?.productName || product?.nombre || product?.name || '').trim();
+const productImageKey = (product) => {
+  const sku = productSku(product).toLowerCase();
+  return sku ? `sku:${sku}` : `name:${productName(product).toLowerCase()}`;
+};
 
 // Las ventas online las registra el usuario de servicio de la integración
 // ("Integración Aesthetic"). En el panel se muestran como "Tienda online".
@@ -141,8 +145,8 @@ export default function ErpView() {
   // Detalle de venta
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [imageCatalog, setImageCatalog] = useState([]);
-  const [imageCatalogLoaded, setImageCatalogLoaded] = useState(false);
+  const [detailImageProducts, setDetailImageProducts] = useState({});
+  const imageProductCacheRef = useRef(new Map());
 
   const token = sessionStorage.getItem('aesthetic:token') || '';
 
@@ -166,9 +170,6 @@ export default function ErpView() {
       try {
         const u = await api('/api/integration/aesthetic/units');
         setUnits(u.units || []);
-        api('/api/integration/aesthetic/categories')
-          .then((d) => setCategories(d.categories || []))
-          .catch(() => {});
       } catch (e) {
         setError('No se pudo conectar con el ERP. ¿Está la integración habilitada?');
       } finally {
@@ -204,9 +205,17 @@ export default function ErpView() {
   }, [tab, unitId, products.page, orders.page, deferredSearch, dateRange, api, token]);
 
   useEffect(() => {
-    if (units.length || loading === false) loadTab();
-    // eslint-disable-next-line
-  }, [loadTab, loading]);
+    loadTab();
+  }, [loadTab]);
+
+  useEffect(() => {
+    if (tab !== 'productos' || categories.length || !token) return undefined;
+    let active = true;
+    api('/api/integration/aesthetic/categories')
+      .then((data) => { if (active) setCategories(data.categories || []); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [api, categories.length, tab, token]);
 
   const refresh = () => loadTab();
 
@@ -344,57 +353,72 @@ export default function ErpView() {
   };
 
   useEffect(() => {
-    if (!orderDetail || detailLoading || imageCatalogLoaded || !token) return undefined;
+    if (!orderDetail || detailLoading || !token) return undefined;
 
-    const needsCatalog = (orderDetail.items || []).some((item) => !firstProductImage(item));
-    if (!needsCatalog) return undefined;
+    const pendingItems = [...new Map((orderDetail.items || [])
+      .filter((item) => !firstProductImage(item))
+      .map((item) => [productImageKey(item), item]))]
+      .filter(([key]) => key && key !== 'name:' && !imageProductCacheRef.current.has(key));
+    if (!pendingItems.length) return undefined;
 
     const controller = new AbortController();
-    const fetchPage = async (page) => {
-      const url = new URL(`${API_URL}/api/productos`);
-      url.searchParams.set('admin', 'true');
-      url.searchParams.set('limit', '500');
-      url.searchParams.set('page', String(page));
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error('No se pudo cargar el catálogo de imágenes');
-      return response.json();
+    const findProductImage = async (item) => {
+      const wantedSku = productSku(item).toLowerCase();
+      const wantedName = productName(item).toLowerCase();
+      const queries = [...new Set([productSku(item), productName(item)].filter(Boolean))];
+
+      for (const query of queries) {
+        if (controller.signal.aborted) return null;
+        const url = new URL(`${API_URL}/api/productos`);
+        url.searchParams.set('admin', 'true');
+        url.searchParams.set('limit', '20');
+        url.searchParams.set('q', query);
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!response.ok) continue;
+        const products = catalogItems(await response.json());
+        const product = products.find((candidate) => (
+          wantedSku && productSku(candidate).toLowerCase() === wantedSku
+        )) || products.find((candidate) => (
+          wantedName && productName(candidate).toLowerCase() === wantedName
+        ));
+        if (firstProductImage(product)) return product;
+      }
+
+      return null;
     };
 
-    fetchPage(1)
-      .then(async (firstPage) => {
-        const totalPages = Array.isArray(firstPage) ? 1 : Math.max(1, Number(firstPage?.pages) || 1);
-        const remainingPages = await Promise.all(
-          Array.from({ length: totalPages - 1 }, (_, index) => fetchPage(index + 2))
-        );
-        return [firstPage, ...remainingPages].flatMap(catalogItems);
-      })
-      .then((catalog) => {
-        if (!controller.signal.aborted) {
-          setImageCatalog(catalog);
-          setImageCatalogLoaded(true);
+    Promise.all(pendingItems.map(async ([key, item]) => {
+      try {
+        const product = await findProductImage(item);
+        return [key, product];
+      } catch (requestError) {
+        if (requestError.name === 'AbortError') throw requestError;
+        return [key, null];
+      }
+    }))
+      .then((entries) => {
+        if (controller.signal.aborted) return;
+        const found = {};
+        entries.forEach(([key, product]) => {
+          imageProductCacheRef.current.set(key, product);
+          if (product) found[key] = product;
+        });
+        if (Object.keys(found).length) {
+          setDetailImageProducts((current) => ({ ...current, ...found }));
         }
       })
-      .catch((requestError) => {
-        if (requestError.name !== 'AbortError') setImageCatalog([]);
-      });
+      .catch(() => {});
 
     return () => controller.abort();
-  }, [detailLoading, imageCatalogLoaded, orderDetail, token]);
+  }, [detailLoading, orderDetail, token]);
 
-  const imageCatalogLookup = useMemo(() => {
-    const bySku = new Map();
-    const byName = new Map();
-    imageCatalog.forEach((product) => {
-      const sku = productSku(product).toLowerCase();
-      const name = productName(product).toLowerCase();
-      if (sku) bySku.set(sku, product);
-      if (name) byName.set(name, product);
-    });
-    return { bySku, byName };
-  }, [imageCatalog]);
+  const openProductImage = (product) => {
+    const url = firstProductImage(product);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const unitOptions = units.map((u) => ({ value: u.id, label: u.name }));
 
@@ -681,16 +705,24 @@ export default function ErpView() {
                   {(orderDetail.items || []).map((it, i) => {
                     const sku = productSku(it);
                     const name = productName(it);
-                    const catalogProduct = (sku && imageCatalogLookup.bySku.get(sku.toLowerCase()))
-                      || (name && imageCatalogLookup.byName.get(name.toLowerCase()));
-                    const imageProduct = firstProductImage(it) ? it : catalogProduct;
+                    const imageProduct = firstProductImage(it) ? it : detailImageProducts[productImageKey(it)];
+                    const imageUrl = firstProductImage(imageProduct);
                     return (
                       <tr key={i}>
                         <td>
                           <div className="erp-item-cell">
                             <div className="erp-item-image">
                               <span aria-hidden="true"><ShoppingBagIcon size={17} /></span>
-                              <ProductImage product={imageProduct} alt={`Foto de ${name || 'producto'}`} className="erp-item-thumb" />
+                              {imageUrl && (
+                                <button
+                                  type="button"
+                                  className="erp-item-image-button"
+                                  onClick={() => openProductImage(imageProduct)}
+                                  aria-label={`Abrir imagen de ${name || 'producto'}`}
+                                >
+                                  <ProductImage product={imageProduct} alt={`Foto de ${name || 'producto'}`} className="erp-item-thumb" />
+                                </button>
+                              )}
                             </div>
                             <span>{name || 'Producto'}{it.variantDetail ? ` (${it.variantDetail})` : ''}</span>
                           </div>

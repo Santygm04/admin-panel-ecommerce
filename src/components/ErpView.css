@@ -373,8 +373,8 @@
 .erp-item-cell { display: flex; align-items: center; gap: 10px; min-width: 220px; }
 .erp-item-image {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid var(--adm-border, #332b49);
@@ -382,6 +382,8 @@
   background: var(--adm-surface-2, rgba(255,255,255,0.04));
 }
 .erp-item-image > span { position: absolute; inset: 0; display: grid; place-items: center; color: var(--adm-muted); }
+.erp-item-image-button { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; overflow: hidden; border: 0; border-radius: inherit; background: transparent; cursor: zoom-in; }
+.erp-item-image-button:focus-visible { outline: 3px solid var(--adm-brand); outline-offset: -3px; }
 .erp-item-thumb {
   position: absolute;
   inset: 0;
@@ -390,9 +392,11 @@
   padding: 3px;
   object-fit: contain;
   background: var(--adm-surface);
+  transition: transform var(--t-fast) var(--ease), filter var(--t-fast) var(--ease);
 }
+.erp-item-image-button:hover .erp-item-thumb { transform: scale(1.05); filter: brightness(.86); }
 
 @media (max-width: 520px) {
   .erp-item-cell { min-width: 190px; }
-  .erp-item-image { width: 42px; height: 42px; }
+  .erp-item-image { width: 48px; height: 48px; }
 }
