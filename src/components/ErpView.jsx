@@ -18,7 +18,7 @@ import {
 import ConfirmDialog from './ConfirmDialog';
 import './ErpView.css';
 import { API_URL } from '../utils/api';
-import { ProductImage } from '../utils/image';
+import { firstProductImage, ProductImage } from '../utils/image';
 
 
 const money = (n) =>
@@ -52,6 +52,9 @@ const PAYMENT_LABELS = {
 
 const HIDDEN_ORDERS_KEY = 'aesthetic:erp:hidden-orders:v1';
 const orderKey = (order) => String(order?.id ?? order?._id ?? order?.orderNumber ?? '');
+const catalogItems = (data) => Array.isArray(data) ? data : data?.items || data?.productos || data?.products || [];
+const productSku = (product) => String(product?.productSku || product?.sku || product?.codigoInterno || '').trim();
+const productName = (product) => String(product?.productName || product?.nombre || product?.name || '').trim();
 
 // Las ventas online las registra el usuario de servicio de la integración
 // ("Integración Aesthetic"). En el panel se muestran como "Tienda online".
@@ -138,6 +141,8 @@ export default function ErpView() {
   // Detalle de venta
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [imageCatalog, setImageCatalog] = useState([]);
+  const [imageCatalogLoaded, setImageCatalogLoaded] = useState(false);
 
   const token = sessionStorage.getItem('aesthetic:token') || '';
 
@@ -337,6 +342,59 @@ export default function ErpView() {
       setDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!orderDetail || detailLoading || imageCatalogLoaded || !token) return undefined;
+
+    const needsCatalog = (orderDetail.items || []).some((item) => !firstProductImage(item));
+    if (!needsCatalog) return undefined;
+
+    const controller = new AbortController();
+    const fetchPage = async (page) => {
+      const url = new URL(`${API_URL}/api/productos`);
+      url.searchParams.set('admin', 'true');
+      url.searchParams.set('limit', '500');
+      url.searchParams.set('page', String(page));
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error('No se pudo cargar el catálogo de imágenes');
+      return response.json();
+    };
+
+    fetchPage(1)
+      .then(async (firstPage) => {
+        const totalPages = Array.isArray(firstPage) ? 1 : Math.max(1, Number(firstPage?.pages) || 1);
+        const remainingPages = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, index) => fetchPage(index + 2))
+        );
+        return [firstPage, ...remainingPages].flatMap(catalogItems);
+      })
+      .then((catalog) => {
+        if (!controller.signal.aborted) {
+          setImageCatalog(catalog);
+          setImageCatalogLoaded(true);
+        }
+      })
+      .catch((requestError) => {
+        if (requestError.name !== 'AbortError') setImageCatalog([]);
+      });
+
+    return () => controller.abort();
+  }, [detailLoading, imageCatalogLoaded, orderDetail, token]);
+
+  const imageCatalogLookup = useMemo(() => {
+    const bySku = new Map();
+    const byName = new Map();
+    imageCatalog.forEach((product) => {
+      const sku = productSku(product).toLowerCase();
+      const name = productName(product).toLowerCase();
+      if (sku) bySku.set(sku, product);
+      if (name) byName.set(name, product);
+    });
+    return { bySku, byName };
+  }, [imageCatalog]);
 
   const unitOptions = units.map((u) => ({ value: u.id, label: u.name }));
 
@@ -614,26 +672,36 @@ export default function ErpView() {
               </div>
             )}
 
-            <div className="ui-table-wrap" style={{ marginTop: 12 }}>
-              <table className="ui-table">
+            <div className="ui-table-wrap erp-detail-items-wrap" style={{ marginTop: 12 }}>
+              <table className="ui-table erp-detail-items-table">
                 <thead>
                   <tr><th>Producto</th><th>SKU</th><th>Cant.</th><th>Precio</th><th style={{ textAlign: 'right' }}>Subtotal</th></tr>
                 </thead>
                 <tbody>
-                  {(orderDetail.items || []).map((it, i) => (
-                    <tr key={i}>
-                      <td>
-                        <div className="erp-item-cell">
-                          <ProductImage product={{ imagen: it.image }} alt={it.productName} className="erp-item-thumb" />
-                          <span>{it.productName}{it.variantDetail ? ` (${it.variantDetail})` : ''}</span>
-                        </div>
-                      </td>
-                      <td className="erp-mono">{it.productSku || '—'}</td>
-                      <td>{it.quantity}</td>
-                      <td>{money(it.unitPrice)}</td>
-                      <td style={{ textAlign: 'right' }}>{money(it.subtotal)}</td>
-                    </tr>
-                  ))}
+                  {(orderDetail.items || []).map((it, i) => {
+                    const sku = productSku(it);
+                    const name = productName(it);
+                    const catalogProduct = (sku && imageCatalogLookup.bySku.get(sku.toLowerCase()))
+                      || (name && imageCatalogLookup.byName.get(name.toLowerCase()));
+                    const imageProduct = firstProductImage(it) ? it : catalogProduct;
+                    return (
+                      <tr key={i}>
+                        <td>
+                          <div className="erp-item-cell">
+                            <div className="erp-item-image">
+                              <span aria-hidden="true"><ShoppingBagIcon size={17} /></span>
+                              <ProductImage product={imageProduct} alt={`Foto de ${name || 'producto'}`} className="erp-item-thumb" />
+                            </div>
+                            <span>{name || 'Producto'}{it.variantDetail ? ` (${it.variantDetail})` : ''}</span>
+                          </div>
+                        </td>
+                        <td className="erp-mono">{sku || '—'}</td>
+                        <td>{it.quantity}</td>
+                        <td>{money(it.unitPrice)}</td>
+                        <td style={{ textAlign: 'right' }}>{money(it.subtotal)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -369,10 +369,30 @@
 }
 .erp-detail-notes { font-size: 0.85rem; color: var(--adm-muted, #a89fbb); border-top: 1px dashed var(--adm-border, #332b49); padding-top: 10px; }
 
-.erp-item-cell { display: flex; align-items: center; gap: 10px; }
-.erp-item-thumb {
-  width: 38px; height: 38px; border-radius: 8px; object-fit: cover;
-  border: 1px solid var(--adm-border, #332b49);
-  background: var(--adm-surface-2, rgba(255,255,255,0.04));
+.erp-detail-items-table { min-width: 620px; }
+.erp-item-cell { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+.erp-item-image {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
   flex-shrink: 0;
+  border: 1px solid var(--adm-border, #332b49);
+  border-radius: 8px;
+  background: var(--adm-surface-2, rgba(255,255,255,0.04));
+}
+.erp-item-image > span { position: absolute; inset: 0; display: grid; place-items: center; color: var(--adm-muted); }
+.erp-item-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  object-fit: contain;
+  background: var(--adm-surface);
+}
+
+@media (max-width: 520px) {
+  .erp-item-cell { min-width: 190px; }
+  .erp-item-image { width: 42px; height: 42px; }
 }
