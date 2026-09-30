@@ -18,6 +18,7 @@ import {
 import ConfirmDialog from './ConfirmDialog';
 import './ErpView.css';
 import { API_URL } from '../utils/api';
+import { ProductImage } from '../utils/image';
 
 
 const money = (n) =>
@@ -51,6 +52,10 @@ const PAYMENT_LABELS = {
 
 const HIDDEN_ORDERS_KEY = 'aesthetic:erp:hidden-orders:v1';
 const orderKey = (order) => String(order?.id ?? order?._id ?? order?.orderNumber ?? '');
+
+// Las ventas online las registra el usuario de servicio de la integración
+// ("Integración Aesthetic"). En el panel se muestran como "Tienda online".
+const sellerLabel = (order) => (order?.origen === 'ecommerce' ? 'Tienda online' : order?.sellerName || '—');
 
 const apiPath = (path, params = {}) => {
   const query = new URLSearchParams();
@@ -572,7 +577,7 @@ export default function ErpView() {
               </div>
               <div className="erp-detail-box">
                 <span className="erp-detail-label">Vendedor</span>
-                <strong>{orderDetail.sellerName || 'Integración ecommerce'}</strong>
+                <strong>{sellerLabel(orderDetail)}</strong>
                 <span>
                   {new Date(orderDetail.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} hs
                 </span>
@@ -617,7 +622,12 @@ export default function ErpView() {
                 <tbody>
                   {(orderDetail.items || []).map((it, i) => (
                     <tr key={i}>
-                      <td>{it.productName}{it.variantDetail ? ` (${it.variantDetail})` : ''}</td>
+                      <td>
+                        <div className="erp-item-cell">
+                          <ProductImage product={{ imagen: it.image }} alt={it.productName} className="erp-item-thumb" />
+                          <span>{it.productName}{it.variantDetail ? ` (${it.variantDetail})` : ''}</span>
+                        </div>
+                      </td>
                       <td className="erp-mono">{it.productSku || '—'}</td>
                       <td>{it.quantity}</td>
                       <td>{money(it.unitPrice)}</td>
@@ -1063,7 +1073,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
                   <dl className="erp-order-card-data">
                     <div><dt>Unidad</dt><dd>{order.unitName || '—'}</dd></div>
                     <div><dt>Cliente</dt><dd>{order.customerName || 'Sin identificar'}</dd></div>
-                    <div><dt>Vendedor</dt><dd>{order.sellerName || '—'}</dd></div>
+                    <div><dt>Vendedor</dt><dd>{sellerLabel(order)}</dd></div>
                     <div><dt>Pago</dt><dd>{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod || '—'}</dd></div>
                     <div><dt>Ítems</dt><dd>{order.itemCount ?? 0}</dd></div>
                   </dl>
@@ -1090,7 +1100,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
                   <td>{new Date(o.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                   <td>{o.unitName ? <Badge tone="gold" outline>{o.unitName}</Badge> : '—'}</td>
                   <td>{o.customerName}</td>
-                  <td>{o.sellerName || '—'}</td>
+                  <td>{sellerLabel(o)}</td>
                   <td>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || '—'}</td>
                   <td>{o.itemCount}</td>
                   <td><Badge tone={st.tone} dot>{st.lbl}</Badge></td>

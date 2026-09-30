@@ -368,3 +368,11 @@
   margin-bottom: 2px;
 }
 .erp-detail-notes { font-size: 0.85rem; color: var(--adm-muted, #a89fbb); border-top: 1px dashed var(--adm-border, #332b49); padding-top: 10px; }
+
+.erp-item-cell { display: flex; align-items: center; gap: 10px; }
+.erp-item-thumb {
+  width: 38px; height: 38px; border-radius: 8px; object-fit: cover;
+  border: 1px solid var(--adm-border, #332b49);
+  background: var(--adm-surface-2, rgba(255,255,255,0.04));
+  flex-shrink: 0;
+}
