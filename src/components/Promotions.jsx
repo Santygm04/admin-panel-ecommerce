@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, Info, Megaphone, Power, Plus, Search, Trash2 } from "lucide-react";
+import { Edit3, Info, Megaphone, Percent, Power, Plus, Search, Trash2 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
-import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton, Table, TBody, Td, Th, THead, Textarea } from "./ui";
+import ProductDiscounts from "./ProductDiscounts";
+import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton, Table, Tabs, TBody, Td, Th, THead, Textarea } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import "./Promotions.css";
@@ -350,6 +351,7 @@ function PromotionForm({ open, initial, onClose, onSaved }) {
 }
 
 export default function Promotions() {
+  const [activeSection, setActiveSection] = useState("discounts");
   const [items, setItems] = useState([]);
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -451,48 +453,68 @@ export default function Promotions() {
       <div className="promotions-head">
         <div>
           <div className="promotions-eyebrow"><Megaphone size={15} /> MARKETING</div>
-          <h1 className="ui-page-title">Cinta promocional</h1>
-          <p className="ui-page-sub">Mensajes visibles en la parte superior de tu tienda, con vigencia y destinos configurables.</p>
+          <h1 className="ui-page-title">Centro de promociones</h1>
+          <p className="ui-page-sub">Gestioná descuentos que se cobran en checkout y campañas visibles en la tienda desde un solo lugar.</p>
         </div>
-        <Button onClick={openCreate}><Plus size={17} /> Nueva promoción</Button>
+        {activeSection === "campaigns" && <Button onClick={openCreate}><Plus size={17} /> Nueva cinta</Button>}
       </div>
 
-      {error && <div className="ui-banner ui-banner--danger promotions-error" role="alert">{error}<Button size="sm" variant="secondary" onClick={load}>Reintentar</Button></div>}
+      <Tabs
+        variant="line"
+        className="promotions-tabs"
+        active={activeSection}
+        onChange={setActiveSection}
+        items={[
+          { key: "discounts", label: "Descuentos de productos", icon: <Percent size={17} /> },
+          { key: "campaigns", label: "Cintas y campañas", icon: <Megaphone size={17} /> },
+        ]}
+      />
 
-      {loading ? (
-        <Card className="promotions-loading" pad>
-          <Skeleton variant="text" width="55%" />
-          <Skeleton variant="block" />
-          <Skeleton variant="block" />
-        </Card>
-      ) : items.length === 0 ? (
-        <Card><EmptyState icon={<Megaphone size={24} />} title="Todavía no hay promociones" description="Creá el primer mensaje para mostrar una cinta en tu tienda." action={<Button onClick={openCreate}><Plus size={16} /> Crear promoción</Button>} /></Card>
-      ) : (
-        <Table label="Promociones de cinta">
-          <THead>
-            <Th>Mensaje</Th><Th>Estado</Th><Th>Vigencia</Th><Th>Productos</Th><Th>Prioridad</Th><Th>Acciones</Th>
-          </THead>
-          <TBody>
-            {items.map((item) => {
-              const visibility = promotionVisibility(item, now);
-              return (
-              <tr key={item._id}>
-                <Td><div className="promotion-message"><span className="promotion-swatch" style={{ background: item.backgroundColor }} /><strong>{item.text}</strong><small>{item.destinationType === "auto" ? "Destino automático" : `Destino: ${item.destinationType}`}</small></div></Td>
-                <Td>
-                  <div className="promotion-status">
-                    <Badge tone={visibility.tone} dot>{visibility.label}</Badge>
-                    {item.active && !visibility.visible && <small className="promotion-visibility-note">Interruptor activo, pero fuera de vigencia</small>}
-                  </div>
-                </Td>
-                <Td><div className="promotion-dates"><span>{formatDate(item.startAt)}</span><span>hasta {formatDate(item.endAt)}</span></div></Td>
-                <Td>{item.productIds?.length || 0}</Td>
-                <Td><Badge tone="gold">{item.priority ?? 0}</Badge></Td>
-                <Td><div className="ui-table-actions"><Button size="sm" variant="ghost" onClick={() => toggle(item)} disabled={toggling.has(item._id)} title={item.active ? "Desactivar" : "Activar"} aria-label={item.active ? "Desactivar promoción" : "Activar promoción"}><Power size={16} /></Button><Button size="sm" variant="ghost" onClick={() => openEdit(item)} title="Editar" aria-label="Editar promoción"><Edit3 size={16} /></Button><Button size="sm" variant="danger-ghost" onClick={() => setDeleteTarget(item)} title="Eliminar" aria-label="Eliminar promoción"><Trash2 size={16} /></Button></div></Td>
-              </tr>
-              );
-            })}
-          </TBody>
-        </Table>
+      {activeSection === "discounts" ? <ProductDiscounts /> : (
+        <div className="promotion-campaigns">
+          <div className="promotion-campaigns__intro">
+            <div><span>CINTAS DE TIENDA</span><h2>Mensajes y campañas</h2><p>Comunicá novedades en la parte superior del ecommerce y dirigí cada click al destino correcto.</p></div>
+            <Badge tone="info">No modifica precios</Badge>
+          </div>
+
+          {error && <div className="ui-banner ui-banner--danger promotions-error" role="alert">{error}<Button size="sm" variant="secondary" onClick={load}>Reintentar</Button></div>}
+
+          {loading ? (
+            <Card className="promotions-loading" pad>
+              <Skeleton variant="text" width="55%" />
+              <Skeleton variant="block" />
+              <Skeleton variant="block" />
+            </Card>
+          ) : items.length === 0 ? (
+            <Card><EmptyState icon={<Megaphone size={24} />} title="Todavía no hay campañas" description="Creá el primer mensaje para mostrar una cinta en tu tienda." action={<Button onClick={openCreate}><Plus size={16} /> Crear cinta</Button>} /></Card>
+          ) : (
+            <Table label="Cintas promocionales">
+              <THead>
+                <Th>Mensaje</Th><Th>Estado</Th><Th>Vigencia</Th><Th>Productos</Th><Th>Prioridad</Th><Th>Acciones</Th>
+              </THead>
+              <TBody>
+                {items.map((item) => {
+                  const visibility = promotionVisibility(item, now);
+                  return (
+                  <tr key={item._id}>
+                    <Td><div className="promotion-message"><span className="promotion-swatch" style={{ background: item.backgroundColor }} /><strong>{item.text}</strong><small>{item.destinationType === "auto" ? "Destino automático" : `Destino: ${item.destinationType}`}</small></div></Td>
+                    <Td>
+                      <div className="promotion-status">
+                        <Badge tone={visibility.tone} dot>{visibility.label}</Badge>
+                        {item.active && !visibility.visible && <small className="promotion-visibility-note">Interruptor activo, pero fuera de vigencia</small>}
+                      </div>
+                    </Td>
+                    <Td><div className="promotion-dates"><span>{formatDate(item.startAt)}</span><span>hasta {formatDate(item.endAt)}</span></div></Td>
+                    <Td>{item.productIds?.length || 0}</Td>
+                    <Td><Badge tone="gold">{item.priority ?? 0}</Badge></Td>
+                    <Td><div className="ui-table-actions"><Button size="sm" variant="ghost" onClick={() => toggle(item)} disabled={toggling.has(item._id)} title={item.active ? "Desactivar" : "Activar"} aria-label={item.active ? "Desactivar promoción" : "Activar promoción"}><Power size={16} /></Button><Button size="sm" variant="ghost" onClick={() => openEdit(item)} title="Editar" aria-label="Editar promoción"><Edit3 size={16} /></Button><Button size="sm" variant="danger-ghost" onClick={() => setDeleteTarget(item)} title="Eliminar" aria-label="Eliminar promoción"><Trash2 size={16} /></Button></div></Td>
+                  </tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          )}
+        </div>
       )}
 
       <PromotionForm open={formOpen} initial={editing} onClose={() => setFormOpen(false)} onSaved={saveItem} />

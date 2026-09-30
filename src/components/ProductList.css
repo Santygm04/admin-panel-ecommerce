@@ -206,13 +206,6 @@
 .stock-input:disabled { opacity: 0.55; }
 .stock-saving { grid-column: 1 / -1; font: var(--t-caption); color: var(--adm-muted); text-align: center; }
 
-/* ── Promo ── */
-.promo-wrap { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 150px; }
-.promo-input { max-width: 130px; }
-.promo-preview { font: var(--t-small); font-weight: 600; }
-.promo-preview.ok { color: var(--adm-success); }
-.promo-preview.err { color: var(--adm-warning); }
-
 /* ── Acciones por fila ── */
 .pl-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 .pl-actions > .ui-btn { width: 100%; }
@@ -235,7 +228,7 @@
   border-radius: var(--r-sm);
   background: var(--adm-surface-3);
 }
-.pl-table { min-width: 1360px; table-layout: fixed; }
+.pl-table { min-width: 1200px; table-layout: fixed; }
 .pl-table th, .pl-table td { overflow-wrap: anywhere; }
 .pl-table th:nth-child(1), .pl-table td:nth-child(1) { width: 70px; }
 .pl-table th:nth-child(2), .pl-table td:nth-child(2) { width: 200px; }
@@ -244,11 +237,9 @@
 .pl-table th:nth-child(5), .pl-table td:nth-child(5) { width: 120px; }
 .pl-table th:nth-child(6), .pl-table td:nth-child(6) { width: 230px; }
 .pl-table th:nth-child(7), .pl-table td:nth-child(7) { width: 70px; }
-.pl-table th:nth-child(8), .pl-table td:nth-child(8) { width: 195px; }
-.pl-table th:nth-child(9), .pl-table td:nth-child(9) { width: 225px; }
+.pl-table th:nth-child(8), .pl-table td:nth-child(8) { width: 225px; }
 .pl-ellipsis { max-width: none; }
 .pl-ellipsis .pl-inline-badge { margin-left: 6px; vertical-align: middle; }
-.pl-promo-td { min-width: 0; }
 .pl-table .stock-actions--compact { gap: 3px; }
 .pl-table .stock-status { margin-bottom: 0; }
 .pl-table .stock-stepper { gap: 3px; }

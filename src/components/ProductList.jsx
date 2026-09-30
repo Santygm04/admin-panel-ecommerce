@@ -66,37 +66,7 @@ const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
   signal,
 }).then(({ data }) => data);
 
-/* ===== Helpers promo ===== */
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const money = (n) => formatARS(n);
-
-function parsePromoInput(input, basePrice) {
-  const base = Number(basePrice || 0);
-  const raw = String(input ?? "").trim().replace(",", ".");
-  if (!raw) return { mode: null, price: null, pct: null };
-
-  if (/%$/.test(raw)) {
-    const pct = clamp(parseFloat(raw.replace("%", "")) || 0, 0, 100);
-    const price = Math.max(0, Math.round(base * (1 - pct / 100)));
-    return { mode: "percent", price, pct: Math.round(pct) };
-  }
-
-  const n = Number(raw);
-  if (isFinite(n) && n > 0 && n < 1) {
-    const pct = clamp(n * 100, 0, 100);
-    const price = Math.max(0, Math.round(base * (1 - n)));
-    return { mode: "percent", price, pct: Math.round(pct) };
-  }
-
-  if (isFinite(n) && n >= 0) {
-    const price = Math.max(0, Math.round(n));
-    const pct =
-      base > 0 ? Math.round(clamp((1 - price / base) * 100, 0, 100)) : null;
-    return { mode: "abs", price, pct };
-  }
-
-  return { mode: "invalid", price: null, pct: null };
-}
 
 /* ===== Tag de precio por tier (consistente card/tabla) ===== */
 function PriceTag({ label, tone = "neutral" }) {
@@ -318,9 +288,6 @@ export default function ProductList() {
   const [stockAlerts, setStockAlerts] = useState({ items: [], total: 0, outOfStock: 0, lowStock: 0, available: 0 });
   const [loadingStockAlerts, setLoadingStockAlerts] = useState(true);
 
-  const [saving, setSaving] = useState(new Set());
-  const [drafts, setDrafts] = useState({});
-
   const [stockDrafts, setStockDrafts] = useState({});
   const [savingStock, setSavingStock] = useState(new Set());
 
@@ -417,21 +384,6 @@ export default function ProductList() {
               total: data.total ?? items.length,
               limit: data.limit || PAGE_SIZE,
             });
-
-        setDrafts((prev) => {
-          const next = { ...prev };
-          for (const p of items) {
-            if (!next[p._id]) {
-              const act = !!(p.promo && p.promo.active);
-              const pr =
-                p.promo && typeof p.promo.precio === "number"
-                  ? String(p.promo.precio)
-                  : "";
-              next[p._id] = { promoActivo: act, precioPromoInput: pr };
-            }
-          }
-          return next;
-        });
 
         setStockDrafts((prev) => {
           const next = { ...prev };
@@ -620,154 +572,6 @@ export default function ProductList() {
       setSavingDel(sd2);
       if (deleted) setConfirmData(null);
     }
-  };
-
-  const promoCambia = (p) => {
-    const d = drafts[p._id] || {};
-    const origAct = !!(p.promo && p.promo.active);
-    const origPrecio =
-      p.promo && typeof p.promo.precio === "number"
-        ? Math.round(p.promo.precio)
-        : null;
-
-    const curAct = !!d.promoActivo;
-    const parsed = parsePromoInput(d.precioPromoInput, p.precio);
-    const curPrecio = curAct ? parsed.price : null;
-
-    return (
-      origAct !== curAct ||
-      Math.round(origPrecio ?? -1) !== Math.round(curPrecio ?? -1)
-    );
-  };
-
-  const renderPromoEditor = (producto) => {
-    const d =
-      drafts[producto._id] || {
-        promoActivo: !!(producto.promo?.active),
-        precioPromoInput:
-          typeof producto.promo?.precio === "number"
-            ? String(producto.promo.precio)
-            : "",
-      };
-
-    const parsed = parsePromoInput(d.precioPromoInput, producto.precio);
-    const previewOk =
-      d.promoActivo &&
-      parsed.price != null &&
-      parsed.mode !== "invalid" &&
-      parsed.price < Number(producto.precio);
-
-    return (
-      <div className="promo-wrap">
-        <label className="ui-check">
-          <input
-            type="checkbox"
-            checked={!!d.promoActivo}
-            onChange={(e) =>
-              setDrafts((prev) => ({
-                ...prev,
-                [producto._id]: {
-                  ...prev[producto._id],
-                  promoActivo: e.target.checked,
-                },
-              }))
-            }
-          />
-          <span>Promo activa</span>
-        </label>
-
-        <Input
-          type="text"
-          inputMode="decimal"
-          placeholder="$ o %"
-          value={d.precioPromoInput ?? ""}
-          onChange={(e) =>
-            setDrafts((prev) => ({
-              ...prev,
-              [producto._id]: {
-                ...prev[producto._id],
-                precioPromoInput: e.target.value,
-              },
-            }))
-          }
-          disabled={!d.promoActivo}
-          className="promo-input"
-        />
-
-        {d.promoActivo && (
-          <div className={`promo-preview ${previewOk ? "ok" : "err"}`}>
-            {previewOk
-              ? `→ $${money(parsed.price)} ${
-                  parsed.pct != null ? `(-${parsed.pct}%)` : ""
-                }`
-              : d.precioPromoInput
-              ? "Valor inválido"
-              : "Ingresá $ o %"}
-          </div>
-        )}
-
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            const id = producto._id;
-            const cur = drafts[id] || {};
-            const parsed = parsePromoInput(cur.precioPromoInput, producto.precio);
-
-            if (cur.promoActivo) {
-              if (parsed.mode === "invalid" || parsed.price == null) {
-                showNotif("err", "Ingresá un % (ej. 25%) o un precio válido");
-                return;
-              }
-              if (parsed.price >= Number(producto.precio)) {
-                showNotif("err", "El precio promo debe ser menor al precio base");
-                return;
-              }
-            }
-
-            const body = {
-              promoActivo: !!cur.promoActivo,
-              precioPromo: cur.promoActivo ? parsed.price : null,
-            };
-
-            const s = new Set(saving);
-            s.add(id);
-            setSaving(s);
-
-            axios
-              .put(`${API}/productos/${id}`, body, { headers: authHeaders() })
-              .then(({ data }) => {
-                setProductos((prev) =>
-                  prev.map((x) => (x._id === id ? { ...x, ...data } : x))
-                );
-                setDrafts((prev) => ({
-                  ...prev,
-                  [id]: {
-                    promoActivo: !!(data.promo && data.promo.active),
-                    precioPromoInput:
-                      data.promo && typeof data.promo.precio === "number"
-                        ? String(data.promo.precio)
-                        : "",
-                  },
-                }));
-                showNotif("ok", "Promo guardada");
-              })
-              .catch((err) =>
-                showNotif("err", err?.response?.data?.message || "Error al guardar promo")
-              )
-              .finally(() => {
-                const s2 = new Set(s);
-                s2.delete(id);
-                setSaving(s2);
-              });
-          }}
-          disabled={saving.has(producto._id) || !promoCambia(producto)}
-          loading={saving.has(producto._id)}
-        >
-          {saving.has(producto._id) ? "Guardando…" : "Guardar promo"}
-        </Button>
-      </div>
-    );
   };
 
   const StockControls = ({ producto, compact = false }) => {
@@ -1055,13 +859,6 @@ export default function ProductList() {
                   <StockControls producto={producto} />
                 </div>
 
-                {!soloStock && (
-                  <div className="pl-block">
-                    <h4>Promoción</h4>
-                    {renderPromoEditor(producto)}
-                  </div>
-                )}
-
                 <RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} />
               </Card>
             );
@@ -1087,7 +884,6 @@ export default function ProductList() {
               <th>Subcategoría</th>
               <th>Stock</th>
               <th>Destacado</th>
-              <th>Promo</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -1130,7 +926,6 @@ export default function ProductList() {
                   <td style={{ textAlign: "center" }}>
                     {producto.destacado ? <Badge tone="gold">★</Badge> : "—"}
                   </td>
-                  <td className="pl-promo-td">{renderPromoEditor(producto)}</td>
                   <td><RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} /></td>
                 </tr>
               );
