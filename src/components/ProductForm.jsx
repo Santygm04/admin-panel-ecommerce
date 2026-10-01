@@ -1,14 +1,16 @@
 // ProductForm.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
+import ProductScheduleModal, { ProductScheduleSwitch } from "./ProductScheduleModal";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
 
 // Subcategorías que ofrecen packs de lencería.
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -47,6 +49,11 @@ export default function ProductForm({ onCreated }) {
     stock: "",
     stockMinimo: "5",
     destacado: false,
+    destacadoDesde: "",
+    destacadoHasta: "",
+    nuevoActivo: false,
+    nuevoDesde: "",
+    nuevoHasta: "",
     tags: [],
     variants: [],
     unidadesPorCaja: "",
@@ -64,6 +71,7 @@ export default function ProductForm({ onCreated }) {
 
   const [producto, setProducto] = useState(PRODUCTO_INICIAL);
   const [submitting, setSubmitting] = useState(false);
+  const [scheduleModal, setScheduleModal] = useState(null);
 
   const [selSizes, setSelSizes]   = useState([]);
   const [selColors, setSelColors] = useState([]);
@@ -74,16 +82,6 @@ export default function ProductForm({ onCreated }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    if (name === "isNuevoIngreso") {
-      setProducto((prev) => {
-        const set = new Set(prev.tags || []);
-        if (checked) set.add("nuevos-ingresos");
-        else set.delete("nuevos-ingresos");
-        return { ...prev, tags: Array.from(set) };
-      });
-      return;
-    }
 
     if (type === "checkbox") {
       setProducto((prev) => ({ ...prev, [name]: checked }));
@@ -217,6 +215,12 @@ export default function ProductForm({ onCreated }) {
       notify.warning("Completá los nombres de tonos sin repetirlos.");
       return;
     }
+    const scheduleError = validateScheduleRange(producto.nuevoDesde, producto.nuevoHasta)
+      || validateScheduleRange(producto.destacadoDesde, producto.destacadoHasta);
+    if (scheduleError) {
+      notify.warning(scheduleError);
+      return;
+    }
     setSubmitting(true);
     try {
       const { urls: imagenes, failed, failures } = await uploadImages();
@@ -267,6 +271,13 @@ export default function ProductForm({ onCreated }) {
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
         publicarEnCajas: !!producto.publicarEnCajas,
+        destacado: !!producto.destacado,
+        destacadoDesde: toIsoOrNull(producto.destacadoDesde),
+        destacadoHasta: toIsoOrNull(producto.destacadoHasta),
+        nuevoActivo: !!producto.nuevoActivo,
+        nuevoDesde: toIsoOrNull(producto.nuevoDesde),
+        nuevoHasta: toIsoOrNull(producto.nuevoHasta),
+        tags: syncNewArrivalTag(producto.tags, producto.nuevoActivo),
         syncToERP: !!producto.syncToERP,
       };
 
@@ -290,7 +301,18 @@ export default function ProductForm({ onCreated }) {
     }
   };
 
-  const isNuevoIngreso = (producto.tags || []).includes("nuevos-ingresos");
+  const nuevoSchedule = useMemo(() => ({
+    activo: producto.nuevoActivo === true,
+    desde: producto.nuevoDesde,
+    hasta: producto.nuevoHasta,
+  }), [producto.nuevoActivo, producto.nuevoDesde, producto.nuevoHasta]);
+
+  const destacadoSchedule = useMemo(() => ({
+    activo: producto.destacado === true,
+    desde: producto.destacadoDesde,
+    hasta: producto.destacadoHasta,
+  }), [producto.destacado, producto.destacadoDesde, producto.destacadoHasta]);
+
   const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
 
   return (
@@ -702,15 +724,11 @@ export default function ProductForm({ onCreated }) {
           </Field>
 
           <div className="pf-switches">
-            <label className="ui-check">
-              <input
-                type="checkbox"
-                name="destacado"
-                checked={!!producto.destacado}
-                onChange={e => setProducto({ ...producto, destacado: e.target.checked })}
-              />
-              Producto destacado
-            </label>
+            <ProductScheduleSwitch
+              kind="destacado"
+              value={destacadoSchedule}
+              onConfigure={() => setScheduleModal("destacado")}
+            />
             <label className="ui-check pf-box-toggle">
               <input
                 type="checkbox"
@@ -721,15 +739,11 @@ export default function ProductForm({ onCreated }) {
               Publicar en <b className="pf-ni">Packs / Cajas</b>
               <span className="pf-muted" style={{ fontWeight: 400 }}>(incluye cajas de tonos)</span>
             </label>
-            <label className="ui-check">
-              <input
-                type="checkbox"
-                name="isNuevoIngreso"
-                checked={isNuevoIngreso}
-                onChange={handleChange}
-              />
-              Mostrar en <b className="pf-ni">Nuevos ingresos</b>
-            </label>
+            <ProductScheduleSwitch
+              kind="nuevo"
+              value={nuevoSchedule}
+              onConfigure={() => setScheduleModal("nuevo")}
+            />
             <label className="ui-check">
               <input
                 type="checkbox"
@@ -749,6 +763,33 @@ export default function ProductForm({ onCreated }) {
           {submitting ? "Creando…" : "Crear producto"}
         </Button>
       </div>
+
+      <ProductScheduleModal
+        open={scheduleModal !== null}
+        kind={scheduleModal || "nuevo"}
+        value={scheduleModal === "destacado" ? destacadoSchedule : nuevoSchedule}
+        productName={producto.nombre}
+        onClose={() => setScheduleModal(null)}
+        onSave={(next) => {
+          if (scheduleModal === "destacado") {
+            setProducto((prev) => ({
+              ...prev,
+              destacado: next.activo,
+              destacadoDesde: next.desde,
+              destacadoHasta: next.hasta,
+            }));
+          } else {
+            setProducto((prev) => ({
+              ...prev,
+              nuevoActivo: next.activo,
+              nuevoDesde: next.desde,
+              nuevoHasta: next.hasta,
+              tags: syncNewArrivalTag(prev.tags, next.activo),
+            }));
+          }
+          setScheduleModal(null);
+        }}
+      />
     </form>
   );
 }

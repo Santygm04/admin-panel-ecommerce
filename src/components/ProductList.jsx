@@ -9,6 +9,7 @@ import { AlertIcon, BoxesIcon, SearchIcon, EditIcon, EyeIcon, EyeOffIcon, TrashI
 import { API_URL, authHeaders } from "../utils/api";
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug } from "../utils/pricing";
+import { formatScheduleDateTime, getScheduleStatus, scheduleFromProduct } from "../utils/schedule";
 import { ProductImage } from "../utils/image";
 import useProductStockStream from "../hooks/useProductStockStream";
 
@@ -58,6 +59,41 @@ function StockStatusLabel({ status }) {
       {status.label}
     </span>
   );
+}
+
+/* ===== Estado de "Nuevos ingresos" / "Destacados" ===== */
+function scheduleInfo(producto, kind) {
+  const config = scheduleFromProduct(producto, kind);
+  return { config, status: getScheduleStatus(config) };
+}
+
+// Los productos previos a esta función (sin `nuevoActivo`) solo muestran badge
+// cuando siguen dentro de la ventana legada de 5 días; nunca como "vencidos".
+const isLegacyNewArrival = (producto) => producto?.nuevoActivo == null;
+
+function ScheduleStatusBadge({ producto, kind }) {
+  const { status } = scheduleInfo(producto, kind);
+  if (status.key === "inactive") return null;
+  if (kind === "nuevo" && isLegacyNewArrival(producto) && status.key !== "active") return null;
+  const label = kind === "nuevo" ? "Nuevo" : "Destacado";
+  const text = status.key === "active"
+    ? label
+    : status.key === "expired"
+      ? `${label} vencido`
+      : `${label} programado`;
+  const tone = status.key === "active" ? (kind === "nuevo" ? "success" : "gold") : status.tone;
+  return <Badge tone={tone}>{text}</Badge>;
+}
+
+function scheduleDescription(producto, kind) {
+  const { config, status } = scheduleInfo(producto, kind);
+  if (kind === "nuevo" && isLegacyNewArrival(producto) && status.key !== "active") return "—";
+  if (status.key === "active") {
+    return config.hasta ? `Vigente hasta el ${formatScheduleDateTime(config.hasta)}` : "Vigente sin vencimiento";
+  }
+  if (status.key === "scheduled") return `Comienza el ${formatScheduleDateTime(config.desde)}`;
+  if (status.key === "expired") return `Vencido el ${formatScheduleDateTime(config.hasta)}`;
+  return "—";
 }
 
 const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
@@ -839,6 +875,8 @@ export default function ProductList() {
                           ? <Badge tone="brand">En ERP</Badge>
                           : <Badge tone="neutral" outline>Solo tienda</Badge>}
                         {producto.publicarEnCajas && <Badge tone="gold">Packs / Cajas</Badge>}
+                        <ScheduleStatusBadge producto={producto} kind="nuevo" />
+                        <ScheduleStatusBadge producto={producto} kind="destacado" />
                       </div>
                     </div>
                     <PriceTiers producto={producto} />
@@ -849,7 +887,8 @@ export default function ProductList() {
                           : producto.categoria?.charAt(0).toUpperCase() + (producto.categoria?.slice(1) || "")}
                       </span>
                       <span><b>Subcategoría:</b> {producto.subcategoria || "—"}</span>
-                      <span><b>Destacado:</b> {producto.destacado ? "Sí" : "—"}</span>
+                      <span><b>Destacado:</b> {scheduleDescription(producto, "destacado")}</span>
+                      <span><b>Nuevo:</b> {scheduleDescription(producto, "nuevo")}</span>
                     </div>
                   </div>
                 </div>
@@ -913,6 +952,8 @@ export default function ProductList() {
                         ? <Badge tone="brand">En ERP</Badge>
                         : <Badge tone="neutral" outline>Solo tienda</Badge>}
                       {producto.publicarEnCajas && <Badge tone="gold">Packs / Cajas</Badge>}
+                      <ScheduleStatusBadge producto={producto} kind="nuevo" />
+                      <ScheduleStatusBadge producto={producto} kind="destacado" />
                     </div>
                   </td>
                   <td><PriceTiers producto={producto} /></td>
@@ -923,8 +964,11 @@ export default function ProductList() {
                   </td>
                   <td>{producto.subcategoria || "—"}</td>
                   <td><StockControls producto={producto} compact /></td>
-                  <td style={{ textAlign: "center" }}>
-                    {producto.destacado ? <Badge tone="gold">★</Badge> : "—"}
+                  <td>
+                    <div className="pl-schedule-cell">
+                      <ScheduleStatusBadge producto={producto} kind="destacado" />
+                      <span>{scheduleDescription(producto, "destacado")}</span>
+                    </div>
                   </td>
                   <td><RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} /></td>
                 </tr>

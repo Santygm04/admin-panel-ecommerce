@@ -140,6 +140,8 @@
 .pl-product-sku { display: block; color: var(--adm-muted); font: var(--t-mono); font-size: .7rem; line-height: 1.35; letter-spacing: .02em; }
 .pl-product-badges { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 .pl-product-badges .ui-badge { font-size: .65rem; padding: 2px 7px; }
+.pl-schedule-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; font-size: .72rem; color: var(--adm-muted); max-width: 180px; }
+.pl-schedule-cell .ui-badge { font-size: .65rem; padding: 2px 7px; }
 .pl-card-meta {
   display: flex;
   flex-direction: column;

@@ -1,0 +1,123 @@
+/* =====================================================
+   ProductScheduleModal — vigencia de Nuevos ingresos / Destacados
+   ===================================================== */
+
+.psm-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.psm-toggle {
+  font-weight: 700;
+}
+
+.psm-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  background: var(--adm-surface-2);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 0.9rem;
+  color: var(--adm-ink-2);
+}
+
+.psm-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  border-radius: var(--adm-r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-2);
+}
+
+.psm-alert--warning {
+  background: var(--adm-warning-soft);
+  border-color: var(--adm-warning);
+  color: var(--adm-ink);
+}
+
+.psm-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--adm-muted);
+}
+
+.psm-error {
+  margin: 0;
+  color: var(--adm-danger);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.psm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.psm-footer-gap {
+  flex: 1;
+}
+
+@media (max-width: 720px) {
+  .psm-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Fila compacta dentro de los formularios de producto ── */
+
+.pf-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-r-lg);
+  padding: var(--sp-3);
+  background: var(--adm-surface);
+}
+
+.pf-schedule--active { border-color: var(--adm-success); }
+.pf-schedule--scheduled { border-color: var(--adm-info); }
+.pf-schedule--expired { border-color: var(--adm-warning); }
+
+.pf-schedule-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.pf-schedule-edit {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--adm-brand);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.pf-schedule-edit:hover {
+  text-decoration: underline;
+}
+
+.pf-schedule-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--adm-ink-2);
+}

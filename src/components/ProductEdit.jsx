@@ -5,11 +5,13 @@ import axios from "axios";
 import { useAuth } from "./AuthContext";
 import { Button, Field, Input, Select, Textarea, Skeleton } from "./ui";
 import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
+import ProductScheduleModal, { ProductScheduleSwitch } from "./ProductScheduleModal";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { scheduleFromProduct, syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
 import { normalizeImageUrl } from "../utils/image";
 import useProductStockStream from "../hooks/useProductStockStream";
 
@@ -48,6 +50,7 @@ export default function EditProduct() {
   const [producto, setProducto]     = useState(null);
   const [imagenFiles, setImagenFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [scheduleModal, setScheduleModal] = useState(null);
 
   const [variantes, setVariantes] = useState([]);
   const [selSizes, setSelSizes]   = useState([]);
@@ -105,6 +108,8 @@ export default function EditProduct() {
           ...(Array.isArray(p.imagenes) ? p.imagenes : []),
           p.imagen,
         ].map(normalizeImageUrl).filter(Boolean))];
+        const destacadoSchedule = scheduleFromProduct(p, "destacado");
+        const nuevoSchedule = scheduleFromProduct(p, "nuevo");
         setProducto({
           nombre:          p.nombre          || "",
           codigoInterno:   p.codigoInterno    || "",
@@ -120,7 +125,12 @@ export default function EditProduct() {
           subcategoria:    p.subcategoria    || "",
           stock:           p.stock === 0 || p.stock ? String(p.stock) : "",
           stockMinimo:     p.stockMinimo === 0 || p.stockMinimo ? String(p.stockMinimo) : "5",
-          destacado:       !!p.destacado,
+          destacado:       destacadoSchedule.activo,
+          destacadoDesde:  destacadoSchedule.desde,
+          destacadoHasta:  destacadoSchedule.hasta,
+          nuevoActivo:     nuevoSchedule.activo,
+          nuevoDesde:      nuevoSchedule.desde,
+          nuevoHasta:      nuevoSchedule.hasta,
           imagen:          imagenes[0] || "",
           imagenes,
           tags:            Array.isArray(p.tags) ? p.tags : [],
@@ -176,16 +186,6 @@ export default function EditProduct() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    if (name === "isNuevoIngreso") {
-      setProducto(prev => {
-        const set = new Set(prev.tags || []);
-        if (checked) set.add("nuevos-ingresos");
-        else set.delete("nuevos-ingresos");
-        return { ...prev, tags: Array.from(set) };
-      });
-      return;
-    }
 
     if (type === "checkbox") {
       setProducto(prev => ({ ...prev, [name]: checked }));
@@ -305,6 +305,12 @@ export default function EditProduct() {
       notify.warning("Completá los nombres de tonos sin repetirlos.");
       return;
     }
+    const scheduleError = validateScheduleRange(producto.nuevoDesde, producto.nuevoHasta)
+      || validateScheduleRange(producto.destacadoDesde, producto.destacadoHasta);
+    if (scheduleError) {
+      notify.warning(scheduleError);
+      return;
+    }
     setSubmitting(true);
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
@@ -348,8 +354,6 @@ export default function EditProduct() {
         subcategoria:    (producto.subcategoria || "").toLowerCase(),
         stock:           parseOptionalIntegerInput(producto.stock) ?? 0,
         stockMinimo:     parseOptionalIntegerInput(producto.stockMinimo) ?? 5,
-        destacado:       !!producto.destacado,
-        tags:            producto.tags || [],
         imagenes: imagenesActuales,
         imagen: imagenesActuales[0] || "",
         variants:        clean,
@@ -363,6 +367,13 @@ export default function EditProduct() {
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
         publicarEnCajas: !!producto.publicarEnCajas,
+        destacado:       !!producto.destacado,
+        destacadoDesde:  toIsoOrNull(producto.destacadoDesde),
+        destacadoHasta:  toIsoOrNull(producto.destacadoHasta),
+        nuevoActivo:     !!producto.nuevoActivo,
+        nuevoDesde:      toIsoOrNull(producto.nuevoDesde),
+        nuevoHasta:      toIsoOrNull(producto.nuevoHasta),
+        tags:            syncNewArrivalTag(producto.tags, producto.nuevoActivo),
         syncToERP: !!producto.syncToERP,
       };
 
@@ -376,6 +387,11 @@ export default function EditProduct() {
             imagen: body.imagen,
             variants: body.variants,
             destacado: body.destacado,
+            destacadoDesde: body.destacadoDesde,
+            destacadoHasta: body.destacadoHasta,
+            nuevoActivo: body.nuevoActivo,
+            nuevoDesde: body.nuevoDesde,
+            nuevoHasta: body.nuevoHasta,
             tags: body.tags,
             cantidadTonos: body.cantidadTonos,
             modoTonos: body.modoTonos,
@@ -434,7 +450,16 @@ export default function EditProduct() {
     );
   }
 
-  const isNuevoIngreso = (producto.tags || []).includes("nuevos-ingresos");
+  const nuevoSchedule = {
+    activo: producto.nuevoActivo === true,
+    desde: producto.nuevoDesde,
+    hasta: producto.nuevoHasta,
+  };
+  const destacadoSchedule = {
+    activo: producto.destacado === true,
+    desde: producto.destacadoDesde,
+    hasta: producto.destacadoHasta,
+  };
   const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
 
   return (
@@ -855,12 +880,11 @@ export default function EditProduct() {
           </Field>
 
           <div className="pf-switches">
-            <label className="ui-check">
-              <input type="checkbox" name="destacado"
-                checked={!!producto.destacado}
-                onChange={(e) => setProducto({ ...producto, destacado: e.target.checked })} />
-              Producto destacado
-            </label>
+            <ProductScheduleSwitch
+              kind="destacado"
+              value={destacadoSchedule}
+              onConfigure={() => setScheduleModal("destacado")}
+            />
             {!isVendedor && (
               <label className="ui-check pf-box-toggle">
                 <input type="checkbox" name="publicarEnCajas" checked={!!producto.publicarEnCajas} onChange={handleChange} />
@@ -869,11 +893,11 @@ export default function EditProduct() {
               </label>
             )}
 
-            <label className="ui-check">
-              <input type="checkbox" name="isNuevoIngreso"
-                checked={isNuevoIngreso} onChange={handleChange} />
-              Mostrar en <b className="pf-ni">Nuevos ingresos</b>
-            </label>
+            <ProductScheduleSwitch
+              kind="nuevo"
+              value={nuevoSchedule}
+              onConfigure={() => setScheduleModal("nuevo")}
+            />
 
             <label className="ui-check">
               <input type="checkbox" name="syncToERP"
@@ -892,6 +916,33 @@ export default function EditProduct() {
           {submitting ? "Guardando…" : "Guardar cambios"}
         </Button>
       </div>
+
+      <ProductScheduleModal
+        open={scheduleModal !== null}
+        kind={scheduleModal || "nuevo"}
+        value={scheduleModal === "destacado" ? destacadoSchedule : nuevoSchedule}
+        productName={producto.nombre}
+        onClose={() => setScheduleModal(null)}
+        onSave={(next) => {
+          if (scheduleModal === "destacado") {
+            setProducto((prev) => ({
+              ...prev,
+              destacado: next.activo,
+              destacadoDesde: next.desde,
+              destacadoHasta: next.hasta,
+            }));
+          } else {
+            setProducto((prev) => ({
+              ...prev,
+              nuevoActivo: next.activo,
+              nuevoDesde: next.desde,
+              nuevoHasta: next.hasta,
+              tags: syncNewArrivalTag(prev.tags, next.activo),
+            }));
+          }
+          setScheduleModal(null);
+        }}
+      />
     </form>
   );
 }
