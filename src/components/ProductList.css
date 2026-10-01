@@ -139,9 +139,9 @@
 .pl-card-title-row h3, .pl-product-name { font: var(--t-body-strong); font-weight: 700; color: var(--adm-ink); margin: 0; }
 .pl-product-sku { display: block; color: var(--adm-muted); font: var(--t-mono); font-size: .7rem; line-height: 1.35; letter-spacing: .02em; }
 .pl-product-badges { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
-.pl-product-badges .ui-badge { font-size: .65rem; padding: 2px 7px; }
-.pl-schedule-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; font-size: .72rem; color: var(--adm-muted); max-width: 180px; }
-.pl-schedule-cell .ui-badge { font-size: .65rem; padding: 2px 7px; }
+.pl-product-badges .ui-badge { font-size: .65rem; padding: 2px 7px; white-space: nowrap; }
+.pl-schedule-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; font-size: .72rem; color: var(--adm-muted); white-space: nowrap; }
+.pl-schedule-cell .ui-badge { font-size: .65rem; padding: 2px 7px; white-space: nowrap; }
 .pl-card-meta {
   display: flex;
   flex-direction: column;
@@ -230,16 +230,17 @@
   border-radius: var(--r-sm);
   background: var(--adm-surface-3);
 }
-.pl-table { min-width: 1200px; table-layout: fixed; }
+.pl-table { min-width: 1320px; table-layout: fixed; }
 .pl-table th, .pl-table td { overflow-wrap: anywhere; }
-.pl-table th:nth-child(1), .pl-table td:nth-child(1) { width: 70px; }
-.pl-table th:nth-child(2), .pl-table td:nth-child(2) { width: 200px; }
-.pl-table th:nth-child(3), .pl-table td:nth-child(3) { width: 140px; }
-.pl-table th:nth-child(4), .pl-table td:nth-child(4) { width: 110px; }
-.pl-table th:nth-child(5), .pl-table td:nth-child(5) { width: 120px; }
+.pl-table th { white-space: nowrap; }
+.pl-table th:nth-child(1), .pl-table td:nth-child(1) { width: 84px; }
+.pl-table th:nth-child(2), .pl-table td:nth-child(2) { width: 210px; }
+.pl-table th:nth-child(3), .pl-table td:nth-child(3) { width: 150px; }
+.pl-table th:nth-child(4), .pl-table td:nth-child(4) { width: 120px; }
+.pl-table th:nth-child(5), .pl-table td:nth-child(5) { width: 150px; }
 .pl-table th:nth-child(6), .pl-table td:nth-child(6) { width: 230px; }
-.pl-table th:nth-child(7), .pl-table td:nth-child(7) { width: 70px; }
-.pl-table th:nth-child(8), .pl-table td:nth-child(8) { width: 225px; }
+.pl-table th:nth-child(7), .pl-table td:nth-child(7) { width: 190px; }
+.pl-table th:nth-child(8), .pl-table td:nth-child(8) { width: 170px; }
 .pl-ellipsis { max-width: none; }
 .pl-ellipsis .pl-inline-badge { margin-left: 6px; vertical-align: middle; }
 .pl-table .stock-actions--compact { gap: 3px; }

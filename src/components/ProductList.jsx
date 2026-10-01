@@ -96,6 +96,23 @@ function scheduleDescription(producto, kind) {
   return "—";
 }
 
+function shortDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(date);
+}
+
+// Versión corta para la tabla: la fecha completa queda en el title.
+function scheduleShortDescription(producto, kind) {
+  const { config, status } = scheduleInfo(producto, kind);
+  if (status.key === "inactive") return "—";
+  if (kind === "nuevo" && isLegacyNewArrival(producto) && status.key !== "active") return "—";
+  if (status.key === "active") return config.hasta ? `Hasta ${shortDate(config.hasta)}` : "Sin vencimiento";
+  if (status.key === "scheduled") return `Desde ${shortDate(config.desde)}`;
+  return `Vencido ${shortDate(config.hasta)}`;
+}
+
 const readStockAlerts = (signal) => axios.get(`${API}/productos/stock-alerts`, {
   params: { admin: true },
   headers: authHeaders(),
@@ -953,7 +970,6 @@ export default function ProductList() {
                         : <Badge tone="neutral" outline>Solo tienda</Badge>}
                       {producto.publicarEnCajas && <Badge tone="gold">Packs / Cajas</Badge>}
                       <ScheduleStatusBadge producto={producto} kind="nuevo" />
-                      <ScheduleStatusBadge producto={producto} kind="destacado" />
                     </div>
                   </td>
                   <td><PriceTiers producto={producto} /></td>
@@ -965,9 +981,9 @@ export default function ProductList() {
                   <td>{producto.subcategoria || "—"}</td>
                   <td><StockControls producto={producto} compact /></td>
                   <td>
-                    <div className="pl-schedule-cell">
+                    <div className="pl-schedule-cell" title={scheduleDescription(producto, "destacado")}>
                       <ScheduleStatusBadge producto={producto} kind="destacado" />
-                      <span>{scheduleDescription(producto, "destacado")}</span>
+                      <span>{scheduleShortDescription(producto, "destacado")}</span>
                     </div>
                   </td>
                   <td><RowActions producto={producto} oculto={oculto} puedeOcultar={puedeOcultar} /></td>
