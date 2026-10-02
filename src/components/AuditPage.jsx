@@ -46,6 +46,7 @@ const ACTION_LABELS = {
   "banner.toggle": "Banner activado/desactivado",
   "banner.archive": "Banner archivado/restaurado",
   "banner.reorder": "Orden de banners actualizado",
+  "banner.bulk": "Acción masiva de banners",
   "order.confirm": "Orden confirmada",
   "order.cancel": "Orden cancelada",
   "order.ship": "Orden despachada",
@@ -201,7 +202,7 @@ const ACTION_GROUPS = [
   { label: "Productos", actions: ["product.create", "product.update", "product.visibility.update", "product.delete"] },
   { label: "Categorías", actions: ["category.create", "category.update", "category.delete"] },
   { label: "Promociones", actions: ["promotion.create", "promotion.update", "promotion.toggle", "promotion.delete", "aesthetic-days.activate", "aesthetic-days.deactivate"] },
-  { label: "Banners", actions: ["banner.create", "banner.update", "banner.delete", "banner.toggle", "banner.archive", "banner.reorder"] },
+  { label: "Banners", actions: ["banner.create", "banner.update", "banner.delete", "banner.toggle", "banner.archive", "banner.reorder", "banner.bulk"] },
   { label: "Ventas y envíos", actions: ["order.confirm", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
   { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive", "erp.stock.sync"] },
   { label: "Estadísticas", actions: ["stats.snapshot.run", "stats.snapshot.clear", "stats.snapshot.reset", "stats.snapshot.refresh_day"] },
@@ -353,6 +354,10 @@ function eventStory(item) {
       return `El banner «${metadata.nombre || "sin nombre"}» quedó ${metadata.archivado ? "archivado" : "restaurado"}.`;
     case "banner.reorder":
       return `Reordenó los banners del inicio${metadata.total ? ` (${metadata.total} en total)` : ""}.`;
+    case "banner.bulk": {
+      const bulkVerb = { activate: "activó", deactivate: "desactivó", archive: "archivó", restore: "restauró", delete: "eliminó" }[metadata.action] || "actualizó";
+      return `${bulkVerb} ${metadata.total || 0} banner${metadata.total === 1 ? "" : "s"} en una acción masiva.`;
+    }
     case "order.confirm":
       return `Confirmó la orden ${orderRef(metadata)}.`;
     case "order.cancel":

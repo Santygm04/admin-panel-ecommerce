@@ -58,6 +58,14 @@ const DEVICE_OPTIONS = [
   { key: "mobile", label: "Mobile" },
 ];
 
+const BULK_LABELS = {
+  activate: "Activar",
+  deactivate: "Desactivar",
+  archive: "Archivar",
+  restore: "Restaurar",
+  delete: "Eliminar",
+};
+
 const ESTADO_INFO = {
   active: { label: "Vigente", tone: "success" },
   scheduled: { label: "Programado", tone: "info" },
@@ -935,6 +943,19 @@ function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload
   );
 }
 
+function SelectAllCheckbox({ checked, indeterminate, onChange, label }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = Boolean(indeterminate) && !checked;
+  }, [indeterminate, checked]);
+  return (
+    <label className="ui-check bn-select-all">
+      <input ref={ref} type="checkbox" checked={checked} onChange={onChange} />
+      {label}
+    </label>
+  );
+}
+
 export default function Banners() {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({});
@@ -942,6 +963,7 @@ export default function Banners() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ q: "", estados: [], dispositivos: [], sort: "orden", from: "", to: "" });
+  const [selected, setSelected] = useState([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -963,8 +985,10 @@ export default function Banners() {
       const response = await fetch(`${API}?${params.toString()}`, { headers: authHeaders() });
       const data = await response.json();
       if (!response.ok || data?.ok === false) throw new Error(data?.message || "No se pudieron cargar los banners");
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const nextItems = Array.isArray(data.items) ? data.items : [];
+      setItems(nextItems);
       setStats(data.stats || {});
+      setSelected((current) => current.filter((id) => nextItems.some((item) => String(item._id) === String(id))));
     } catch (loadError) {
       setError(friendlyErrorMessage(loadError, "No se pudieron cargar los banners"));
       setItems([]);
@@ -989,6 +1013,14 @@ export default function Banners() {
   });
 
   const clearFilter = (field) => setFilters((current) => ({ ...current, [field]: [] }));
+
+  const toggleSelected = (id) => setSelected((current) => (
+    current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
+  ));
+
+  const toggleSelectAll = () => setSelected((current) => (
+    items.length && current.length === items.length ? [] : items.map((item) => item._id)
+  ));
 
   const apiAction = async (method, path, body) => {
     const response = await fetch(`${API}${path}`, {
@@ -1058,6 +1090,43 @@ export default function Banners() {
       () => apiAction("POST", "", { ...payload, nombre: `${banner.nombre} (copia)`, activo: false, desde: null, hasta: null, orden: (Number(banner.orden) || 0) + 1 }),
       "Banner duplicado (queda desactivado)"
     );
+  };
+
+  const runBulk = async (action) => {
+    if (!selected.length) return;
+    setBusy(true);
+    try {
+      const data = await apiAction("POST", "/bulk/action", { ids: selected, action });
+      const affected = data?.affected ?? selected.length;
+      const verbs = { activate: "activado", deactivate: "desactivado", archive: "archivado", restore: "restaurado", delete: "eliminado" };
+      notify.success(`${affected} banner${affected === 1 ? "" : "s"} ${verbs[action] || "actualizado"}${affected === 1 ? "" : "s"}`);
+      setSelected([]);
+      await load();
+    } catch (bulkError) {
+      notify.error(friendlyErrorMessage(bulkError));
+    } finally {
+      setBusy(false);
+      setConfirm(null);
+    }
+  };
+
+  const confirmBulk = (action) => {
+    const count = selected.length;
+    if (!count) return;
+    if (action === "activate") return runBulk("activate");
+    const messages = {
+      deactivate: `Se desactivarán ${count} banner${count === 1 ? "" : "s"} y dejarán de mostrarse en la tienda.`,
+      archive: `Se archivarán ${count} banner${count === 1 ? "" : "s"}. Podés restaurarlos después.`,
+      restore: `Se restaurarán ${count} banner${count === 1 ? "" : "s"} archivados.`,
+      delete: `Se eliminarán definitivamente ${count} banner${count === 1 ? "" : "s"}. Esta acción no se puede deshacer.`,
+    };
+    setConfirm({
+      title: `${BULK_LABELS[action]} seleccionados`,
+      message: messages[action],
+      confirmText: BULK_LABELS[action],
+      danger: action === "delete",
+      action: () => runBulk(action),
+    });
   };
 
   const moveBanner = (banner, direction) => {
@@ -1191,6 +1260,30 @@ export default function Banners() {
 
       {error && <div className="ui-banner ui-banner--danger" role="alert">{error}</div>}
 
+      {!loading && items.length > 0 && (
+        <div className="bn-selection">
+          <SelectAllCheckbox
+            checked={items.length > 0 && selected.length === items.length}
+            indeterminate={selected.length > 0 && selected.length < items.length}
+            onChange={toggleSelectAll}
+            label={`Seleccionar todos (${items.length})`}
+          />
+          {selected.length > 0 && (
+            <div className="bn-bulk-bar">
+              <strong>{selected.length} seleccionado{selected.length === 1 ? "" : "s"}</strong>
+              <div className="bn-bulk-bar-actions">
+                <Button size="sm" variant="secondary" onClick={() => confirmBulk("activate")} disabled={busy}><Power size={14} /> Activar</Button>
+                <Button size="sm" variant="secondary" onClick={() => confirmBulk("deactivate")} disabled={busy}><Power size={14} /> Desactivar</Button>
+                <Button size="sm" variant="secondary" onClick={() => confirmBulk("archive")} disabled={busy}><Archive size={14} /> Archivar</Button>
+                <Button size="sm" variant="secondary" onClick={() => confirmBulk("restore")} disabled={busy}><ArchiveRestore size={14} /> Restaurar</Button>
+                <Button size="sm" variant="danger" onClick={() => confirmBulk("delete")} disabled={busy}><Trash2 size={14} /> Eliminar</Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected([])} disabled={busy}>Cancelar</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="bn-grid">
           {[0, 1, 2].map((index) => <Card key={index} pad><Skeleton variant="block" /></Card>)}
@@ -1210,8 +1303,16 @@ export default function Banners() {
             const estado = ESTADO_INFO[banner.estado] || ESTADO_INFO.inactive;
             const thumb = banner.imagenDesktop || banner.imagenMobile;
             return (
-              <article key={banner._id} className={`bn-card ${banner.estado === "archived" ? "is-archived" : ""}`}>
+              <article key={banner._id} className={`bn-card ${banner.estado === "archived" ? "is-archived" : ""} ${selected.includes(banner._id) ? "is-selected" : ""}`}>
                 <div className="bn-thumb">
+                  <label className="bn-select">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(banner._id)}
+                      onChange={() => toggleSelected(banner._id)}
+                      aria-label={`Seleccionar ${banner.nombre}`}
+                    />
+                  </label>
                   {thumb
                     ? <img src={normalizeImageUrl(thumb)} alt="" loading="lazy" />
                     : <div className="bn-thumb-empty"><ImageOff size={22} /></div>}

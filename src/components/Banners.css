@@ -33,6 +33,28 @@
 .bn-filters-row { display: grid; grid-template-columns: minmax(220px, 2.2fr) minmax(180px, 1fr) repeat(2, minmax(140px, .8fr)); gap: var(--sp-3); align-items: center; }
 .bn-filter-chips { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .bn-filter-label { margin-right: 2px; color: var(--adm-muted); font: var(--t-caption); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+
+/* ── Selección múltiple y acciones masivas ── */
+.bn-selection { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.bn-select-all { font-weight: 600; white-space: nowrap; }
+.bn-bulk-bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; flex: 1; min-width: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--adm-brand); border-radius: var(--r-lg); background: var(--adm-brand-tint); }
+.bn-bulk-bar strong { color: var(--adm-brand); font: var(--t-small); white-space: nowrap; }
+.bn-bulk-bar-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.bn-select {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .55);
+  cursor: pointer;
+}
+.bn-select input { width: 16px; height: 16px; margin: 0; accent-color: var(--adm-brand); cursor: pointer; }
+.bn-card.is-selected { border-color: var(--adm-brand); box-shadow: var(--shadow-brand); }
 .bn-chip {
   min-height: 34px;
   padding: 6px 12px;
