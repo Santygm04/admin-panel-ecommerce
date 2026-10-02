@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
+import BulkBannersModal from "./BulkBannersModal";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
@@ -699,6 +700,7 @@ export default function Banners() {
   const [filters, setFilters] = useState({ q: "", estado: "all", dispositivo: "todos", sort: "orden", from: "", to: "" });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -820,6 +822,10 @@ export default function Banners() {
 
   const canReorder = filters.estado === "all" && filters.dispositivo === "todos" && filters.sort === "orden" && !filters.q;
 
+  const nextOrder = useMemo(() => (
+    items.reduce((max, item) => Math.max(max, Number(item.orden) || 0), 0) + 1
+  ), [items]);
+
   const kpis = useMemo(() => ([
     { key: "total", label: "Banners", value: stats.total || 0, tone: "brand" },
     { key: "active", label: "Vigentes", value: stats.active || 0, tone: "success" },
@@ -841,6 +847,7 @@ export default function Banners() {
         </div>
         <div className="bn-head-actions">
           <Button variant="secondary" onClick={() => load()} loading={loading}><RefreshCw size={15} /> Actualizar</Button>
+          <Button variant="secondary" onClick={() => setBulkOpen(true)}><Images size={16} /> Subir varias</Button>
           <Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>
         </div>
       </div>
@@ -903,8 +910,13 @@ export default function Banners() {
           <EmptyState
             icon={<Images size={24} />}
             title="Todavía no hay banners"
-            description="Subí la primera imagen para reemplazar los slides por defecto de la página de inicio."
-            action={<Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>}
+            description="Subí una o varias imágenes para reemplazar los slides por defecto de la página de inicio."
+            action={(
+              <div className="bn-empty-actions">
+                <Button variant="secondary" onClick={() => setBulkOpen(true)}><Images size={16} /> Subir varias</Button>
+                <Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>
+              </div>
+            )}
           />
         </Card>
       ) : (
@@ -967,6 +979,13 @@ export default function Banners() {
       )}
 
       {preview && <BannerPreview banner={preview} onClose={() => setPreview(null)} />}
+
+      <BulkBannersModal
+        open={bulkOpen}
+        nextOrder={nextOrder}
+        onClose={() => setBulkOpen(false)}
+        onCreated={() => load()}
+      />
 
       <ConfirmDialog
         open={Boolean(confirm)}
