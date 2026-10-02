@@ -40,6 +40,12 @@ const ACTION_LABELS = {
   "promotion.delete": "Promoción eliminada",
   "aesthetic-days.activate": "Aesthetic Days activado",
   "aesthetic-days.deactivate": "Aesthetic Days desactivado",
+  "banner.create": "Banner creado",
+  "banner.update": "Banner actualizado",
+  "banner.delete": "Banner eliminado",
+  "banner.toggle": "Banner activado/desactivado",
+  "banner.archive": "Banner archivado/restaurado",
+  "banner.reorder": "Orden de banners actualizado",
   "order.confirm": "Orden confirmada",
   "order.cancel": "Orden cancelada",
   "order.ship": "Orden despachada",
@@ -119,6 +125,16 @@ const FIELD_LABELS = {
   slug: "Dirección",
   text: "Texto",
   productIds: "Productos",
+  alt: "Texto alternativo",
+  imagenDesktop: "Imagen escritorio",
+  imagenMobile: "Imagen mobile",
+  orden: "Orden",
+  dispositivo: "Dispositivo",
+  linkType: "Tipo de enlace",
+  linkValue: "Enlace",
+  botonTexto: "Texto del botón",
+  abrirNuevaPestana: "Abrir en pestaña nueva",
+  archivado: "Archivado",
   email: "Email",
   phone: "Teléfono",
   minimo: "Mínimo",
@@ -137,6 +153,7 @@ const RESOURCE_LABELS = {
   erp_product: "Producto ERP",
   category: "Categoría",
   promotion: "Promoción",
+  banner: "Banner",
   order: "Orden",
   user: "Usuario",
   permission: "Permiso",
@@ -167,6 +184,7 @@ const QUICK_EVENT_FILTERS = [
   { key: "sales", label: "Ventas" },
   { key: "categories", label: "Categorías" },
   { key: "promotions", label: "Promociones" },
+  { key: "banners", label: "Banners" },
   { key: "stats", label: "Estadísticas" },
   { key: "erp", label: "ERP" },
 ];
@@ -183,6 +201,7 @@ const ACTION_GROUPS = [
   { label: "Productos", actions: ["product.create", "product.update", "product.visibility.update", "product.delete"] },
   { label: "Categorías", actions: ["category.create", "category.update", "category.delete"] },
   { label: "Promociones", actions: ["promotion.create", "promotion.update", "promotion.toggle", "promotion.delete", "aesthetic-days.activate", "aesthetic-days.deactivate"] },
+  { label: "Banners", actions: ["banner.create", "banner.update", "banner.delete", "banner.toggle", "banner.archive", "banner.reorder"] },
   { label: "Ventas y envíos", actions: ["order.confirm", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
   { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive", "erp.stock.sync"] },
   { label: "Estadísticas", actions: ["stats.snapshot.run", "stats.snapshot.clear", "stats.snapshot.reset", "stats.snapshot.refresh_day"] },
@@ -322,6 +341,18 @@ function eventStory(item) {
       return "Activó Aesthetic Days para toda la tienda.";
     case "aesthetic-days.deactivate":
       return "Desactivó Aesthetic Days.";
+    case "banner.create":
+      return `Creó el banner «${metadata.nombre || "sin nombre"}».`;
+    case "banner.update":
+      return `Editó el banner «${metadata.nombre || "sin nombre"}».${withFields}`;
+    case "banner.delete":
+      return `Eliminó el banner «${metadata.nombre || "sin nombre"}».`;
+    case "banner.toggle":
+      return `El banner «${metadata.nombre || "sin nombre"}» quedó ${metadata.activo ? "activo" : "desactivado"}.`;
+    case "banner.archive":
+      return `El banner «${metadata.nombre || "sin nombre"}» quedó ${metadata.archivado ? "archivado" : "restaurado"}.`;
+    case "banner.reorder":
+      return `Reordenó los banners del inicio${metadata.total ? ` (${metadata.total} en total)` : ""}.`;
     case "order.confirm":
       return `Confirmó la orden ${orderRef(metadata)}.`;
     case "order.cancel":

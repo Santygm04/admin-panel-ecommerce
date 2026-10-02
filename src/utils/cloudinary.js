@@ -11,7 +11,7 @@ export const CLOUDINARY_UPLOAD_URL =
   `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 export const CLOUDINARY_UPLOAD_PRESET = UPLOAD_PRESET;
 
-export async function uploadCloudinaryImage(file) {
+export async function uploadCloudinaryImage(file, { folder = CLOUDINARY_FOLDER } = {}) {
   let lastError;
 
   for (let attempt = 0; attempt < UPLOAD_ATTEMPTS; attempt += 1) {
@@ -19,7 +19,7 @@ export async function uploadCloudinaryImage(file) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("folder", CLOUDINARY_FOLDER);
+      formData.append("folder", folder);
 
       const { data } = await axios.post(CLOUDINARY_UPLOAD_URL, formData, {
         timeout: UPLOAD_TIMEOUT_MS,

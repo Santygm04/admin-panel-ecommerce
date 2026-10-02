@@ -11,6 +11,7 @@ import AdminOrders from "./components/AdminOrders";
 import ErpView from "./components/ErpView";
 import Promotions from "./components/Promotions";
 import AestheticDays from "./components/AestheticDays";
+import Banners from "./components/Banners";
 import AuditPage from "./components/AuditPage";
 
 // Splash de sesión: se muestra mientras se valida el token guardado
@@ -55,6 +56,7 @@ function AppRoutes() {
           <Route path="/erp" element={user?.role === "admin" ? <ErpView /> : <Navigate to="/dashboard" replace />} />
           <Route path="/promociones" element={user?.role === "admin" ? <Promotions /> : <Navigate to="/dashboard" replace />} />
           <Route path="/promociones/aesthetic-days" element={user?.role === "admin" ? <AestheticDays /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/banners" element={user?.role === "admin" ? <Banners /> : <Navigate to="/dashboard" replace />} />
           <Route path="/auditoria" element={user?.role === "admin" ? <AuditPage /> : <Navigate to="/dashboard" replace />} />
       </Route>
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ReceiptText, Package, Upload, FolderOpen,
-  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone, ClipboardList, Sparkles,
+  BarChart3, LockKeyhole, Users, Store, RefreshCw, Megaphone, ClipboardList, Sparkles, Images,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Badge, ThemeToggle } from './ui';
@@ -64,6 +64,7 @@ export default function Layout({ children }) {
     { to: '/erp', label: 'ERP Aesthetic', icon: <Store size={18} />, show: user?.role === 'admin' },
     { to: '/promociones', label: 'Promociones', icon: <Megaphone size={18} />, exact: true, show: user?.role === 'admin' },
     { to: '/promociones/aesthetic-days', label: 'Aesthetic Days', icon: <Sparkles size={18} />, exact: true, show: user?.role === 'admin' },
+    { to: '/banners', label: 'Banners', icon: <Images size={18} />, exact: true, show: user?.role === 'admin' },
     { to: '/auditoria', label: 'Auditoría', icon: <ClipboardList size={18} />, show: user?.role === 'admin' },
   ].filter((n) => n.show);
 
