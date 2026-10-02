@@ -572,7 +572,7 @@ function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload
             nombre,
             alt: nombre,
             imagenDesktop: url,
-            imagenMobile: "",
+            imagenMobile: payload.imagenMobile || "",
             orden: baseOrder + index,
           }),
         });
@@ -705,9 +705,21 @@ function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload
                   onChange={(event) => { addBatchFiles(event.target.files); event.target.value = ""; }}
                   hidden
                 />
+                <div className="bn-image-grid">
+                  <ImagePicker
+                    label="Imagen para mobile (opcional)"
+                    hint="Se aplica a todos los banners creados; después podés cambiarla en cada uno."
+                    value={form.imagenMobile}
+                    uploading={uploading === "mobile"}
+                    error={imageErrors.mobile}
+                    onChange={(file) => handleFile("mobile", file)}
+                    onClear={() => clearImage("mobile")}
+                  />
+                </div>
                 {imageErrors.batch && <p className="bn-image-error" role="alert">{imageErrors.batch}</p>}
                 <p className="bn-bulk-note">
-                  La imagen mobile se configura después, editando cada banner. Hasta {MAX_IMAGES_PER_BATCH} imágenes por vez.
+                  Hasta {MAX_IMAGES_PER_BATCH} imágenes por vez. La imagen mobile de arriba se aplica a todos
+                  los banners del lote; después podés cambiarla individualmente.
                 </p>
               </>
             ) : (
