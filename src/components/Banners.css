@@ -30,8 +30,9 @@
 
 /* ── Filtros ── */
 .bn-filters { display: flex; flex-direction: column; gap: var(--sp-3); }
-.bn-filters-row { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr)) repeat(2, minmax(140px, .8fr)); gap: var(--sp-3); align-items: center; }
+.bn-filters-row { display: grid; grid-template-columns: minmax(220px, 2.2fr) minmax(180px, 1fr) repeat(2, minmax(140px, .8fr)); gap: var(--sp-3); align-items: center; }
 .bn-filter-chips { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.bn-filter-label { margin-right: 2px; color: var(--adm-muted); font: var(--t-caption); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .bn-chip {
   min-height: 34px;
   padding: 6px 12px;

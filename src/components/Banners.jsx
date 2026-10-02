@@ -45,13 +45,17 @@ function prettyName(filename) {
   return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
 }
 
-const ESTADO_FILTERS = [
-  { key: "all", label: "Todos" },
+const ESTADO_OPTIONS = [
   { key: "active", label: "Vigentes" },
   { key: "scheduled", label: "Programados" },
   { key: "expired", label: "Vencidos" },
   { key: "inactive", label: "Inactivos" },
   { key: "archived", label: "Archivados" },
+];
+
+const DEVICE_OPTIONS = [
+  { key: "desktop", label: "Desktop" },
+  { key: "mobile", label: "Mobile" },
 ];
 
 const ESTADO_INFO = {
@@ -937,7 +941,7 @@ export default function Banners() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({ q: "", estado: "all", dispositivo: "todos", sort: "orden", from: "", to: "" });
+  const [filters, setFilters] = useState({ q: "", estados: [], dispositivos: [], sort: "orden", from: "", to: "" });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -951,8 +955,8 @@ export default function Banners() {
       const active = { ...filters, ...override };
       const params = new URLSearchParams();
       if (active.q) params.set("q", active.q);
-      if (active.estado && active.estado !== "all") params.set("estado", active.estado);
-      if (active.dispositivo && active.dispositivo !== "todos") params.set("dispositivo", active.dispositivo);
+      if (active.estados?.length) params.set("estado", active.estados.join(","));
+      if (active.dispositivos?.length) params.set("dispositivo", active.dispositivos.join(","));
       if (active.sort) params.set("sort", active.sort);
       if (active.from) params.set("from", active.from);
       if (active.to) params.set("to", active.to);
@@ -977,6 +981,14 @@ export default function Banners() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  const toggleFilterValue = (field, key) => setFilters((current) => {
+    const values = current[field] || [];
+    const has = values.includes(key);
+    return { ...current, [field]: has ? values.filter((value) => value !== key) : [...values, key] };
+  });
+
+  const clearFilter = (field) => setFilters((current) => ({ ...current, [field]: [] }));
 
   const apiAction = async (method, path, body) => {
     const response = await fetch(`${API}${path}`, {
@@ -1059,7 +1071,7 @@ export default function Banners() {
     run(() => apiAction("PATCH", "/reorder", { ids: ordered }), "Orden actualizado");
   };
 
-  const canReorder = filters.estado === "all" && filters.dispositivo === "todos" && filters.sort === "orden" && !filters.q;
+  const canReorder = filters.estados.length === 0 && filters.dispositivos.length === 0 && filters.sort === "orden" && !filters.q;
 
   const nextOrder = useMemo(() => (
     items.reduce((max, item) => Math.max(max, Number(item.orden) || 0), 0) + 1
@@ -1091,17 +1103,24 @@ export default function Banners() {
       </div>
 
       <div className="bn-kpis">
-        {kpis.map((kpi) => (
-          <button
-            key={kpi.key}
-            type="button"
-            className={`bn-kpi bn-kpi--${kpi.tone} ${filters.estado === (kpi.key === "total" ? "all" : kpi.key) ? "is-active" : ""}`}
-            onClick={() => setFilters((current) => ({ ...current, estado: kpi.key === "total" ? "all" : kpi.key }))}
-          >
-            <strong>{kpi.value}</strong>
-            <span>{kpi.label}</span>
-          </button>
-        ))}
+        {kpis.map((kpi) => {
+          const isActive = kpi.key === "total" ? filters.estados.length === 0 : filters.estados.includes(kpi.key);
+          return (
+            <button
+              key={kpi.key}
+              type="button"
+              className={`bn-kpi bn-kpi--${kpi.tone} ${isActive ? "is-active" : ""}`}
+              aria-pressed={isActive}
+              onClick={() => {
+                if (kpi.key === "total") clearFilter("estados");
+                else toggleFilterValue("estados", kpi.key);
+              }}
+            >
+              <strong>{kpi.value}</strong>
+              <span>{kpi.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <Card pad className="bn-filters">
@@ -1112,11 +1131,6 @@ export default function Banners() {
             placeholder="Buscar por nombre, texto alternativo o destino…"
             icon={<Search size={15} />}
           />
-          <Select value={filters.dispositivo} onChange={(event) => setFilters((current) => ({ ...current, dispositivo: event.target.value }))}>
-            <option value="todos">Todos los dispositivos</option>
-            <option value="desktop">Desktop</option>
-            <option value="mobile">Mobile</option>
-          </Select>
           <Select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}>
             {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
@@ -1124,16 +1138,54 @@ export default function Banners() {
           <Input type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} aria-label="Creados hasta" />
         </div>
         <div className="bn-filter-chips">
-          {ESTADO_FILTERS.map((filter) => (
-            <button
-              key={filter.key}
-              type="button"
-              className={`bn-chip ${filters.estado === filter.key ? "is-active" : ""}`}
-              onClick={() => setFilters((current) => ({ ...current, estado: filter.key }))}
-            >
-              {filter.label}
-            </button>
-          ))}
+          <span className="bn-filter-label">Estado</span>
+          <button
+            type="button"
+            className={`bn-chip ${filters.estados.length === 0 ? "is-active" : ""}`}
+            aria-pressed={filters.estados.length === 0}
+            onClick={() => clearFilter("estados")}
+          >
+            Todos
+          </button>
+          {ESTADO_OPTIONS.map((option) => {
+            const active = filters.estados.includes(option.key);
+            return (
+              <button
+                key={option.key}
+                type="button"
+                className={`bn-chip ${active ? "is-active" : ""}`}
+                aria-pressed={active}
+                onClick={() => toggleFilterValue("estados", option.key)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="bn-filter-chips">
+          <span className="bn-filter-label">Dispositivo</span>
+          <button
+            type="button"
+            className={`bn-chip ${filters.dispositivos.length === 0 ? "is-active" : ""}`}
+            aria-pressed={filters.dispositivos.length === 0}
+            onClick={() => clearFilter("dispositivos")}
+          >
+            Todos
+          </button>
+          {DEVICE_OPTIONS.map((option) => {
+            const active = filters.dispositivos.includes(option.key);
+            return (
+              <button
+                key={option.key}
+                type="button"
+                className={`bn-chip ${active ? "is-active" : ""}`}
+                aria-pressed={active}
+                onClick={() => toggleFilterValue("dispositivos", option.key)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </Card>
 
