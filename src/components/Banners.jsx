@@ -22,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
-import BulkBannersModal from "./BulkBannersModal";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
@@ -33,8 +32,18 @@ import "./Banners.css";
 
 const API = `${API_URL}/api/banners`;
 const PRODUCTS_API = `${API_URL}/api/productos`;
+const MAX_IMAGES_PER_BATCH = 10;
 const MAX_IMAGE_MB = 8;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+
+function prettyName(filename) {
+  const base = String(filename || "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
+}
 
 const ESTADO_FILTERS = [
   { key: "all", label: "Todos" },
@@ -273,7 +282,7 @@ function BannerPreview({ banner, onClose }) {
   );
 }
 
-function ImagePicker({ label, hint, value, uploading, error, onChange, onClear, required = false }) {
+function ImagePicker({ label, hint, value, uploading, error, onChange, onFiles, onClear, required = false, multiple = false }) {
   const inputRef = useRef(null);
   return (
     <div className="bn-image-field">
@@ -301,15 +310,24 @@ function ImagePicker({ label, hint, value, uploading, error, onChange, onClear, 
           disabled={uploading}
         >
           {uploading ? <span className="ui-spinner" /> : <Upload size={22} />}
-          <span>{uploading ? "Subiendo imagen…" : "Hacé click para subir una imagen"}</span>
-          <small>JPG, PNG, WebP o AVIF · Máximo {MAX_IMAGE_MB} MB</small>
+          <span>{uploading ? "Subiendo imagen…" : multiple ? "Hacé click para subir una o varias imágenes" : "Hacé click para subir una imagen"}</span>
+          <small>
+            {multiple ? "Si elegís varias, se crea un banner por imagen · " : ""}
+            JPG, PNG, WebP o AVIF · Máximo {MAX_IMAGE_MB} MB
+          </small>
         </button>
       )}
       <input
         ref={inputRef}
         type="file"
         accept={ACCEPTED_TYPES.join(",")}
-        onChange={(event) => { onChange(event.target.files?.[0]); event.target.value = ""; }}
+        multiple={multiple}
+        onChange={(event) => {
+          const files = Array.from(event.target.files || []);
+          if (multiple) onFiles?.(files);
+          else onChange?.(files[0]);
+          event.target.value = "";
+        }}
         hidden
       />
       {error && <p className="bn-image-error" role="alert">{error}</p>}
@@ -317,12 +335,15 @@ function ImagePicker({ label, hint, value, uploading, error, onChange, onClear, 
   );
 }
 
-function BannerForm({ open, banner, onClose, onSaved }) {
+function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload }) {
   const isEdit = Boolean(banner?._id);
   const [form, setForm] = useState(emptyForm);
+  const [batch, setBatch] = useState([]);
+  const batchInputRef = useRef(null);
   const [uploading, setUploading] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
   const [initialForm, setInitialForm] = useState(emptyForm);
@@ -332,14 +353,23 @@ function BannerForm({ open, banner, onClose, onSaved }) {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [categories, setCategories] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  // El orden siguiente puede cambiar mientras el modal está abierto (por ejemplo
+  // al recargar la lista tras un alta parcial); se lee por ref para no resetear.
+  const defaultOrderRef = useRef(defaultOrder);
+  defaultOrderRef.current = defaultOrder;
 
   useEffect(() => {
     if (!open) return;
-    const next = banner ? formFromBanner(banner) : emptyForm();
+    const next = banner ? formFromBanner(banner) : { ...emptyForm(), orden: defaultOrderRef.current };
     setForm(next);
     setInitialForm(next);
+    setBatch((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.preview));
+      return [];
+    });
     setError("");
     setImageErrors({});
+    setProgress(null);
     setProductQuery("");
     setProductResults([]);
     setProductLabel("");
@@ -427,7 +457,56 @@ function BannerForm({ open, banner, onClose, onSaved }) {
     else setField("imagenMobile", "");
   };
 
-  const dirty = JSON.stringify(form) !== JSON.stringify(initialForm);
+  const updateBatchItem = (id, patch) => setBatch((current) => current.map((item) => (
+    item.id === id ? { ...item, ...patch } : item
+  )));
+
+  const addBatchFiles = (files) => {
+    const list = Array.from(files || []);
+    if (!list.length) return;
+    const accepted = [];
+    for (const file of list) {
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        setImageErrors((current) => ({ ...current, batch: `“${file.name}” no es una imagen compatible.` }));
+        continue;
+      }
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        setImageErrors((current) => ({ ...current, batch: `“${file.name}” supera el máximo de ${MAX_IMAGE_MB} MB.` }));
+        continue;
+      }
+      accepted.push({
+        id: `batch-${Date.now()}-${accepted.length}-${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        preview: URL.createObjectURL(file),
+        name: prettyName(file.name) || `Banner ${batch.length + accepted.length + 1}`,
+        status: "pending",
+        error: "",
+      });
+    }
+    if (!accepted.length) return;
+    setImageErrors((current) => ({ ...current, batch: "" }));
+    setBatch((current) => {
+      const room = Math.max(0, MAX_IMAGES_PER_BATCH - current.length);
+      if (accepted.length > room) setImageErrors((errors) => ({ ...errors, batch: `Máximo ${MAX_IMAGES_PER_BATCH} imágenes por vez.` }));
+      return [...current, ...accepted.slice(0, room)];
+    });
+  };
+
+  const removeBatchItem = (id) => {
+    setBatch((current) => {
+      const target = current.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return current.filter((item) => item.id !== id);
+    });
+  };
+
+  const handleDesktopFiles = (files) => {
+    if (!files?.length) return;
+    if (files.length > 1) addBatchFiles(files);
+    else handleFile("desktop", files[0]);
+  };
+
+  const dirty = JSON.stringify(form) !== JSON.stringify(initialForm) || batch.length > 0;
 
   const requestClose = () => {
     if (dirty) setConfirmClose(true);
@@ -444,17 +523,89 @@ function BannerForm({ open, banner, onClose, onSaved }) {
     setField("hasta", toDateTimeLocal(new Date(base + days * 24 * 60 * 60 * 1000)));
   };
 
+  const validateShared = (payload) => {
+    if (payload.desde && payload.hasta && new Date(payload.hasta) <= new Date(payload.desde)) {
+      setError("La fecha de finalización debe ser posterior a la de inicio.");
+      return false;
+    }
+    if (payload.linkType !== "none" && !payload.linkValue) {
+      setError("Completá el destino del enlace o elegí “Sin enlace”.");
+      return false;
+    }
+    return true;
+  };
+
+  const submitBatch = async () => {
+    const queue = batch.filter((item) => item.status === "pending" || item.status === "error");
+    const payload = serializeForm(form);
+    if (!validateShared(payload)) return;
+
+    setSaving(true);
+    setError("");
+    let created = 0;
+    let failed = 0;
+    // Base del orden: el mayor entre lo configurado y el próximo real del listado
+    // (evita pisar el orden de banners creados en un intento anterior).
+    const baseOrder = Math.max(Number(payload.orden) || 0, defaultOrderRef.current);
+
+    for (let index = 0; index < queue.length; index += 1) {
+      const item = queue[index];
+      setProgress({ current: index + 1, total: queue.length });
+      updateBatchItem(item.id, { status: "uploading", error: "" });
+
+      let url;
+      try {
+        url = await uploadCloudinaryImage(item.file, { folder: "banners" });
+      } catch (uploadError) {
+        failed += 1;
+        updateBatchItem(item.id, { status: "error", error: cloudinaryErrorMessage(uploadError) });
+        continue;
+      }
+
+      const nombre = item.name.trim() || prettyName(item.file.name) || "Banner";
+      try {
+        const response = await fetch(API, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            nombre,
+            alt: nombre,
+            imagenDesktop: url,
+            imagenMobile: "",
+            orden: baseOrder + index,
+          }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message || "No se pudo crear el banner");
+        created += 1;
+        updateBatchItem(item.id, { status: "done", error: "" });
+      } catch (saveError) {
+        failed += 1;
+        updateBatchItem(item.id, { status: "error", error: friendlyErrorMessage(saveError, "No se pudo crear el banner") });
+      }
+    }
+
+    setSaving(false);
+    setProgress(null);
+    setBatch((current) => current.filter((item) => item.status !== "done"));
+
+    if (created) notify.success(created === 1 ? "1 banner creado" : `${created} banners creados`);
+    if (created && !failed) {
+      onSaved?.();
+      return;
+    }
+    if (created) onReload?.();
+    if (failed) setError(`Se crearon ${created} y ${failed} quedaron con error. Corregí y volvé a intentar.`);
+  };
+
   const submit = async () => {
+    if (batch.length) return submitBatch();
     setError("");
     const payload = serializeForm(form);
     if (payload.nombre.length < 2) return setError("El nombre interno es obligatorio.");
     if (!payload.imagenDesktop) return setError("La imagen para escritorio es obligatoria.");
-    if (payload.desde && payload.hasta && new Date(payload.hasta) <= new Date(payload.desde)) {
-      return setError("La fecha de finalización debe ser posterior a la de inicio.");
-    }
-    if (payload.linkType !== "none" && !payload.linkValue) {
-      return setError("Completá el destino del enlace o elegí “Sin enlace”.");
-    }
+    if (!validateShared(payload)) return;
 
     setSaving(true);
     try {
@@ -475,58 +626,132 @@ function BannerForm({ open, banner, onClose, onSaved }) {
   };
 
   const summary = dateSummary(form);
+  const batchPending = batch.filter((item) => item.status === "pending" || item.status === "error");
 
   return (
     <>
       <Modal
         open
         wide
-        title={isEdit ? `Editar banner · ${banner.nombre}` : "Agregar banner"}
+        title={isEdit ? `Editar banner · ${banner.nombre}` : batch.length ? `Agregar ${batch.length} banners` : "Agregar banner"}
         subtitle="Se mostrará en el carrusel de la página de inicio según su estado y fechas."
         onClose={requestClose}
         footer={(
           <>
             <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
-            <Button onClick={submit} loading={saving}>{isEdit ? "Guardar cambios" : "Crear banner"}</Button>
+            <Button onClick={submit} loading={saving}>
+              {saving && progress
+                ? `Subiendo ${progress.current} de ${progress.total}…`
+                : batch.length
+                  ? batchPending.length > 1 ? `Crear ${batchPending.length} banners` : "Crear banner"
+                  : isEdit ? "Guardar cambios" : "Crear banner"}
+            </Button>
           </>
         )}
       >
         <div className="bn-form">
           <section className="bn-form-section">
             <h3>Imágenes</h3>
-            <p>La imagen de escritorio es obligatoria. La de mobile es opcional y se usa en pantallas chicas.</p>
-            <div className="bn-image-grid">
-              <ImagePicker
-                label="Imagen para escritorio"
-                hint="Recomendado 1600×900 (16:9)"
-                required
-                value={form.imagenDesktop}
-                uploading={uploading === "desktop"}
-                error={imageErrors.desktop}
-                onChange={(file) => handleFile("desktop", file)}
-                onClear={() => clearImage("desktop")}
-              />
-              <ImagePicker
-                label="Imagen para mobile"
-                hint="Opcional · si falta se usa la de escritorio"
-                value={form.imagenMobile}
-                uploading={uploading === "mobile"}
-                error={imageErrors.mobile}
-                onChange={(file) => handleFile("mobile", file)}
-                onClear={() => clearImage("mobile")}
-              />
-            </div>
+            {batch.length ? (
+              <>
+                <p>
+                  Se creará <b>un banner por imagen</b>. Fechas, enlace, dispositivo y botón de abajo
+                  se aplican a todos; los nombres se pueden ajustar después en cada banner.
+                </p>
+                <ul className="bn-bulk-grid">
+                  {batch.map((item) => (
+                    <li key={item.id} className={`bn-bulk-item is-${item.status}`}>
+                      <img src={item.preview} alt="" />
+                      <div className="bn-bulk-fields">
+                        <Input
+                          value={item.name}
+                          onChange={(event) => updateBatchItem(item.id, { name: event.target.value })}
+                          disabled={saving || item.status === "done"}
+                          maxLength={120}
+                          aria-label="Nombre del banner"
+                        />
+                        <div className="bn-bulk-status">
+                          {item.status === "pending" && <Badge tone="neutral">Pendiente</Badge>}
+                          {item.status === "uploading" && <Badge tone="info">Subiendo…</Badge>}
+                          {item.status === "done" && <Badge tone="success">Creado</Badge>}
+                          {item.status === "error" && <Badge tone="danger">Error</Badge>}
+                          {item.file && <span className="bn-bulk-filename">{item.file.name}</span>}
+                        </div>
+                        {item.error && <p className="bn-bulk-error">{item.error}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        className="bn-tool bn-tool--danger"
+                        onClick={() => removeBatchItem(item.id)}
+                        disabled={saving || item.status === "done"}
+                        title="Quitar"
+                        aria-label={`Quitar ${item.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {batch.length < MAX_IMAGES_PER_BATCH && (
+                  <Button type="button" variant="secondary" onClick={() => batchInputRef.current?.click()} disabled={saving}>
+                    <Plus size={15} /> Agregar más imágenes
+                  </Button>
+                )}
+                <input
+                  ref={batchInputRef}
+                  type="file"
+                  accept={ACCEPTED_TYPES.join(",")}
+                  multiple
+                  onChange={(event) => { addBatchFiles(event.target.files); event.target.value = ""; }}
+                  hidden
+                />
+                {imageErrors.batch && <p className="bn-image-error" role="alert">{imageErrors.batch}</p>}
+                <p className="bn-bulk-note">
+                  La imagen mobile se configura después, editando cada banner. Hasta {MAX_IMAGES_PER_BATCH} imágenes por vez.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>Elegí <b>una imagen</b> para un banner, o <b>varias</b> para crear un banner por cada una.</p>
+                <div className="bn-image-grid">
+                  <ImagePicker
+                    label="Imagen para escritorio"
+                    hint="Recomendado 1600×900 (16:9)"
+                    required
+                    multiple
+                    value={form.imagenDesktop}
+                    uploading={uploading === "desktop"}
+                    error={imageErrors.desktop}
+                    onFiles={handleDesktopFiles}
+                    onClear={() => clearImage("desktop")}
+                  />
+                  <ImagePicker
+                    label="Imagen para mobile"
+                    hint="Opcional · si falta se usa la de escritorio"
+                    value={form.imagenMobile}
+                    uploading={uploading === "mobile"}
+                    error={imageErrors.mobile}
+                    onChange={(file) => handleFile("mobile", file)}
+                    onClear={() => clearImage("mobile")}
+                  />
+                </div>
+              </>
+            )}
           </section>
 
           <section className="bn-form-section">
             <h3>Datos del banner</h3>
             <div className="bn-form-grid">
-              <Field label="Nombre interno" required>
-                <Input value={form.nombre} onChange={(event) => setField("nombre", event.target.value)} placeholder="Ej: Oferta de primavera" maxLength={120} />
-              </Field>
-              <Field label="Texto alternativo" hint="Describe la imagen para accesibilidad. Si queda vacío se usa el nombre.">
-                <Input value={form.alt} onChange={(event) => setField("alt", event.target.value)} placeholder="Ej: Mujer con labial rosa de perfil" maxLength={200} />
-              </Field>
+              {!batch.length && (
+                <>
+                  <Field label="Nombre interno" required>
+                    <Input value={form.nombre} onChange={(event) => setField("nombre", event.target.value)} placeholder="Ej: Oferta de primavera" maxLength={120} />
+                  </Field>
+                  <Field label="Texto alternativo" hint="Describe la imagen para accesibilidad. Si queda vacío se usa el nombre.">
+                    <Input value={form.alt} onChange={(event) => setField("alt", event.target.value)} placeholder="Ej: Mujer con labial rosa de perfil" maxLength={200} />
+                  </Field>
+                </>
+              )}
               <Field label="Dispositivo">
                 <Select value={form.dispositivo} onChange={(event) => setField("dispositivo", event.target.value)}>
                   <option value="todos">Todos los dispositivos</option>
@@ -534,7 +759,10 @@ function BannerForm({ open, banner, onClose, onSaved }) {
                   <option value="mobile">Solo mobile</option>
                 </Select>
               </Field>
-              <Field label="Orden de aparición" hint="Menor número aparece primero.">
+              <Field
+                label={batch.length ? "Orden inicial" : "Orden de aparición"}
+                hint={batch.length ? "El primero usa este número y los siguientes van uno atrás del otro." : "Menor número aparece primero."}
+              >
                 <Input
                   type="number"
                   min="0"
@@ -700,7 +928,6 @@ export default function Banners() {
   const [filters, setFilters] = useState({ q: "", estado: "all", dispositivo: "todos", sort: "orden", from: "", to: "" });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [bulkOpen, setBulkOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -847,7 +1074,6 @@ export default function Banners() {
         </div>
         <div className="bn-head-actions">
           <Button variant="secondary" onClick={() => load()} loading={loading}><RefreshCw size={15} /> Actualizar</Button>
-          <Button variant="secondary" onClick={() => setBulkOpen(true)}><Images size={16} /> Subir varias</Button>
           <Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>
         </div>
       </div>
@@ -911,12 +1137,7 @@ export default function Banners() {
             icon={<Images size={24} />}
             title="Todavía no hay banners"
             description="Subí una o varias imágenes para reemplazar los slides por defecto de la página de inicio."
-            action={(
-              <div className="bn-empty-actions">
-                <Button variant="secondary" onClick={() => setBulkOpen(true)}><Images size={16} /> Subir varias</Button>
-                <Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>
-              </div>
-            )}
+            action={<Button onClick={openCreate}><Plus size={16} /> Agregar banner</Button>}
           />
         </Card>
       ) : (
@@ -973,19 +1194,14 @@ export default function Banners() {
         <BannerForm
           open={formOpen}
           banner={editing}
+          defaultOrder={nextOrder}
           onClose={() => { setFormOpen(false); setEditing(null); }}
           onSaved={() => { setFormOpen(false); setEditing(null); load(); }}
+          onReload={() => load()}
         />
       )}
 
       {preview && <BannerPreview banner={preview} onClose={() => setPreview(null)} />}
-
-      <BulkBannersModal
-        open={bulkOpen}
-        nextOrder={nextOrder}
-        onClose={() => setBulkOpen(false)}
-        onCreated={() => load()}
-      />
 
       <ConfirmDialog
         open={Boolean(confirm)}
