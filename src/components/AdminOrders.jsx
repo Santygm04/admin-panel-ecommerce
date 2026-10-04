@@ -46,6 +46,15 @@ const itemProductId = (item) => String(
 const itemImageKey = (item, index) => itemProductId(item) || String(item?.sku || item?.codigoInterno || item?._id || index).trim();
 const catalogItems = (data) => Array.isArray(data) ? data : data?.items || data?.productos || data?.products || [];
 
+const PAGE_SIZE = 20;
+
+function pagerPages(totalPages, current) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "…", totalPages];
+  if (current >= totalPages - 3) return [1, "…", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  return [1, "…", current - 1, current, current + 1, "…", totalPages];
+}
+
 const ST = {
   pending:   { lbl: "Pendiente",  tone: "warning" },
   paid:      { lbl: "Pagada",     tone: "success" },
@@ -273,6 +282,7 @@ export default function AdminOrders() {
   const [trackM, setTrackM] = useState({ open: false, order: null });
   const [timeFilter, setTimeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [detailProducts, setDetailProducts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const selectAllRef = useRef(null);
@@ -541,10 +551,29 @@ export default function AdminOrders() {
     return filtered;
   }, [orders, tab, timeFilter, search]);
 
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [rows, page]
+  );
+  const firstVisible = rows.length ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const lastVisible = Math.min(page * PAGE_SIZE, rows.length);
+
+  useEffect(() => { setPage(1); }, [tab, timeFilter, search]);
+  useEffect(() => {
+    setPage((current) => Math.min(Math.max(1, current), totalPages));
+  }, [totalPages]);
+
+  const changePage = (next) => {
+    setPage(Math.max(1, Math.min(Number(next) || 1, totalPages)));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const rowIds = useMemo(() => rows.map((order) => String(order._id)), [rows]);
+  const pageIds = useMemo(() => pageRows.map((order) => String(order._id)), [pageRows]);
   const selectedCount = selectedIds.size;
-  const allRowsSelected = rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
-  const someRowsSelected = rowIds.some((id) => selectedIds.has(id));
+  const allRowsSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const someRowsSelected = pageIds.some((id) => selectedIds.has(id));
 
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = someRowsSelected && !allRowsSelected;
@@ -563,8 +592,8 @@ export default function AdminOrders() {
   const toggleAllRows = () => {
     setSelectedIds((current) => {
       const next = new Set(current);
-      if (allRowsSelected) rowIds.forEach((id) => next.delete(id));
-      else rowIds.forEach((id) => next.add(id));
+      if (allRowsSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -722,7 +751,7 @@ export default function AdminOrders() {
         <>
           {/* CARDS MÓVIL */}
           <div className="ao-cards">
-            {rows.map((o) => {
+            {pageRows.map((o) => {
               const d = new Date(o.createdAt);
               const envio = o?.shipping?.method === "envio";
               return (
@@ -797,7 +826,7 @@ export default function AdminOrders() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((o) => {
+                {pageRows.map((o) => {
                   const d = new Date(o.createdAt);
                   const envio = o?.shipping?.method === "envio";
                   return (
@@ -850,6 +879,47 @@ export default function AdminOrders() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <nav className="ao-pagination" aria-label="Paginación de órdenes">
+              <span className="ao-pagination-info">
+                Mostrando <strong>{firstVisible}-{lastVisible}</strong> de <strong>{rows.length}</strong>
+              </span>
+              <div className="ao-pagination-pages">
+                <button
+                  type="button"
+                  className="ao-page-btn"
+                  disabled={page <= 1}
+                  onClick={() => changePage(page - 1)}
+                >
+                  ‹ Anterior
+                </button>
+                {pagerPages(totalPages, page).map((value, index) => (
+                  value === "…" ? (
+                    <span key={`dots-${index}`} className="ao-page-dots">···</span>
+                  ) : (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`ao-page-btn ${value === page ? "is-active" : ""}`}
+                      aria-current={value === page ? "page" : undefined}
+                      onClick={() => changePage(value)}
+                    >
+                      {value}
+                    </button>
+                  )
+                ))}
+                <button
+                  type="button"
+                  className="ao-page-btn"
+                  disabled={page >= totalPages}
+                  onClick={() => changePage(page + 1)}
+                >
+                  Siguiente ›
+                </button>
+              </div>
+            </nav>
+          )}
         </>
       )}
 
