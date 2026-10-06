@@ -398,18 +398,18 @@ export default function ProductForm({ onCreated }) {
           {isLenceriaCategory(producto.categoria) && (
             <>
               <div className="ui-banner ui-banner--warning pf-full">
-                Lencería: cargá el precio de 1 unidad. El panel calcula el total final multiplicando ese valor por x2, x6 o x12.
+                Lencería: cargá el precio de 1 unidad. El panel calcula el total final multiplicando ese valor por la cantidad del pack (x2, x4, x6 o x12).
               </div>
 
-              <Field label={<><span className="price-tag price-tag--info">x2</span> Mínimo x2</>}
-                hint="Cantidad mínima (ej: 2)">
+              <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista || 2}</span> Mínimo x{producto.minimoMayorista || 2}</>}
+                hint="Cantidad mínima del pack (2 para x2, 4 para x4)">
                 <Input name="minimoMayorista" type="number" min="1" step="1"
                   placeholder="2"
                   value={producto.minimoMayorista ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio por unidad</>}
-                  hint="Este valor se multiplica automáticamente por x2 unidades.">
+                <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista || 2}</span> Precio por unidad</>}
+                  hint={`Este valor se multiplica automáticamente por ${producto.minimoMayorista || 2} unidades.`}>
                  <Input name="precioMayorista" type="text" inputMode="decimal"
                    placeholder="Ej: 900"
                    value={producto.precioMayorista ?? ""} onChange={handleChange}
@@ -419,15 +419,15 @@ export default function ProductForm({ onCreated }) {
                  </span>
                </Field>
 
-              <Field label={<><span className="price-tag price-tag--success">x6</span> Mínimo x6</>}
-                hint="Cantidad mínima (ej: 6)">
+              <Field label={<><span className="price-tag price-tag--success">x{producto.minimoMayorista2 || 6}</span> Mínimo x{producto.minimoMayorista2 || 6}</>}
+                hint="Cantidad mínima del pack (ej: 6)">
                 <Input name="minimoMayorista2" type="number" min="1" step="1"
                   placeholder="6"
                   value={producto.minimoMayorista2 ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--success">x6</span> Precio por unidad</>}
-                  hint="Este valor se multiplica automáticamente por x6 unidades.">
+                <Field label={<><span className="price-tag price-tag--success">x{producto.minimoMayorista2 || 6}</span> Precio por unidad</>}
+                  hint={`Este valor se multiplica automáticamente por ${producto.minimoMayorista2 || 6} unidades.`}>
                  <Input name="precioMayorista2" type="text" inputMode="decimal"
                    placeholder="Ej: 850"
                    value={producto.precioMayorista2 ?? ""} onChange={handleChange}
@@ -437,15 +437,15 @@ export default function ProductForm({ onCreated }) {
                  </span>
                </Field>
 
-              <Field label={<><span className="price-tag price-tag--brand">x12</span> Mínimo x12</>}
-                hint="Cantidad mínima (ej: 12)">
+              <Field label={<><span className="price-tag price-tag--brand">x{producto.minimoMayorista3 || 12}</span> Mínimo x{producto.minimoMayorista3 || 12}</>}
+                hint="Cantidad mínima del pack (ej: 12)">
                 <Input name="minimoMayorista3" type="number" min="1" step="1"
                   placeholder="12"
                   value={producto.minimoMayorista3 ?? ""} onChange={handleChange} />
               </Field>
 
-                <Field label={<><span className="price-tag price-tag--brand">x12</span> Precio por unidad</>}
-                  hint="Este valor se multiplica automáticamente por x12 unidades.">
+                <Field label={<><span className="price-tag price-tag--brand">x{producto.minimoMayorista3 || 12}</span> Precio por unidad</>}
+                  hint={`Este valor se multiplica automáticamente por ${producto.minimoMayorista3 || 12} unidades.`}>
                  <Input name="precioMayorista3" type="text" inputMode="decimal"
                    placeholder="Ej: 800"
                    value={producto.precioMayorista3 ?? ""} onChange={handleChange}
