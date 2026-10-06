@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
 import { Button, Field, Input, Select, Textarea, Skeleton } from "./ui";
-import { PlusIcon, UploadIcon, XIcon } from "./ui/icons";
+import { PlusIcon, UploadIcon, XIcon, CopyIcon } from "./ui/icons";
 import ProductScheduleModal, { ProductScheduleSwitch } from "./ProductScheduleModal";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
@@ -13,7 +13,7 @@ import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { scheduleFromProduct, syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
 import { normalizeImageUrl } from "../utils/image";
-import { distributeStockEvenly, isActiveVariantRow, parseVariantStock, sumVariantStocks } from "../utils/stockDistribution";
+import { distributeStockAcrossRows, distributeStockEvenly, getVariantRowColor, getVariantRowSize, isActiveVariantRow, parseVariantStock, sumVariantStocks } from "../utils/stockDistribution";
 import useProductStockStream from "../hooks/useProductStockStream";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
@@ -56,6 +56,7 @@ export default function EditProduct() {
   const [scheduleModal, setScheduleModal] = useState(null);
 
   const [variantes, setVariantes] = useState([]);
+  const [bulkStock, setBulkStock] = useState("");
   const [selSizes, setSelSizes]   = useState([]);
   const [selColors, setSelColors] = useState([]);
 
@@ -246,8 +247,75 @@ export default function EditProduct() {
             next.push({ talle: "", color: col, stock: "" });
         });
       }
-      return next;
+      // Precarga: las filas nuevas nacen con el reparto del stock total.
+      return canEditStock
+        ? distributeStockAcrossRows(next, producto?.stock, { onlyEmpty: true })
+        : next;
     });
+  };
+
+  const distributeEvenly = () => {
+    if (!canEditStock) return;
+    const rows = variantes.filter(isActiveVariantRow);
+    if (!rows.length) {
+      notify.warning("Agregá combinaciones primero");
+      return;
+    }
+    if (parseVariantStock(producto?.stock) <= 0) {
+      notify.warning("Cargá el stock del producto para poder repartirlo");
+      return;
+    }
+    setVariantes(distributeStockAcrossRows(variantes, producto?.stock));
+    notify.success(`Stock repartido entre ${rows.length} variante${rows.length === 1 ? "" : "s"}`);
+  };
+
+  const applyStockToAll = () => {
+    if (!canEditStock) return;
+    const rows = variantes.filter(isActiveVariantRow);
+    if (!rows.length) {
+      notify.warning("Agregá combinaciones primero");
+      return;
+    }
+    if (String(bulkStock).trim() === "") {
+      notify.warning("Escribí una cantidad para aplicar");
+      return;
+    }
+    const stock = parseVariantStock(bulkStock);
+    setVariantes(variantes.map((v) => (
+      isActiveVariantRow(v) ? { ...v, stock: String(stock) } : v
+    )));
+    setBulkStock("");
+    notify.success(`Stock ${stock} aplicado a ${rows.length} variante${rows.length === 1 ? "" : "s"}`);
+  };
+
+  const incrementAllStock = () => {
+    if (!canEditStock) return;
+    const rows = variantes.filter(isActiveVariantRow);
+    if (!rows.length) {
+      notify.warning("Agregá combinaciones primero");
+      return;
+    }
+    setVariantes(variantes.map((v) => (
+      isActiveVariantRow(v) ? { ...v, stock: String(parseVariantStock(v.stock) + 1) } : v
+    )));
+  };
+
+  const copyStockToGroup = (index) => {
+    if (!canEditStock) return;
+    const row = variantes[index];
+    if (!row) return;
+    const size = getVariantRowSize(row);
+    const color = getVariantRowColor(row);
+    if (!size && !color) {
+      notify.warning("Completá el talle o el color de la fila");
+      return;
+    }
+    const matches = (v) => (size ? getVariantRowSize(v) === size : getVariantRowColor(v) === color);
+    const stock = parseVariantStock(row.stock);
+    setVariantes(variantes.map((v) => (
+      isActiveVariantRow(v) && matches(v) ? { ...v, stock: String(stock) } : v
+    )));
+    notify.success(`Stock ${stock} aplicado a todo ${size ? `el talle ${size}` : `el color ${color}`}`);
   };
 
   const handleImageChange = (e) => {
@@ -855,9 +923,16 @@ export default function EditProduct() {
               </div>
             </div>
 
-            <Button variant="secondary" onClick={addBulk} type="button">
-              <PlusIcon size={15} /> Agregar combinaciones
-            </Button>
+            <div className="pf-var-actions">
+              <Button variant="secondary" onClick={addBulk} type="button">
+                <PlusIcon size={15} /> Agregar combinaciones
+              </Button>
+              {canEditStock && (
+                <Button variant="secondary" onClick={distributeEvenly} type="button">
+                  Repartir parejo
+                </Button>
+              )}
+            </div>
             <p className="pf-hint">
               Se crearán todas las combinaciones Talle × Color seleccionadas (sin duplicados).
             </p>
@@ -882,19 +957,47 @@ export default function EditProduct() {
                       <option value="">Color…</option>
                       {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
                     </Select>
-                    <Input
-                      type="number" min="0" step="1" inputMode="numeric"
-                       value={v.stock ?? ""}
-                       onChange={e => setVar(i, "stock", e.target.value)}
-                       onFocus={e => e.target.select()}
-                       disabled={!canEditStock}
-                       style={{ width: 84, textAlign: "center" }}
-                    />
+                    <div className="pf-var-stock">
+                      <Input
+                        type="number" min="0" step="1" inputMode="numeric"
+                         value={v.stock ?? ""}
+                         onChange={e => setVar(i, "stock", e.target.value)}
+                         onFocus={e => e.target.select()}
+                         disabled={!canEditStock}
+                         style={{ width: 84, textAlign: "center" }}
+                      />
+                      {canEditStock && (
+                        <button
+                          type="button"
+                          className="pf-var-copy"
+                          onClick={() => copyStockToGroup(i)}
+                          title={v.talle ? `Aplicar a todo el talle ${v.talle}` : `Aplicar a todo el color ${v.color}`}
+                          aria-label={v.talle ? `Aplicar stock a todo el talle ${v.talle}` : `Aplicar stock a todo el color ${v.color}`}
+                        >
+                          <CopyIcon size={13} />
+                        </button>
+                      )}
+                    </div>
                     <button type="button" className="pf-var-del" onClick={() => delVar(i)} aria-label="Eliminar variante">
                       <XIcon size={14} />
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {canEditStock && variantRowsCount > 0 && (
+              <div className="pf-var-tools">
+                <Input
+                  type="number" min="0" step="1" inputMode="numeric"
+                  placeholder="Cant."
+                  value={bulkStock}
+                  onChange={(e) => setBulkStock(e.target.value)}
+                  style={{ width: 84, textAlign: "center" }}
+                  aria-label="Cantidad de stock para todas las variantes"
+                />
+                <Button variant="secondary" type="button" onClick={applyStockToAll}>A todas</Button>
+                <Button variant="secondary" type="button" onClick={incrementAllStock}>+1 a todas</Button>
               </div>
             )}
 

@@ -124,10 +124,11 @@
 }
 .pf-link:hover { text-decoration: underline; }
 
+.pf-var-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .pf-var-table { display: flex; flex-direction: column; gap: 6px; }
 .pf-var-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 90px 32px;
+  grid-template-columns: 1fr 1fr 132px 32px;
   gap: var(--sp-2);
   align-items: center;
 }
@@ -139,6 +140,22 @@
   color: var(--adm-muted);
   padding: 0 var(--sp-1);
 }
+.pf-var-stock { display: flex; align-items: center; gap: 4px; }
+.pf-var-copy {
+  border: none;
+  background: transparent;
+  color: var(--adm-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--t-fast) var(--ease);
+}
+.pf-var-copy:hover { background: var(--adm-info-soft); color: var(--adm-info); }
+.pf-var-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .pf-var-del {
   border: none;
   background: transparent;
