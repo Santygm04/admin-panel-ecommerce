@@ -49,6 +49,7 @@ export const parseOptionalIntegerInput = (value) => {
 
 const LENCERIA_TIER_DEFINITIONS = [
   { key: "mayorista", priceField: "precioMayorista", minimumField: "minimoMayorista", defaultMinimum: 2 },
+  { key: "mayorista4", priceField: "precioMayorista4", minimumField: "minimoMayorista4", defaultMinimum: 4 },
   { key: "mayorista2", priceField: "precioMayorista2", minimumField: "minimoMayorista2", defaultMinimum: 6 },
   { key: "mayorista3", priceField: "precioMayorista3", minimumField: "minimoMayorista3", defaultMinimum: 12 },
 ];

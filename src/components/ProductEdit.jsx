@@ -13,6 +13,7 @@ import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { scheduleFromProduct, syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
 import { normalizeImageUrl } from "../utils/image";
+import { distributeStockEvenly, isActiveVariantRow, parseVariantStock, sumVariantStocks } from "../utils/stockDistribution";
 import useProductStockStream from "../hooks/useProductStockStream";
 
 const SIZES  = ["XS","S","M","L","XL","XXL","XXXL","Único"];
@@ -32,6 +33,8 @@ const REALTIME_PRICE_FIELDS = [
   "precioMayorista2",
   "minimoMayorista3",
   "precioMayorista3",
+  "minimoMayorista4",
+  "precioMayorista4",
   "unidadesPorCaja",
 ];
 
@@ -83,7 +86,7 @@ export default function EditProduct() {
         vid: String(variant.vid || variant.variantId || "").trim(),
         talle: String(variant.talle || variant.size || "").trim(),
         color: String(variant.color || "").trim(),
-        stock: Number(variant.stock || 0),
+        stock: variant.stock ? String(variant.stock) : "",
         ...(variant.sku ? { sku: String(variant.sku).trim() } : {}),
       })));
     }
@@ -141,6 +144,8 @@ export default function EditProduct() {
           precioMayorista2: p.precioMayorista2 != null ? String(p.precioMayorista2) : "",
           minimoMayorista3: p.minimoMayorista3 != null ? String(p.minimoMayorista3) : "",
           precioMayorista3: p.precioMayorista3 != null ? String(p.precioMayorista3) : "",
+          minimoMayorista4: p.minimoMayorista4 != null ? String(p.minimoMayorista4) : "",
+          precioMayorista4: p.precioMayorista4 != null ? String(p.precioMayorista4) : "",
           cantidadTonos:    p.cantidadTonos    != null ? String(p.cantidadTonos)    : "",
           modoTonos:        p.modoTonos || "automatico",
            tonosDisponibles: Array.isArray(p.tonosDisponibles) ? p.tonosDisponibles : [],
@@ -156,7 +161,7 @@ export default function EditProduct() {
             vid:   String(v.vid ?? v.variantId ?? "").trim(),
             talle: String(v.talle ?? v.size ?? "").trim(),
             color: String(v.color ?? "").trim(),
-            stock: Number(v.stock ?? 0),
+            stock: v.stock ? String(v.stock) : "",
             ...(v.sku ? { sku: String(v.sku).trim() } : {}),
           }))
         );
@@ -192,7 +197,7 @@ export default function EditProduct() {
       return;
     }
 
-    const numericOptional = ["precioX2", "precioEspecial", "precioMayorista", "precioCaja", "precioMediaCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "stockMinimo"];
+    const numericOptional = ["precioX2", "precioEspecial", "precioMayorista", "precioCaja", "precioMediaCaja", "precioMayorista2", "unidadesPorCaja", "cantidadTonos", "minimoMayorista", "minimoMayorista2", "minimoMayorista3", "precioMayorista3", "minimoMayorista4", "precioMayorista4", "stockMinimo"];
     if (numericOptional.includes(name)) {
       setProducto(prev => ({ ...prev, [name]: value }));
       return;
@@ -210,6 +215,7 @@ export default function EditProduct() {
           : (wasPitukasMayorista ? (prev.minimoMayorista || "2") : (wasLenceria ? "30000" : (prev.minimoMayorista || "30000")));
         base.minimoMayorista2 = nextIsLenceria ? (prev.minimoMayorista2 || "6") : "";
         base.minimoMayorista3 = nextIsLenceria ? (prev.minimoMayorista3 || "12") : "";
+        base.minimoMayorista4 = nextIsLenceria ? (prev.minimoMayorista4 || "4") : "";
       }
       return base;
     });
@@ -227,17 +233,17 @@ export default function EditProduct() {
       if (selSizes.length && selColors.length) {
         selSizes.forEach(sz => selColors.forEach(col => {
           if (!next.some(v => v.talle === sz && v.color === col))
-            next.push({ talle: sz, color: col, stock: 0 });
+            next.push({ talle: sz, color: col, stock: "" });
         }));
       } else if (selSizes.length) {
         selSizes.forEach(sz => {
           if (!next.some(v => v.talle === sz && !v.color))
-            next.push({ talle: sz, color: "", stock: 0 });
+            next.push({ talle: sz, color: "", stock: "" });
         });
       } else {
         selColors.forEach(col => {
           if (!next.some(v => !v.talle && v.color === col))
-            next.push({ talle: "", color: col });
+            next.push({ talle: "", color: col, stock: "" });
         });
       }
       return next;
@@ -311,6 +317,27 @@ export default function EditProduct() {
       notify.warning(scheduleError);
       return;
     }
+
+    // El stock total se carga primero: las variantes no pueden sumar más que
+    // ese total. Si se exceden, no se guarda y se reparte el total entre todas.
+    const variantRows = variantes.filter(isActiveVariantRow);
+    const variantsStock = sumVariantStocks(variantRows);
+    const totalStock = parseVariantStock(producto.stock);
+    if (canEditStock && variantRows.length > 0 && variantsStock > totalStock) {
+      const split = distributeStockEvenly(totalStock, variantRows.length);
+      let splitIndex = 0;
+      const redistributed = variantes.map((v) => (
+        isActiveVariantRow(v) ? { ...v, stock: String(split[splitIndex++]) } : v
+      ));
+      setVariantes(redistributed);
+      notify.warning(
+        `El stock de las variantes (${variantsStock}) supera el stock total (${totalStock}). ` +
+        `Se dividió automáticamente entre ${variantRows.length} variantes: ${split.join(" / ")}. ` +
+        "Revisá y volvé a guardar."
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       const existentes = Array.isArray(producto.imagenes) ? [...producto.imagenes] : [];
@@ -329,13 +356,14 @@ export default function EditProduct() {
       const precioMayorista = parseOptionalMoneyInput(producto.precioMayorista);
       const precioMayorista2 = parseOptionalMoneyInput(producto.precioMayorista2);
       const precioMayorista3 = parseOptionalMoneyInput(producto.precioMayorista3);
+      const precioMayorista4 = parseOptionalMoneyInput(producto.precioMayorista4);
 
       const clean = variantes
         .map(v => ({
           ...(v.vid ? { vid: String(v.vid).trim() } : {}),
           size:  String(v.talle || "").trim(),
           color: String(v.color || "").trim(),
-          stock: Number(v.stock ?? 0),
+          stock: parseVariantStock(v.stock),
           ...(v.sku ? { sku: String(v.sku).trim() } : {}),
         }))
         .filter(v => v.size || v.color);
@@ -363,6 +391,8 @@ export default function EditProduct() {
         precioMayorista2,
         minimoMayorista3: parseOptionalIntegerInput(producto.minimoMayorista3) ?? (isLenceria && precioMayorista3 != null ? 12 : null),
         precioMayorista3,
+        minimoMayorista4: parseOptionalIntegerInput(producto.minimoMayorista4) ?? (isLenceria && precioMayorista4 != null ? 4 : null),
+        precioMayorista4,
         cantidadTonos:   parseOptionalIntegerInput(producto.cantidadTonos),
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -406,6 +436,8 @@ export default function EditProduct() {
             minimoMayorista3: body.minimoMayorista3,
             precioMayorista2: body.precioMayorista2,
             precioMayorista3: body.precioMayorista3,
+            minimoMayorista4: body.minimoMayorista4,
+            precioMayorista4: body.precioMayorista4,
             unidadesPorCaja: body.unidadesPorCaja,
             stockMinimo: body.stockMinimo,
             publicarEnCajas: body.publicarEnCajas,
@@ -460,7 +492,12 @@ export default function EditProduct() {
     desde: producto.destacadoDesde,
     hasta: producto.destacadoHasta,
   };
-  const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
+  const [tierX2, tierX4, tierX6, tierX12] = getLenceriaPricePreview(producto);
+
+  const variantRowsCount = variantes.filter(isActiveVariantRow).length;
+  const variantsStockSum = sumVariantStocks(variantes.filter(isActiveVariantRow));
+  const totalStockParsed = parseVariantStock(producto.stock);
+  const variantsStockExceeds = variantRowsCount > 0 && variantsStockSum > totalStockParsed;
 
   return (
     <form className="product-form" onSubmit={handleSubmit} autoComplete="off">
@@ -571,10 +608,29 @@ export default function EditProduct() {
                   placeholder="Ej: 900"
                   value={producto.precioMayorista ?? ""} onChange={handleChange}
                   onWheel={e => e.currentTarget.blur()} />
-                <span className="pf-price-preview">
-                  Total calculado: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.unitPrice)} × ${tierX2.minimum} = $${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
-                </span>
+                 <span className="pf-price-preview">
+                   Total calculado: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.unitPrice)} × ${tierX2.minimum} = $${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                 </span>
                </Field>
+
+              <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista4 || 4}</span> Mínimo x{producto.minimoMayorista4 || 4}</>}
+                hint="Cantidad mínima del pack x4 (por defecto 4)">
+                <Input name="minimoMayorista4" type="number" min="1" step="1"
+                  placeholder="4"
+                  value={producto.minimoMayorista4 ?? ""} onChange={handleChange}
+                   disabled={isVendedor && !canEditCatalog} />
+              </Field>
+
+               <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista4 || 4}</span> Precio por unidad</>}
+                 hint={`Este valor se multiplica automáticamente por ${producto.minimoMayorista4 || 4} unidades.`}>
+                <Input name="precioMayorista4" type="text" inputMode="decimal"
+                  placeholder="Ej: 1600"
+                  value={producto.precioMayorista4 ?? ""} onChange={handleChange}
+                  onWheel={e => e.currentTarget.blur()} />
+                <span className="pf-price-preview">
+                  Total calculado: <strong>{tierX4.totalPrice != null ? `$${formatARS(tierX4.unitPrice)} × ${tierX4.minimum} = $${formatARS(tierX4.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                </span>
+              </Field>
 
               <Field label={<><span className="price-tag price-tag--success">x{producto.minimoMayorista2 || 6}</span> Mínimo x{producto.minimoMayorista2 || 6}</>}
                 hint="Cantidad mínima del pack (ej: 6)">
@@ -827,9 +883,10 @@ export default function EditProduct() {
                       {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
                     </Select>
                     <Input
-                      type="number" min="0" step="1"
-                       value={v.stock ?? 0}
-                       onChange={e => setVar(i, "stock", Number(e.target.value) || 0)}
+                      type="number" min="0" step="1" inputMode="numeric"
+                       value={v.stock ?? ""}
+                       onChange={e => setVar(i, "stock", e.target.value)}
+                       onFocus={e => e.target.select()}
                        disabled={!canEditStock}
                        style={{ width: 84, textAlign: "center" }}
                     />
@@ -839,6 +896,17 @@ export default function EditProduct() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {canEditStock && variantRowsCount > 0 && (
+              variantsStockExceeds ? (
+                <div className="ui-banner ui-banner--danger" style={{ marginTop: 10 }}>
+                  ⚠ Las variantes suman {variantsStockSum} y el stock total es {totalStockParsed}.
+                  No se guardará así: al guardar se divide el total entre las {variantRowsCount} variantes.
+                </div>
+              ) : (
+                <p className="pf-hint">Stock de variantes: {variantsStockSum} de {totalStockParsed}.</p>
+              )
             )}
           </div>
         </div>

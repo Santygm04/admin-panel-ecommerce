@@ -74,6 +74,7 @@ const FIELD_LABELS = {
   precioMayorista: "Precio mayorista",
   precioCaja: "Precio por caja",
   precioMediaCaja: "Precio media caja",
+  precioMayorista4: "Precio mayorista x4",
   precioMayorista2: "Precio mayorista x6",
   precioMayorista3: "Precio mayorista x12",
   precioOriginal: "Precio anterior",

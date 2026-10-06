@@ -11,6 +11,7 @@ import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudina
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
+import { distributeStockEvenly, isActiveVariantRow, parseVariantStock, sumVariantStocks } from "../utils/stockDistribution";
 
 // Subcategorías que ofrecen packs de lencería.
 const SUBCAT_DESDE_2 = ["vedetinas", "colales", "boxer", "slip", "niña"];
@@ -61,8 +62,10 @@ export default function ProductForm({ onCreated }) {
     minimoMayorista: "30000",
     minimoMayorista2: "",
     minimoMayorista3: "",
+    minimoMayorista4: "",
     precioMayorista2: "",
     precioMayorista3: "",
+    precioMayorista4: "",
     modoTonos: "automatico",
     tonosDisponibles: [],
     publicarEnCajas: false,
@@ -99,6 +102,7 @@ export default function ProductForm({ onCreated }) {
           minimoMayorista: nextIsLenceria ? (wasLenceria ? prev.minimoMayorista : "2") : (wasLenceria ? "30000" : (prev.minimoMayorista || "30000")),
           minimoMayorista2: nextIsLenceria ? (prev.minimoMayorista2 || "6") : "",
           minimoMayorista3: nextIsLenceria ? (prev.minimoMayorista3 || "12") : "",
+          minimoMayorista4: nextIsLenceria ? (prev.minimoMayorista4 || "4") : "",
         };
       });
       return;
@@ -165,19 +169,19 @@ export default function ProductForm({ onCreated }) {
         // combinaciones talle × color
         selSizes.forEach((sz) => selColors.forEach((col) => {
           if (!list.some(v => v.size === sz && v.color === col))
-            list.push({ size: sz, color: col, stock: 0 });
+            list.push({ size: sz, color: col, stock: "" });
         }));
       } else if (selSizes.length) {
         // solo talles, sin color
         selSizes.forEach((sz) => {
           if (!list.some(v => v.size === sz && !v.color))
-            list.push({ size: sz, color: "", stock: 0 });
+            list.push({ size: sz, color: "", stock: "" });
         });
       } else {
         // solo colores, sin talle
         selColors.forEach((col) => {
           if (!list.some(v => !v.size && v.color === col))
-            list.push({ size: "", color: col, stock: 0 });
+            list.push({ size: "", color: col, stock: "" });
         });
       }
       return { ...p, variants: list };
@@ -221,6 +225,27 @@ export default function ProductForm({ onCreated }) {
       notify.warning(scheduleError);
       return;
     }
+
+    // El stock total se carga primero: las variantes no pueden sumar más que
+    // ese total. Si se exceden, no se guarda y se reparte el total entre todas.
+    const variantRows = (producto.variants || []).filter(isActiveVariantRow);
+    const variantsStock = sumVariantStocks(variantRows);
+    const totalStock = parseVariantStock(producto.stock);
+    if (variantRows.length > 0 && variantsStock > totalStock) {
+      const split = distributeStockEvenly(totalStock, variantRows.length);
+      let splitIndex = 0;
+      const redistributed = (producto.variants || []).map((v) => (
+        isActiveVariantRow(v) ? { ...v, stock: String(split[splitIndex++]) } : v
+      ));
+      setProducto((prev) => ({ ...prev, variants: redistributed }));
+      notify.warning(
+        `El stock de las variantes (${variantsStock}) supera el stock total (${totalStock}). ` +
+        `Se dividió automáticamente entre ${variantRows.length} variantes: ${split.join(" / ")}. ` +
+        "Revisá y volvé a guardar."
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       const { urls: imagenes, failed, failures } = await uploadImages();
@@ -238,13 +263,14 @@ export default function ProductForm({ onCreated }) {
         .map(v => ({
           size:  String(v.size  || "").trim(),
           color: String(v.color || "").trim(),
-          stock: Number(v.stock ?? 0),
+          stock: parseVariantStock(v.stock),
         }));
 
       const isLenceria = isLenceriaCategory(producto.categoria);
       const precioMayorista = parseOptionalMoneyInput(producto.precioMayorista);
       const precioMayorista2 = parseOptionalMoneyInput(producto.precioMayorista2);
       const precioMayorista3 = parseOptionalMoneyInput(producto.precioMayorista3);
+      const precioMayorista4 = parseOptionalMoneyInput(producto.precioMayorista4);
 
       const body = {
         ...producto,
@@ -267,6 +293,8 @@ export default function ProductForm({ onCreated }) {
         precioMayorista2,
         minimoMayorista3: parseOptionalIntegerInput(producto.minimoMayorista3) ?? (isLenceria && precioMayorista3 != null ? 12 : null),
         precioMayorista3,
+        minimoMayorista4: parseOptionalIntegerInput(producto.minimoMayorista4) ?? (isLenceria && precioMayorista4 != null ? 4 : null),
+        precioMayorista4,
         cantidadTonos:   parseOptionalIntegerInput(producto.cantidadTonos),
         modoTonos:       producto.modoTonos || "automatico",
         tonosDisponibles: producto.tonosDisponibles || [],
@@ -313,7 +341,12 @@ export default function ProductForm({ onCreated }) {
     hasta: producto.destacadoHasta,
   }), [producto.destacado, producto.destacadoDesde, producto.destacadoHasta]);
 
-  const [tierX2, tierX6, tierX12] = getLenceriaPricePreview(producto);
+  const [tierX2, tierX4, tierX6, tierX12] = getLenceriaPricePreview(producto);
+
+  const variantRowsCount = (producto.variants || []).filter(isActiveVariantRow).length;
+  const variantsStockSum = sumVariantStocks((producto.variants || []).filter(isActiveVariantRow));
+  const totalStockParsed = parseVariantStock(producto.stock);
+  const variantsStockExceeds = variantRowsCount > 0 && variantsStockSum > totalStockParsed;
 
   return (
     <form className="product-form" onSubmit={handleSubmit} noValidate>
@@ -416,6 +449,24 @@ export default function ProductForm({ onCreated }) {
                    onWheel={e => e.currentTarget.blur()} />
                  <span className="pf-price-preview">
                    Total calculado: <strong>{tierX2.totalPrice != null ? `$${formatARS(tierX2.unitPrice)} × ${tierX2.minimum} = $${formatARS(tierX2.totalPrice)}` : "Ingresá un precio unitario"}</strong>
+                 </span>
+               </Field>
+
+              <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista4 || 4}</span> Mínimo x{producto.minimoMayorista4 || 4}</>}
+                hint="Cantidad mínima del pack x4 (por defecto 4)">
+                <Input name="minimoMayorista4" type="number" min="1" step="1"
+                  placeholder="4"
+                  value={producto.minimoMayorista4 ?? ""} onChange={handleChange} />
+              </Field>
+
+                <Field label={<><span className="price-tag price-tag--info">x{producto.minimoMayorista4 || 4}</span> Precio por unidad</>}
+                  hint={`Este valor se multiplica automáticamente por ${producto.minimoMayorista4 || 4} unidades.`}>
+                 <Input name="precioMayorista4" type="text" inputMode="decimal"
+                   placeholder="Ej: 1600"
+                   value={producto.precioMayorista4 ?? ""} onChange={handleChange}
+                   onWheel={e => e.currentTarget.blur()} />
+                 <span className="pf-price-preview">
+                   Total calculado: <strong>{tierX4.totalPrice != null ? `$${formatARS(tierX4.unitPrice)} × ${tierX4.minimum} = $${formatARS(tierX4.totalPrice)}` : "Ingresá un precio unitario"}</strong>
                  </span>
                </Field>
 
@@ -672,9 +723,10 @@ export default function ProductForm({ onCreated }) {
                       {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
                     </Select>
                     <Input
-                      type="number" min="0" step="1"
-                      value={v.stock ?? 0}
-                      onChange={e => updateVariant(i, "stock", Number(e.target.value) || 0)}
+                      type="number" min="0" step="1" inputMode="numeric"
+                      value={v.stock ?? ""}
+                      onChange={e => updateVariant(i, "stock", e.target.value)}
+                      onFocus={e => e.target.select()}
                       style={{ width: 84, textAlign: "center" }}
                     />
                     <button
@@ -688,6 +740,17 @@ export default function ProductForm({ onCreated }) {
                   </div>
                 ))}
               </div>
+            )}
+
+            {variantRowsCount > 0 && (
+              variantsStockExceeds ? (
+                <div className="ui-banner ui-banner--danger" style={{ marginTop: 10 }}>
+                  ⚠ Las variantes suman {variantsStockSum} y el stock total es {totalStockParsed}.
+                  No se guardará así: al guardar se divide el total entre las {variantRowsCount} variantes.
+                </div>
+              ) : (
+                <p className="pf-hint">Stock de variantes: {variantsStockSum} de {totalStockParsed}.</p>
+              )
             )}
           </div>
         </div>
