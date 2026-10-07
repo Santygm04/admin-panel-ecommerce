@@ -1135,7 +1135,7 @@ function OrdersTab({ orders, hiddenOrderIds, onPage, onOpen, onHide, onRestore }
           </div>
         </div>
         <div className="erp-view-note" role="note">
-          <ShoppingBagIcon size={15} /> Estas son las ventas del <b>local</b> registradas en el ERP. Las ventas de la <b>tienda online</b> quedan registradas en la tienda (solo descuentan stock en el ERP) y se gestionan en <a href="/orders">Órdenes</a>.
+          <ShoppingBagIcon size={15} /> Ventas registradas en el ERP. Las ventas de la <b>tienda online</b> se registran al confirmarlas con <b>“Pasar a ventas”</b> en <a href="/orders">Órdenes</a> y aparecen acá con origen <b>Online</b>.
         </div>
         <div className="erp-view-note" role="note">
           <EyeOffIcon size={15} /> Ocultar una venta solo la quita de esta vista en este navegador. La venta y sus importes permanecen intactos en el ERP.

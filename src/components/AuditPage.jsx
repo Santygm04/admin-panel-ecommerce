@@ -49,6 +49,7 @@ const ACTION_LABELS = {
   "banner.bulk": "Acción masiva de banners",
   "order.confirm": "Orden confirmada",
   "order.cancel": "Orden cancelada",
+  "order.erp_sync": "Venta enviada al software (Online)",
   "order.ship": "Orden despachada",
   "order.delivered": "Orden entregada",
   "order.delete": "Orden enviada a papelera",
@@ -204,7 +205,7 @@ const ACTION_GROUPS = [
   { label: "Categorías", actions: ["category.create", "category.update", "category.delete"] },
   { label: "Promociones", actions: ["promotion.create", "promotion.update", "promotion.toggle", "promotion.delete", "aesthetic-days.activate", "aesthetic-days.deactivate"] },
   { label: "Banners", actions: ["banner.create", "banner.update", "banner.delete", "banner.toggle", "banner.archive", "banner.reorder", "banner.bulk"] },
-  { label: "Ventas y envíos", actions: ["order.confirm", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
+  { label: "Ventas y envíos", actions: ["order.confirm", "order.erp_sync", "order.cancel", "order.ship", "order.delivered", "order.delete", "order.delete_permanent", "shipping.create"] },
   { label: "ERP", actions: ["erp.product.create", "erp.product.update", "erp.product.archive", "erp.stock.sync"] },
   { label: "Estadísticas", actions: ["stats.snapshot.run", "stats.snapshot.clear", "stats.snapshot.reset", "stats.snapshot.refresh_day"] },
 ];
@@ -361,6 +362,10 @@ function eventStory(item) {
     }
     case "order.confirm":
       return `Confirmó la orden ${orderRef(metadata)}.`;
+    case "order.erp_sync":
+      return item.success === false
+        ? `Intentó registrar la orden ${orderRef(metadata)} en el software y falló${metadata.error ? `: ${metadata.error}` : ""}.`
+        : `Registró la orden ${orderRef(metadata)} en Ventas del software como Online${metadata.erpOrderId ? ` (#${metadata.erpOrderId})` : ""}.`;
     case "order.cancel":
       return `Canceló la orden ${orderRef(metadata)}.`;
     case "order.ship":

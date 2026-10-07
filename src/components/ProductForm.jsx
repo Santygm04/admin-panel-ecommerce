@@ -446,7 +446,7 @@ export default function ProductForm({ onCreated }) {
 
         <div className="pf-precio-grid">
           <Field label={<><span className="price-tag price-tag--neutral">U</span> Precio Unitario</>}
-            hint="Opcional. Si queda vacío o en 0 no se muestra en la tienda.">
+            hint="Precio al elegir “por unidad” (aplica x5 y mayorista). Si queda vacío o en 0 no se muestra en la tienda.">
             <Input
               name="precio"
               type="text"
@@ -681,7 +681,9 @@ export default function ProductForm({ onCreated }) {
             )}
             {producto.publicarEnCajas && (
               <div className="ui-banner ui-banner--info pf-box-banner">
-                Esta publicación aparecerá en <b>Packs / Cajas</b>. La compra se ofrecerá en bloques de {producto.unidadesPorCaja || "..."} unidades.
+                Esta publicación aparecerá en <b>Packs / Cajas</b>. En la tienda el cliente elige{" "}
+                <b>por unidad</b> (con x5 y mayorista según la escala), <b>caja completa</b> de {producto.unidadesPorCaja || "..."} unidades
+                {Number(producto.unidadesPorCaja) > 1 && Number(producto.unidadesPorCaja) % 2 === 0 ? <> o <b>media caja</b></> : null}.
               </div>
             )}
           </div>

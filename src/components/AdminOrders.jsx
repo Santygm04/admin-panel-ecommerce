@@ -94,7 +94,7 @@ const waTxt = (o) => {
       ? "\n   " + it.distribucionTonos.map(t => `${t.tono}: ${t.cantidad} u.`).join(" | ")
       : "";
     const boxUnits = Number(it?.unidadesPorCaja) || 0;
-     const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+     const boxCount = Number(it?.cantidadCajas) || (it?.saleUnit !== "unitario" && it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
      const quantityLabel = itemQuantityLabel(it) || (boxCount > 0 ? `${boxCount} caja${boxCount === 1 ? "" : "s"} (${it.cantidad} u.)` : `x${it.cantidad}`);
     return `- ${it.nombre}${vp} ${quantityLabel} --- ${$m(it.subtotal)}${tonosPart}`;
   }).join("\n");
@@ -285,6 +285,7 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1);
   const [detailProducts, setDetailProducts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
+  const [erpBusyId, setErpBusyId] = useState("");
   const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
@@ -526,6 +527,39 @@ export default function AdminOrders() {
     finally { setLoad(false); }
   };
 
+  /* Pasa la venta pagada a "Ventas" del software (ERP) como Online:
+     aparece en Reportes → Online y en el turno de caja. */
+  const doErpSync = async (order) => {
+    if (!token || !order) return;
+    const id = String(order._id);
+    setErpBusyId(id);
+    try {
+      const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: "{}",
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        if (d?.erpSync) {
+          setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync: d.erpSync } : o)));
+          if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync: d.erpSync }));
+        }
+        throw new Error(d?.message || "No se pudo registrar la venta en el software");
+      }
+      const erpSync = d?.erpSync || { status: "synced", erpOrderId: d?.erpOrderId || null };
+      setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync } : o)));
+      if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync }));
+      setOk(d?.duplicated
+        ? "La venta ya estaba registrada en el software (Online)"
+        : "Venta registrada en el software como Online");
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setErpBusyId("");
+    }
+  };
+
   const rows = useMemo(() => {
     let filtered = tab ? orders.filter(o => o.status === tab) : orders;
     if (timeFilter !== "all") {
@@ -628,6 +662,26 @@ export default function AdminOrders() {
           <Button size="sm" variant="gold" onClick={() => { const lnk = ADMIN_WA ? `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(waTxt(o))}` : null; setWaM({ open: true, link: lnk, order: o }); }} title="Avisar por WhatsApp">
             <WhatsAppIcon size={14} /> Avisar
           </Button>
+        )}
+        {["paid", "shipped", "delivered"].includes(o.status) && (
+          o?.erpSync?.status === "synced" && o?.erpSync?.erpOrderId ? (
+            <span
+              className="ao-erp-badge"
+              title={`Venta registrada en el software · Online${o.erpSync.erpOrderNumber ? ` (venta #${o.erpSync.erpOrderNumber})` : ` (#${o.erpSync.erpOrderId})`}`}
+            >
+              <CheckIcon size={13} /> En ventas · Online{o.erpSync.erpOrderNumber ? ` #${o.erpSync.erpOrderNumber}` : ""}
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              variant="gold"
+              loading={erpBusyId === String(o._id)}
+              onClick={() => doErpSync(o)}
+              title="Registrar esta venta en Ventas del software como Online (Reportes + turno de caja)"
+            >
+              <ShoppingBagIcon size={14} /> Pasar a ventas
+            </Button>
+          )
         )}
         <Button size="sm" variant="danger-ghost" onClick={() => openDel(o)}>
           <TrashIcon size={14} /> Eliminar
@@ -772,6 +826,9 @@ export default function AdminOrders() {
                       {o.hasLocalProducts && (
                         <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
                       )}
+                      {o?.erpSync?.status === "synced" && (
+                        <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Venta Online en el software</div>
+                      )}
                     </div>
                     <div className="ao-card-right">
                       <StatusBadge s={o.status} />
@@ -848,6 +905,9 @@ export default function AdminOrders() {
                         {o.shippingTicket && <span className="ao-card-ticket">{o.shippingTicket}</span>}
                         {o.hasLocalProducts && (
                           <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
+                        )}
+                        {o?.erpSync?.status === "synced" && (
+                          <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Venta Online en el software</div>
                         )}
                         <div className="ao-cell-id">
                           <span>…{shrt(o._id)}</span>
@@ -958,6 +1018,14 @@ export default function AdminOrders() {
               <div><b>Estado:</b> <StatusBadge s={detail.status} /></div>
               <div><b>Total:</b> {$m(detail.total)}</div>
               <div><b>Método de pago:</b> <PayBadge method={detail.paymentMethod} /></div>
+              <div>
+                <b>Ventas del software:</b>{" "}
+                {detail?.erpSync?.status === "synced"
+                  ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : detail.erpSync.erpOrderId ? ` (#${detail.erpSync.erpOrderId})` : ""}</span>
+                  : detail?.erpSync?.status === "failed"
+                    ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo registrar"}</span>
+                    : "Aún no registrada"}
+              </div>
             </div>
 
             <div className="ao-confirm-box">
@@ -997,7 +1065,7 @@ export default function AdminOrders() {
                      ? (Number(it.precioPack ?? it.precio) || 0)
                      : (it.cantidad ? it.subtotal / it.cantidad : 0);
                    const boxUnits = Number(it?.unidadesPorCaja) || 0;
-                   const boxCount = Number(it?.cantidadCajas) || (it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
+                   const boxCount = Number(it?.cantidadCajas) || (it?.saleUnit !== "unitario" && it?.precioCaja > 0 && boxUnits > 1 ? it.cantidad / boxUnits : 0);
                    const saleUnitLabel = it?.saleUnit === "caja"
                      ? `${it.saleQuantity || boxCount} caja${Number(it.saleQuantity || boxCount) === 1 ? "" : "s"}`
                      : it?.saleUnit === "media_caja"

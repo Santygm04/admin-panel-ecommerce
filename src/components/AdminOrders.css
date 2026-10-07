@@ -148,6 +148,22 @@
 .ao-actions-head { text-align: center; }
 .ao-actions-cell { min-width: 0; }
 
+/* Venta ya registrada en Ventas del software (ERP) como Online */
+.ao-erp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--adm-success, #22c55e);
+  border-radius: 999px;
+  background: var(--adm-success-soft, rgba(34, 197, 94, 0.12));
+  color: var(--adm-success, #22c55e);
+  font: var(--t-caption);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
 .ao-table .ao-cell-sub { font: var(--t-caption); color: var(--adm-muted); margin-top: 2px; }
