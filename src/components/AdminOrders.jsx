@@ -533,19 +533,26 @@ export default function AdminOrders() {
     if (!token || !order) return;
     const id = String(order._id);
     setErpBusyId(id);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
     try {
       const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: "{}",
+        signal: controller.signal,
       });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
       if (!r.ok) {
         if (d?.erpSync) {
           setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync: d.erpSync } : o)));
           if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync: d.erpSync }));
         }
-        throw new Error(d?.message || "No se pudo registrar la venta en el software");
+        const statusHint = d?.message
+          || (r.status === 502
+            ? "El software no respondió (puede estar reiniciando). Reintentá en unos segundos"
+            : "No se pudo registrar la venta en el software");
+        throw new Error(statusHint);
       }
       const erpSync = d?.erpSync || { status: "synced", erpOrderId: d?.erpOrderId || null };
       setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync } : o)));
@@ -554,8 +561,11 @@ export default function AdminOrders() {
         ? "La venta ya estaba registrada en el software (Online)"
         : "Venta registrada en el software como Online");
     } catch (e) {
-      setErr(e.message);
+      setErr(e?.name === "AbortError"
+        ? "El software tardó demasiado en responder. Reintentá en unos segundos."
+        : e.message);
     } finally {
+      clearTimeout(timeout);
       setErpBusyId("");
     }
   };
