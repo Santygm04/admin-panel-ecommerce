@@ -1,6 +1,7 @@
 // AdminOrders.jsx — rediseño con UI kit (misma lógica de negocio)
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import { Badge, Button, Card, EmptyState, Input, Modal, Tabs } from "./ui";
 import {
   EyeIcon, CheckIcon, XIcon, TrashIcon, TruckIcon, RefreshIcon, SearchIcon,
@@ -276,8 +277,14 @@ function TrackModal({ order, onClose, onConfirm }) {
 
 export default function AdminOrders() {
   const token = sessionStorage.getItem("aesthetic:token") || "";
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
-  const [tab,    setTab]    = useState("pending");
+  // La pestaña vive en la URL (?tab=paid): al refrescar o compartir el link
+  // se mantiene la sección elegida en lugar de volver al inicio.
+  const [tab,    setTab]    = useState(() => {
+    const fromUrl = searchParams.get("tab");
+    return fromUrl !== null && TABS.some((t) => t.v === fromUrl) ? fromUrl : "pending";
+  });
   const [load,   setLoad]   = useState(false);
   const [autoR,  setAutoR]  = useState(true);
   const [msg,    setMsg]    = useState({ text: "", ok: false });
@@ -329,6 +336,16 @@ export default function AdminOrders() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [tab]);
+
+  // Mantiene la URL sincronizada con la pestaña activa (pending = sin param).
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "pending") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  }, [tab, setSearchParams]);
 
   useEffect(() => {
     setDetailProducts({});
