@@ -573,21 +573,30 @@ export default function AdminOrders() {
           setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync: d.erpSync } : o)));
           if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync: d.erpSync }));
         }
-        throw new Error(d?.message || "No se pudo cargar el pedido en el carrito del software");
+        const excluded = Array.isArray(d?.excludedItems) ? d.excludedItems : [];
+        const extra = excluded.length
+          ? ` (${excluded.length} producto${excluded.length === 1 ? "" : "s"} del pedido no está${excluded.length === 1 ? "" : "n"} publicado${excluded.length === 1 ? "" : "s"} en el software: ${excluded.slice(0, 5).map((entry) => entry.nombre || entry.sku).join(", ")}${excluded.length > 5 ? " y más" : ""})`
+          : "";
+        throw new Error(`${d?.message || "No se pudo cargar el pedido en el carrito del software"}${extra}`);
       }
       const erpSync = d?.erpSync || { status: "cart", erpUnitSlug: unitSlug };
       setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync } : o)));
       if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync }));
 
       const skipped = Array.isArray(d?.skipped) ? d.skipped : [];
+      const excluded = Array.isArray(d?.excludedItems) ? d.excludedItems : [];
       const cancelled = Array.isArray(d?.cancelledOrders) ? d.cancelledOrders : [];
-      if (skipped.length) {
+      const missing = [
+        ...excluded.map((entry) => `${entry.nombre || entry.sku} (${entry.reason || "no entra al software"})`),
+        ...skipped.map((entry) => `${entry.sku} (no está en esa unidad)`),
+      ];
+      if (missing.length) {
         setErr(
-          `Pedido cargado en ${erpUnitLong(unitSlug)}, pero ${skipped.length} producto${skipped.length === 1 ? "" : "s"} no existe${skipped.length === 1 ? "" : "n"} en esa unidad (${skipped.map((entry) => entry.sku).join(", ")}). Revisá la unidad elegida.`,
+          `Pedido cargado en ${erpUnitLong(unitSlug)}, pero ${missing.length} producto${missing.length === 1 ? "" : "s"} quedó afuera del carrito: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` y ${missing.length - 5} más` : ""}. Publicá esos productos en el software para que entren.`,
         );
       } else {
         setOk(
-          `Pedido en el carrito de ${erpUnitLong(unitSlug)}${cancelled.length ? " (se quitó la venta del día anterior)" : ""}. El cajero lo cobra desde el Punto de Venta.`,
+          `${d?.refreshed ? "Carrito actualizado" : "Pedido"} en el carrito de ${erpUnitLong(unitSlug)}${cancelled.length ? " (se quitó la venta del día anterior)" : ""}. El cajero lo cobra desde el Punto de Venta.`,
         );
       }
     } catch (e) {
