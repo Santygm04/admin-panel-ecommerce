@@ -12,6 +12,14 @@ import { firstProductImage, ProductImage } from "../utils/image";
 
 const ADMIN_WA = "5493855902832";
 
+// Unidades del software que pueden recibir el carrito online.
+const ERP_UNIT_LABELS = {
+  "aesthetic-santiago": { short: "Santiago", long: "Aesthetic Santiago" },
+  "pitukas-mayorista": { short: "Mayorista", long: "Pitukas Mayorista" },
+};
+const erpUnitShort = (slug) => ERP_UNIT_LABELS[slug]?.short || "software";
+const erpUnitLong = (slug) => ERP_UNIT_LABELS[slug]?.long || "el software";
+
 const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
 const adr  = (a = {}) =>
   [[a.calle, a.numero].filter(Boolean).join(" "), a.piso, a.ciudad, a.provincia, a.cp]
@@ -527,19 +535,19 @@ export default function AdminOrders() {
     finally { setLoad(false); }
   };
 
-  /* Pasa la venta pagada a "Ventas" del software (ERP) como Online:
-     aparece en Reportes → Online y en el turno de caja. */
-  const doErpSync = async (order) => {
+  /* Carga la venta pagada en el carrito del Punto de Venta del software
+     (Aesthetic Santiago o Pitukas Mayorista) para que el cajero la cobre. */
+  const doErpCart = async (order, unitSlug) => {
     if (!token || !order) return;
     const id = String(order._id);
-    setErpBusyId(id);
+    setErpBusyId(`${id}:${unitSlug}`);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45000);
     try {
-      const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-sync`, {
+      const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: "{}",
+        body: JSON.stringify({ unitSlug }),
         signal: controller.signal,
       });
       const d = await r.json().catch(() => ({}));
@@ -548,18 +556,23 @@ export default function AdminOrders() {
           setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync: d.erpSync } : o)));
           if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync: d.erpSync }));
         }
-        const statusHint = d?.message
-          || (r.status === 502
-            ? "El software no respondió (puede estar reiniciando). Reintentá en unos segundos"
-            : "No se pudo registrar la venta en el software");
-        throw new Error(statusHint);
+        throw new Error(d?.message || "No se pudo cargar el pedido en el carrito del software");
       }
-      const erpSync = d?.erpSync || { status: "synced", erpOrderId: d?.erpOrderId || null };
+      const erpSync = d?.erpSync || { status: "cart", erpUnitSlug: unitSlug };
       setOrders((current) => current.map((o) => (String(o._id) === id ? { ...o, erpSync } : o)));
       if (detail?._id === order._id) setDetail((current) => ({ ...current, erpSync }));
-      setOk(d?.duplicated
-        ? "La venta ya estaba registrada en el software (Online)"
-        : "Venta registrada en el software como Online");
+
+      const skipped = Array.isArray(d?.skipped) ? d.skipped : [];
+      const cancelled = Array.isArray(d?.cancelledOrders) ? d.cancelledOrders : [];
+      if (skipped.length) {
+        setErr(
+          `Pedido cargado en ${erpUnitLong(unitSlug)}, pero ${skipped.length} producto${skipped.length === 1 ? "" : "s"} no existe${skipped.length === 1 ? "" : "n"} en esa unidad (${skipped.map((entry) => entry.sku).join(", ")}). Revisá la unidad elegida.`,
+        );
+      } else {
+        setOk(
+          `Pedido en el carrito de ${erpUnitLong(unitSlug)}${cancelled.length ? " (se quitó la venta del día anterior)" : ""}. El cajero lo cobra desde el Punto de Venta.`,
+        );
+      }
     } catch (e) {
       setErr(e?.name === "AbortError"
         ? "El software tardó demasiado en responder. Reintentá en unos segundos."
@@ -674,24 +687,34 @@ export default function AdminOrders() {
           </Button>
         )}
         {["paid", "shipped", "delivered"].includes(o.status) && (
-          o?.erpSync?.status === "synced" && o?.erpSync?.erpOrderId ? (
-            <span
-              className="ao-erp-badge"
-              title={`Venta registrada en el software · Online${o.erpSync.erpOrderNumber ? ` (venta #${o.erpSync.erpOrderNumber})` : ` (#${o.erpSync.erpOrderId})`}`}
-            >
-              <CheckIcon size={13} /> En ventas · Online{o.erpSync.erpOrderNumber ? ` #${o.erpSync.erpOrderNumber}` : ""}
-            </span>
-          ) : (
+          <>
+            {o?.erpSync?.status === "cart" && (
+              <span
+                className="ao-erp-badge"
+                title={`Pedido cargado en el carrito de ${erpUnitLong(o.erpSync.erpUnitSlug)} — pendiente de cobro en el Punto de Venta`}
+              >
+                <CheckIcon size={13} /> En carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}
+              </span>
+            )}
             <Button
               size="sm"
               variant="gold"
-              loading={erpBusyId === String(o._id)}
-              onClick={() => doErpSync(o)}
-              title="Registrar esta venta en Ventas del software como Online (Reportes + turno de caja)"
+              loading={erpBusyId === `${String(o._id)}:aesthetic-santiago`}
+              onClick={() => doErpCart(o, "aesthetic-santiago")}
+              title="Cargar el pedido en el carrito del Punto de Venta de Aesthetic Santiago (se cobra en el POS)"
             >
-              <ShoppingBagIcon size={14} /> Pasar a ventas
+              <ShoppingBagIcon size={14} /> Santiago
             </Button>
-          )
+            <Button
+              size="sm"
+              variant="gold"
+              loading={erpBusyId === `${String(o._id)}:pitukas-mayorista`}
+              onClick={() => doErpCart(o, "pitukas-mayorista")}
+              title="Cargar el pedido en el carrito del Punto de Venta de Pitukas Mayorista (se cobra en el POS)"
+            >
+              <ShoppingBagIcon size={14} /> Mayorista
+            </Button>
+          </>
         )}
         <Button size="sm" variant="danger-ghost" onClick={() => openDel(o)}>
           <TrashIcon size={14} /> Eliminar
@@ -836,8 +859,8 @@ export default function AdminOrders() {
                       {o.hasLocalProducts && (
                         <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
                       )}
-                      {o?.erpSync?.status === "synced" && (
-                        <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Venta Online en el software</div>
+                      {o?.erpSync?.status === "cart" && (
+                        <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Pedido online en carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}</div>
                       )}
                     </div>
                     <div className="ao-card-right">
@@ -916,8 +939,8 @@ export default function AdminOrders() {
                         {o.hasLocalProducts && (
                           <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
                         )}
-                        {o?.erpSync?.status === "synced" && (
-                          <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Venta Online en el software</div>
+                        {o?.erpSync?.status === "cart" && (
+                          <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Pedido online en carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}</div>
                         )}
                         <div className="ao-cell-id">
                           <span>…{shrt(o._id)}</span>
@@ -1030,11 +1053,13 @@ export default function AdminOrders() {
               <div><b>Método de pago:</b> <PayBadge method={detail.paymentMethod} /></div>
               <div>
                 <b>Ventas del software:</b>{" "}
-                {detail?.erpSync?.status === "synced"
-                  ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : detail.erpSync.erpOrderId ? ` (#${detail.erpSync.erpOrderId})` : ""}</span>
-                  : detail?.erpSync?.status === "failed"
-                    ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo registrar"}</span>
-                    : "Aún no registrada"}
+                {detail?.erpSync?.status === "cart"
+                  ? <span style={{ color: "var(--adm-info)" }}>En carrito de {erpUnitLong(detail.erpSync.erpUnitSlug)} — pendiente de cobro en el Punto de Venta</span>
+                  : detail?.erpSync?.status === "synced"
+                    ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : ""}</span>
+                    : detail?.erpSync?.status === "failed"
+                      ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo cargar"}</span>
+                      : "Aún no enviada"}
               </div>
             </div>
 
