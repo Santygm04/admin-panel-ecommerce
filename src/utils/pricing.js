@@ -6,6 +6,7 @@ export const normalizeSlug = (value = "") =>
     .replace(/[\u0300-\u036f]/g, "");
 
 export const isLenceriaCategory = (category) => normalizeSlug(category) === "lenceria";
+export const isMarroquineriaCategory = (category) => normalizeSlug(category) === "marroquineria";
 
 export const parseMoneyInput = (value) => {
   const raw = String(value ?? "").trim();

@@ -9,7 +9,7 @@ import "./ProductForm.css";
 import { API_URL } from "../utils/api";
 import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
 import { notify } from "../utils/toast";
-import { formatARS, getLenceriaPricePreview, isLenceriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
+import { formatARS, getLenceriaPricePreview, isLenceriaCategory, isMarroquineriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
 import { distributeStockAcrossRows, distributeStockEvenly, getVariantRowColor, getVariantRowSize, isActiveVariantRow, parseVariantStock, sumVariantStocks } from "../utils/stockDistribution";
 
@@ -471,9 +471,9 @@ export default function ProductForm({ onCreated }) {
 
           {!isLenceriaCategory(producto.categoria) && (
             <>
-              {["cartera", "carteras", "mochila", "mochilas"].includes(normalizeSlug(producto.subcategoria)) && (
-                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (mayorista cartera/mochila)</>}
-                  hint="Solo carteras y mochilas · es el precio mayorista al llevar 2 artículos de cartera o mochila. Se publica también en la tienda.">
+              {isMarroquineriaCategory(producto.categoria) && (
+                <Field label={<><span className="price-tag price-tag--info">x2</span> Precio x2 (mayorista marroquinería)</>}
+                  hint="Aplica a toda la marroquinería (carteras, mochilas, bolsos, riñoneras): es el precio mayorista al llevar 2 artículos. Se publica también en la tienda.">
                   <Input name="precioX2" type="text" inputMode="decimal"
                     placeholder="Ej: 7500"
                     value={producto.precioX2 ?? ""} onChange={handleChange} />
