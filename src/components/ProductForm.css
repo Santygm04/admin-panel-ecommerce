@@ -52,8 +52,24 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--sp-4);
+  align-items: start;
 }
 .pf-precio-grid .ui-banner { grid-column: 1 / -1; }
+
+/* Los campos comparten fila: la etiqueta reserva dos líneas para que los
+   inputs queden alineados aunque el texto del label ocupe una o dos líneas
+   (ej. "Precio x2 (mayorista marroquinería)" vs "Precio especial × 5 u."). */
+.pf-precio-grid > .ui-field > .ui-label,
+.pf-box-pricing > .ui-field > .ui-label {
+  display: block;
+  min-height: 3em;
+}
+
+/* En una sola columna no hace falta reservar la segunda línea. */
+@media (max-width: 520px) {
+  .pf-precio-grid > .ui-field > .ui-label,
+  .pf-box-pricing > .ui-field > .ui-label { min-height: 0; }
+}
 
 /* ── Grid principal ── */
 .pf-grid {
