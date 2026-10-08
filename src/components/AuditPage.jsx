@@ -51,6 +51,7 @@ const ACTION_LABELS = {
   "order.cancel": "Orden cancelada",
   "order.erp_sync": "Venta enviada al software (Online)",
   "order.erp_cart": "Pedido enviado al carrito del software",
+  "order.erp_cart_status": "Carrito del software actualizado",
   "order.ship": "Orden despachada",
   "order.delivered": "Orden entregada",
   "order.delete": "Orden enviada a papelera",

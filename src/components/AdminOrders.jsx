@@ -21,6 +21,25 @@ const ERP_UNIT_LABELS = {
 const erpUnitShort = (slug) => ERP_UNIT_LABELS[slug]?.short || "software";
 const erpUnitLong = (slug) => ERP_UNIT_LABELS[slug]?.long || "el software";
 
+// Nota del estado de la venta en el software (carrito, quitado o cobrado).
+// El POS avisa por servicio cuando descarta o cobra el carrito del pedido.
+const erpSyncNote = (erpSync) => {
+  if (!erpSync) return null;
+  if (erpSync.status === "cart") {
+    return { text: `Pedido online en carrito · ${erpUnitShort(erpSync.erpUnitSlug)}`, color: "var(--adm-info)" };
+  }
+  if (erpSync.status === "discarded") {
+    return { text: "Se quitó del carrito del POS · se puede reenviar", color: "var(--adm-gold)" };
+  }
+  if (erpSync.status === "synced") {
+    return {
+      text: `Cobrada en el POS${erpSync.erpOrderNumber ? ` · venta #${erpSync.erpOrderNumber}` : ""}`,
+      color: "var(--adm-success)",
+    };
+  }
+  return null;
+};
+
 const $m   = (n) => `$${(+n || 0).toLocaleString("es-AR")}`;
 const adr  = (a = {}) =>
   [[a.calle, a.numero].filter(Boolean).join(" "), a.piso, a.ciudad, a.provincia, a.cp]
@@ -586,6 +605,7 @@ export default function AdminOrders() {
       const skipped = Array.isArray(d?.skipped) ? d.skipped : [];
       const excluded = Array.isArray(d?.excludedItems) ? d.excludedItems : [];
       const cancelled = Array.isArray(d?.cancelledOrders) ? d.cancelledOrders : [];
+      const restored = Array.isArray(d?.restoredLegacy) ? d.restoredLegacy : [];
       const missing = [
         ...excluded.map((entry) => `${entry.nombre || entry.sku} (${entry.reason || "no entra al software"})`),
         ...skipped.map((entry) => `${entry.sku} (no está en esa unidad)`),
@@ -595,8 +615,12 @@ export default function AdminOrders() {
           `Pedido cargado en ${erpUnitLong(unitSlug)}, pero ${missing.length} producto${missing.length === 1 ? "" : "s"} quedó afuera del carrito: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` y ${missing.length - 5} más` : ""}. Publicá esos productos en el software para que entren.`,
         );
       } else {
+        const notas = [
+          cancelled.length ? "se quitó la venta del día anterior" : "",
+          restored.length ? "se repuso el stock de la carga anterior" : "",
+        ].filter(Boolean);
         setOk(
-          `${d?.refreshed ? "Carrito actualizado" : "Pedido"} en el carrito de ${erpUnitLong(unitSlug)}${cancelled.length ? " (se quitó la venta del día anterior)" : ""}. El cajero lo cobra desde el Punto de Venta.`,
+          `${d?.refreshed ? "Carrito actualizado" : "Pedido"} en el carrito de ${erpUnitLong(unitSlug)}${notas.length ? ` (${notas.join("; ")})` : ""}. El cajero lo cobra desde el Punto de Venta.`,
         );
       }
     } catch (e) {
@@ -720,6 +744,14 @@ export default function AdminOrders() {
                 title={`Pedido cargado en el carrito de ${erpUnitLong(o.erpSync.erpUnitSlug)} — pendiente de cobro en el Punto de Venta`}
               >
                 <CheckIcon size={13} /> En carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}
+              </span>
+            )}
+            {o?.erpSync?.status === "discarded" && (
+              <span
+                className="ao-erp-badge ao-erp-badge--muted"
+                title="El cajero quitó el pedido del carrito en el Punto de Venta; podés volver a cargarlo en Santiago o Mayorista"
+              >
+                <XIcon size={13} /> Quitado del POS
               </span>
             )}
             <Button
@@ -867,6 +899,7 @@ export default function AdminOrders() {
             {pageRows.map((o) => {
               const d = new Date(o.createdAt);
               const envio = o?.shipping?.method === "envio";
+              const erpNote = erpSyncNote(o?.erpSync);
               return (
                 <Card key={o._id} className="ao-card">
                   <div className="ao-card-top">
@@ -885,8 +918,8 @@ export default function AdminOrders() {
                       {o.hasLocalProducts && (
                         <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
                       )}
-                      {o?.erpSync?.status === "cart" && (
-                        <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Pedido online en carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}</div>
+                      {erpNote && (
+                        <div className="ao-cell-sub" style={{ color: erpNote.color }}>{erpNote.text}</div>
                       )}
                     </div>
                     <div className="ao-card-right">
@@ -945,6 +978,7 @@ export default function AdminOrders() {
                 {pageRows.map((o) => {
                   const d = new Date(o.createdAt);
                   const envio = o?.shipping?.method === "envio";
+                  const erpNote = erpSyncNote(o?.erpSync);
                   return (
                     <tr key={o._id}>
                       <td className="ao-select-col">
@@ -965,8 +999,8 @@ export default function AdminOrders() {
                         {o.hasLocalProducts && (
                           <div className="ao-cell-sub" style={{ color: "var(--adm-gold)" }}>🏪 Producto del local</div>
                         )}
-                        {o?.erpSync?.status === "cart" && (
-                          <div className="ao-cell-sub" style={{ color: "var(--adm-info)" }}>Pedido online en carrito · {erpUnitShort(o.erpSync.erpUnitSlug)}</div>
+                        {erpNote && (
+                          <div className="ao-cell-sub" style={{ color: erpNote.color }}>{erpNote.text}</div>
                         )}
                         <div className="ao-cell-id">
                           <span>…{shrt(o._id)}</span>
@@ -1081,11 +1115,13 @@ export default function AdminOrders() {
                 <b>Ventas del software:</b>{" "}
                 {detail?.erpSync?.status === "cart"
                   ? <span style={{ color: "var(--adm-info)" }}>En carrito de {erpUnitLong(detail.erpSync.erpUnitSlug)} — pendiente de cobro en el Punto de Venta</span>
-                  : detail?.erpSync?.status === "synced"
-                    ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : ""}</span>
-                    : detail?.erpSync?.status === "failed"
-                      ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo cargar"}</span>
-                      : "Aún no enviada"}
+                  : detail?.erpSync?.status === "discarded"
+                    ? <span style={{ color: "var(--adm-gold)" }}>Se quitó del carrito del Punto de Venta — podés volver a cargarlo con Santiago o Mayorista</span>
+                    : detail?.erpSync?.status === "synced"
+                      ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : ""}</span>
+                      : detail?.erpSync?.status === "failed"
+                        ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo cargar"}</span>
+                        : "Aún no enviada"}
               </div>
             </div>
 

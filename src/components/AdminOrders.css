@@ -164,6 +164,13 @@
   white-space: nowrap;
 }
 
+/* El cajero quitó el pedido del carrito del POS: se puede reenviar */
+.ao-erp-badge--muted {
+  border-color: var(--adm-gold, #d4a843);
+  background: color-mix(in srgb, var(--adm-gold, #d4a843) 14%, transparent);
+  color: var(--adm-gold, #d4a843);
+}
+
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
 .ao-table .ao-cell-sub { font: var(--t-caption); color: var(--adm-muted); margin-top: 2px; }
