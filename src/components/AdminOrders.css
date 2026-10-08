@@ -185,6 +185,52 @@
   color: var(--adm-gold, #d4a843);
 }
 
+/* Verificación previa antes de enviar la venta al software */
+.ao-erp-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ao-erp-preview-block {
+  border: 1px solid var(--adm-border-soft, #eee);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--adm-surface-2, #fafafa);
+}
+.ao-erp-preview-title {
+  margin: 0 0 8px;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.ao-erp-preview-title--ok { color: var(--adm-success, #16a34a); }
+.ao-erp-preview-title--missing { color: var(--adm-gold, #b45309); }
+.ao-erp-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.ao-erp-preview-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 0.82rem;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--adm-border-soft, #eee);
+}
+.ao-erp-preview-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ao-erp-preview-meta {
+  color: var(--adm-muted, #777);
+  font-size: 0.75rem;
+  text-align: right;
+  flex: 1 1 auto;
+}
+
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
 .ao-table .ao-cell-sub { font: var(--t-caption); color: var(--adm-muted); margin-top: 2px; }

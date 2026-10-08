@@ -320,6 +320,9 @@ export default function AdminOrders() {
   const [detailProducts, setDetailProducts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [erpBusyId, setErpBusyId] = useState("");
+  // Verificación previa antes de enviar la venta al software: qué productos
+  // están en ambos lados y qué falta en el software.
+  const [erpPreview, setErpPreview] = useState(null);
   const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
@@ -571,6 +574,31 @@ export default function AdminOrders() {
     finally { setLoad(false); }
   };
 
+  /* Verificación previa: consulta al software qué productos del pedido existen
+     en la unidad elegida (se cargan) y cuáles faltan, sin crear nada todavía.
+     Así se ve por qué la venta no puede entrar completa. */
+  const openErpPreview = async (order, unitSlug) => {
+    if (!token || !order) return;
+    const id = String(order._id);
+    setErpPreview({ order, unitSlug, loading: true, error: "", result: null });
+    try {
+      const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-cart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ unitSlug, dryRun: true }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.message || "No se pudo verificar la venta en el software");
+      setErpPreview((current) => (current && String(current.order._id) === id
+        ? { ...current, loading: false, result: d }
+        : current));
+    } catch (e) {
+      setErpPreview((current) => (current && String(current.order._id) === id
+        ? { ...current, loading: false, error: e.message }
+        : current));
+    }
+  };
+
   /* Carga la venta pagada en el carrito del Punto de Venta del software
      (Aesthetic Santiago o Pitukas Mayorista) para que el cajero la cobre. */
   const doErpCart = async (order, unitSlug) => {
@@ -758,8 +786,8 @@ export default function AdminOrders() {
               size="sm"
               variant="gold"
               loading={erpBusyId === `${String(o._id)}:aesthetic-santiago`}
-              onClick={() => doErpCart(o, "aesthetic-santiago")}
-              title="Cargar el pedido en el carrito del Punto de Venta de Aesthetic Santiago (se cobra en el POS)"
+              onClick={() => openErpPreview(o, "aesthetic-santiago")}
+              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Aesthetic Santiago (se cobra en el POS)"
             >
               <ShoppingBagIcon size={14} /> Santiago
             </Button>
@@ -767,8 +795,8 @@ export default function AdminOrders() {
               size="sm"
               variant="gold"
               loading={erpBusyId === `${String(o._id)}:pitukas-mayorista`}
-              onClick={() => doErpCart(o, "pitukas-mayorista")}
-              title="Cargar el pedido en el carrito del Punto de Venta de Pitukas Mayorista (se cobra en el POS)"
+              onClick={() => openErpPreview(o, "pitukas-mayorista")}
+              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas Mayorista (se cobra en el POS)"
             >
               <ShoppingBagIcon size={14} /> Mayorista
             </Button>
@@ -1251,6 +1279,101 @@ export default function AdminOrders() {
       {imagePreview && (
         <OrderImagePreview preview={imagePreview} onClose={() => setImagePreview(null)} />
       )}
+
+      {/* VERIFICACIÓN PREVIA ANTES DE ENVIAR AL SOFTWARE */}
+      <Modal
+        open={Boolean(erpPreview)}
+        wide
+        title={erpPreview ? `Enviar ${num(erpPreview.order)} a ${erpUnitLong(erpPreview.unitSlug)}` : ""}
+        onClose={() => setErpPreview(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setErpPreview(null)}>Cancelar</Button>
+            <Button
+              variant="gold"
+              disabled={Boolean(erpPreview?.loading) || Boolean(erpPreview?.error) || !(erpPreview?.result?.itemsPreview?.length > 0)}
+              onClick={() => {
+                const current = erpPreview;
+                setErpPreview(null);
+                if (current) doErpCart(current.order, current.unitSlug);
+              }}
+            >
+              <ShoppingBagIcon size={14} /> Confirmar carga en {erpPreview ? erpUnitShort(erpPreview.unitSlug) : ""}
+            </Button>
+          </>
+        }
+      >
+        {erpPreview && (
+          <div className="ao-erp-preview">
+            {erpPreview.loading && <p className="ao-modal-text">Verificando qué productos existen en el software…</p>}
+            {!erpPreview.loading && erpPreview.error && (
+              <div className="ui-banner ui-banner--danger" role="alert">{erpPreview.error}</div>
+            )}
+            {!erpPreview.loading && erpPreview.result && (() => {
+              const loaded = erpPreview.result.itemsPreview ?? [];
+              const excluded = (erpPreview.result.excludedItems ?? []).map((entry) => ({
+                name: entry.nombre || entry.sku || "Producto",
+                sku: entry.sku,
+                reason: entry.reason || "No está publicado en el software",
+              }));
+              const skipped = (erpPreview.result.skipped ?? []).map((entry) => ({
+                name: entry.name || entry.sku || "Producto",
+                sku: entry.sku,
+                reason: entry.reason || "No está en esta unidad",
+              }));
+              const missing = [...excluded, ...skipped];
+              return (
+                <>
+                  {erpPreview.result.existingCart && (
+                    <p className="ao-modal-text">
+                      Esta venta ya tiene un carrito <b>{erpPreview.result.existingCart.status}</b> en esta unidad: al confirmar se actualiza.
+                    </p>
+                  )}
+                  <div className="ao-erp-preview-block">
+                    <p className="ao-erp-preview-title ao-erp-preview-title--ok">
+                      ✅ En el panel y en el software ({loaded.length})
+                    </p>
+                    {loaded.length === 0 ? (
+                      <p className="ao-modal-text">Ninguno: la venta no se puede cargar completa.</p>
+                    ) : (
+                      <ul className="ao-erp-preview-list">
+                        {loaded.map((item, index) => (
+                          <li key={`${item.productSku || item.sku}-${index}`}>
+                            <span>{item.productName || item.name || item.sku}</span>
+                            <span className="ao-erp-preview-meta">×{item.quantity} · {item.productSku || item.sku}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="ao-erp-preview-block">
+                    <p className="ao-erp-preview-title ao-erp-preview-title--missing">
+                      ⚠️ Faltan en {erpUnitLong(erpPreview.unitSlug)} ({missing.length})
+                    </p>
+                    {missing.length === 0 ? (
+                      <p className="ao-modal-text">Ninguno: todos los productos del pedido existen en el software.</p>
+                    ) : (
+                      <>
+                        <ul className="ao-erp-preview-list">
+                          {missing.map((item, index) => (
+                            <li key={`${item.sku}-${index}`}>
+                              <span>{item.name}</span>
+                              <span className="ao-erp-preview-meta">{item.sku ? `${item.sku} · ` : ""}{item.reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="ao-modal-text">
+                          Publicá o sincronizá esos productos en {erpUnitLong(erpPreview.unitSlug)} y volvé a intentar para que la venta entre completa.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </Modal>
 
       {/* MODAL CONFIRMAR/RECHAZAR */}
       <Modal
