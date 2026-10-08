@@ -148,20 +148,34 @@
 .ao-actions-head { text-align: center; }
 .ao-actions-cell { min-width: 0; }
 
-/* Venta ya registrada en Ventas del software (ERP) como Online */
+/* Estado del pedido en el software (En carrito / Quitado del POS) */
 .ao-erp-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
+  width: 100%;
+  max-width: 100%;
   min-height: 34px;
-  padding: 0 10px;
+  padding: 6px 10px;
   border: 1px solid var(--adm-success, #22c55e);
   border-radius: 999px;
   background: var(--adm-success-soft, rgba(34, 197, 94, 0.12));
   color: var(--adm-success, #22c55e);
   font: var(--t-caption);
-  font-weight: 700;
-  white-space: nowrap;
+  font-weight: 800;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Dentro de la grilla de acciones, el badge ocupa toda la fila para que no
+   se pise con Santiago/Mayorista ni se corte en pantallas angostas. */
+.ao-actions--compact .ao-erp-badge {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  min-height: 38px;
+  border-radius: 10px;
 }
 
 /* El cajero quitó el pedido del carrito del POS: se puede reenviar */
