@@ -1119,9 +1119,11 @@ export default function AdminOrders() {
                     ? <span style={{ color: "var(--adm-gold)" }}>Se quitó del carrito del Punto de Venta — podés volver a cargarlo con Santiago o Mayorista</span>
                     : detail?.erpSync?.status === "synced"
                       ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : ""}</span>
-                      : detail?.erpSync?.status === "failed"
-                        ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo cargar"}</span>
-                        : "Aún no enviada"}
+                      : detail?.erpSync?.status === "cancelled"
+                        ? <span style={{ color: "var(--adm-muted)" }}>Anulada también en el software (se repuso el stock y la caja en la unidad)</span>
+                        : detail?.erpSync?.status === "failed"
+                          ? <span style={{ color: "var(--adm-danger)" }}>Error: {detail.erpSync.lastError || "no se pudo cargar"}</span>
+                          : "Aún no enviada"}
               </div>
             </div>
 
