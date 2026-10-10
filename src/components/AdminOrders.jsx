@@ -9,6 +9,7 @@ import {
 } from "./ui/icons";
 import "./AdminOrders.css";
 import { API_URL } from "../utils/api";
+import { notify } from "../utils/toast";
 import { firstProductImage, ProductImage } from "../utils/image";
 
 const ADMIN_WA = "5493855902832";
@@ -16,7 +17,7 @@ const ADMIN_WA = "5493855902832";
 // Unidades del software que pueden recibir el carrito online.
 const ERP_UNIT_LABELS = {
   "aesthetic-santiago": { short: "Santiago", long: "Aesthetic Santiago" },
-  "pitukas-mayorista": { short: "Mayorista", long: "Pitukas Mayorista" },
+  "pitukas-mayorista": { short: "Pitukas", long: "Pitukas" },
 };
 const erpUnitShort = (slug) => ERP_UNIT_LABELS[slug]?.short || "software";
 const erpUnitLong = (slug) => ERP_UNIT_LABELS[slug]?.long || "el software";
@@ -306,7 +307,6 @@ export default function AdminOrders() {
   });
   const [load,   setLoad]   = useState(false);
   const [autoR,  setAutoR]  = useState(true);
-  const [msg,    setMsg]    = useState({ text: "", ok: false });
   const [detail, setDetail] = useState(null);
   const [actM,   setActM]   = useState({ open: false, type: null, order: null, loading: false });
   const [delM,   setDelM]   = useState({ open: false, order: null, loading: false });
@@ -326,8 +326,8 @@ export default function AdminOrders() {
   const selectAllRef = useRef(null);
   const closeWaM = () => setWaM({ open: false, link: null, order: null });
 
-  const setOk = (text) => setMsg({ text, ok: true });
-  const setErr = (text) => setMsg({ text, ok: false });
+  const setOk = (content) => notify.success(content);
+  const setErr = (content) => notify.error(content);
 
   const fetch_ = async () => {
     if (!token) return;
@@ -338,9 +338,9 @@ export default function AdminOrders() {
       const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.message || "Error");
-      setOrders(d.orders || []); setMsg({ text: "", ok: false });
+      setOrders(d.orders || []);
     } catch (e) {
-      setErr(e.message);
+      notify.error(e.message, { toastId: "ao-fetch-error" });
       setOrders([]);
     } finally {
       setLoad(false);
@@ -639,16 +639,31 @@ export default function AdminOrders() {
         ...skipped.map((entry) => `${entry.sku} (no está en esa unidad)`),
       ];
       if (missing.length) {
-        setErr(
-          `Pedido cargado en ${erpUnitLong(unitSlug)}, pero ${missing.length} producto${missing.length === 1 ? "" : "s"} quedó afuera del carrito: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` y ${missing.length - 5} más` : ""}. Publicá esos productos en el software para que entren.`,
+        notify.warning(
+          <div className="ao-toast">
+            <strong>Pedido {num(order)} cargado en {erpUnitLong(unitSlug)}</strong>
+            <span>
+              {missing.length === 1
+                ? "1 producto quedó afuera del carrito: "
+                : `${missing.length} productos quedaron afuera del carrito: `}
+              {missing.slice(0, 5).join(", ")}{missing.length > 5 ? ` y ${missing.length - 5} más` : ""}.
+            </span>
+            <span className="ao-toast__note">Publicá esos productos en el software para que entren en la próxima carga.</span>
+          </div>,
         );
       } else {
         const notas = [
           cancelled.length ? "se quitó la venta del día anterior" : "",
           restored.length ? "se repuso el stock de la carga anterior" : "",
         ].filter(Boolean);
+        const titulo = d?.refreshed ? "Carrito actualizado" : `Pedido ${num(order)} cargado`;
+        const destino = erpUnitLong(unitSlug);
         setOk(
-          `${d?.refreshed ? "Carrito actualizado" : "Pedido"} en el carrito de ${erpUnitLong(unitSlug)}${notas.length ? ` (${notas.join("; ")})` : ""}. El cajero lo cobra desde el Punto de Venta.`,
+          <div className="ao-toast">
+            <strong>✅ {titulo} en {destino}</strong>
+            <span>El cajero lo ve en el Punto de Venta y lo cobra desde ahí.</span>
+            {notas.length > 0 && <span className="ao-toast__note">{notas.join(" · ")}</span>}
+          </div>,
         );
       }
     } catch (e) {
@@ -777,7 +792,7 @@ export default function AdminOrders() {
             {o?.erpSync?.status === "discarded" && (
               <span
                 className="ao-erp-badge ao-erp-badge--muted"
-                title="El cajero quitó el pedido del carrito en el Punto de Venta; podés volver a cargarlo en Santiago o Mayorista"
+                title="El cajero quitó el pedido del carrito en el Punto de Venta; podés volver a cargarlo en Santiago o Pitukas"
               >
                 <XIcon size={13} /> Quitado del POS
               </span>
@@ -796,9 +811,9 @@ export default function AdminOrders() {
               variant="gold"
               loading={erpBusyId === `${String(o._id)}:pitukas-mayorista`}
               onClick={() => openErpPreview(o, "pitukas-mayorista")}
-              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas Mayorista (se cobra en el POS)"
+              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas (se cobra en el POS)"
             >
-              <ShoppingBagIcon size={14} /> Mayorista
+              <ShoppingBagIcon size={14} /> Pitukas
             </Button>
           </>
         )}
@@ -907,12 +922,6 @@ export default function AdminOrders() {
             </Button>
           </div>
       </div>
-
-      {msg.text && (
-        <div className={`ui-banner ${msg.ok ? "ui-banner--success" : "ui-banner--danger"}`} role="status">
-          {msg.text}
-        </div>
-      )}
 
       {!rows.length ? (
         <EmptyState
@@ -1144,7 +1153,7 @@ export default function AdminOrders() {
                 {detail?.erpSync?.status === "cart"
                   ? <span style={{ color: "var(--adm-info)" }}>En carrito de {erpUnitLong(detail.erpSync.erpUnitSlug)} — pendiente de cobro en el Punto de Venta</span>
                   : detail?.erpSync?.status === "discarded"
-                    ? <span style={{ color: "var(--adm-gold)" }}>Se quitó del carrito del Punto de Venta — podés volver a cargarlo con Santiago o Mayorista</span>
+                    ? <span style={{ color: "var(--adm-gold)" }}>Se quitó del carrito del Punto de Venta — podés volver a cargarlo con Santiago o Pitukas</span>
                     : detail?.erpSync?.status === "synced"
                       ? <span style={{ color: "var(--adm-success)" }}>Registrada como Online{detail.erpSync.erpOrderNumber ? ` (venta #${detail.erpSync.erpOrderNumber})` : ""}</span>
                       : detail?.erpSync?.status === "cancelled"

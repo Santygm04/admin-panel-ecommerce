@@ -231,6 +231,29 @@
   flex: 1 1 auto;
 }
 
+/* Avisos de órdenes como toast (arriba a la derecha), con título y detalle */
+.ao-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+.ao-toast strong {
+  font-weight: 800;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.ao-toast span {
+  font: var(--t-small);
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+.ao-toast__note {
+  color: var(--adm-muted) !important;
+  font: var(--t-caption) !important;
+}
+
 /* ── Tabla desktop ── */
 .ao-table .ao-cell-main { font-weight: 700; font-size: 0.86rem; color: var(--adm-ink); }
 .ao-table .ao-cell-sub { font: var(--t-caption); color: var(--adm-muted); margin-top: 2px; }
