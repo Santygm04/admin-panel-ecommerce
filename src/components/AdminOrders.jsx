@@ -17,10 +17,21 @@ const ADMIN_WA = "5493855902832";
 // Unidades del software que pueden recibir el carrito online.
 const ERP_UNIT_LABELS = {
   "aesthetic-santiago": { short: "Santiago", long: "Aesthetic Santiago" },
-  "pitukas-mayorista": { short: "Pitukas", long: "Pitukas" },
+  "pitukas-mayorista": { short: "Pitukas Mayorista", long: "Pitukas Mayorista" },
+  "pitukas-minorista": { short: "Pitukas Minorista", long: "Pitukas Minorista" },
 };
 const erpUnitShort = (slug) => ERP_UNIT_LABELS[slug]?.short || "software";
 const erpUnitLong = (slug) => ERP_UNIT_LABELS[slug]?.long || "el software";
+
+// Productos de la verificación previa: SKU normalizado para destildar.
+const erpPreviewSku = (item) => String(item?.productSku || item?.sku || "").trim().toUpperCase();
+const erpPreviewExcludedSet = (preview) => new Set(
+  (preview?.excludedSkus ?? []).map((sku) => String(sku).trim().toUpperCase()).filter(Boolean),
+);
+const erpPreviewPendingCount = (preview) => {
+  const excluded = erpPreviewExcludedSet(preview);
+  return (preview?.result?.itemsPreview ?? []).filter((item) => !excluded.has(erpPreviewSku(item))).length;
+};
 
 // Nota del estado de la venta en el software (carrito, quitado o cobrado).
 // El POS avisa por servicio cuando descarta o cobra el carrito del pedido.
@@ -580,7 +591,7 @@ export default function AdminOrders() {
   const openErpPreview = async (order, unitSlug) => {
     if (!token || !order) return;
     const id = String(order._id);
-    setErpPreview({ order, unitSlug, loading: true, error: "", result: null });
+    setErpPreview({ order, unitSlug, loading: true, error: "", result: null, excludedSkus: [] });
     try {
       const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-cart`, {
         method: "POST",
@@ -600,8 +611,9 @@ export default function AdminOrders() {
   };
 
   /* Carga la venta pagada en el carrito del Punto de Venta del software
-     (Aesthetic Santiago o Pitukas Mayorista) para que el cajero la cobre. */
-  const doErpCart = async (order, unitSlug) => {
+     (Aesthetic Santiago o Pitukas Mayorista/Minorista) para que el cajero la
+     cobre. `excludeSkus` son los productos destildados que no viajan. */
+  const doErpCart = async (order, unitSlug, excludeSkus = []) => {
     if (!token || !order) return;
     const id = String(order._id);
     setErpBusyId(`${id}:${unitSlug}`);
@@ -611,7 +623,7 @@ export default function AdminOrders() {
       const r = await fetch(`${API_URL}/api/payments/order/${id}/erp-cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ unitSlug }),
+        body: JSON.stringify({ unitSlug, excludeSkus }),
         signal: controller.signal,
       });
       const d = await r.json().catch(() => ({}));
@@ -655,6 +667,7 @@ export default function AdminOrders() {
         const notas = [
           cancelled.length ? "se quitó la venta del día anterior" : "",
           restored.length ? "se repuso el stock de la carga anterior" : "",
+          excludeSkus.length ? `${excludeSkus.length} producto${excludeSkus.length === 1 ? "" : "s"} destildado${excludeSkus.length === 1 ? "" : "s"} no se envió al software` : "",
         ].filter(Boolean);
         const titulo = d?.refreshed ? "Carrito actualizado" : `Pedido ${num(order)} cargado`;
         const destino = erpUnitLong(unitSlug);
@@ -811,9 +824,18 @@ export default function AdminOrders() {
               variant="gold"
               loading={erpBusyId === `${String(o._id)}:pitukas-mayorista`}
               onClick={() => openErpPreview(o, "pitukas-mayorista")}
-              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas (se cobra en el POS)"
+              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas Mayorista (se cobra en el POS)"
             >
-              <ShoppingBagIcon size={14} /> Pitukas
+              <ShoppingBagIcon size={14} /> Pitukas Mayorista
+            </Button>
+            <Button
+              size="sm"
+              variant="gold"
+              loading={erpBusyId === `${String(o._id)}:pitukas-minorista`}
+              onClick={() => openErpPreview(o, "pitukas-minorista")}
+              title="Verificar y cargar el pedido en el carrito del Punto de Venta de Pitukas Minorista (se cobra en el POS)"
+            >
+              <ShoppingBagIcon size={14} /> Pitukas Minorista
             </Button>
           </>
         )}
@@ -1300,11 +1322,11 @@ export default function AdminOrders() {
             <Button variant="secondary" onClick={() => setErpPreview(null)}>Cancelar</Button>
             <Button
               variant="gold"
-              disabled={Boolean(erpPreview?.loading) || Boolean(erpPreview?.error) || !(erpPreview?.result?.itemsPreview?.length > 0)}
+              disabled={Boolean(erpPreview?.loading) || Boolean(erpPreview?.error) || erpPreviewPendingCount(erpPreview) === 0}
               onClick={() => {
                 const current = erpPreview;
                 setErpPreview(null);
-                if (current) doErpCart(current.order, current.unitSlug);
+                if (current) doErpCart(current.order, current.unitSlug, current.excludedSkus ?? []);
               }}
             >
               <ShoppingBagIcon size={14} /> Confirmar carga en {erpPreview ? erpUnitShort(erpPreview.unitSlug) : ""}
@@ -1331,6 +1353,19 @@ export default function AdminOrders() {
                 reason: entry.reason || "No está en esta unidad",
               }));
               const missing = [...excluded, ...skipped];
+              const excludedSet = erpPreviewExcludedSet(erpPreview);
+              const pending = erpPreviewPendingCount(erpPreview);
+              const toggleItem = (item) => {
+                const sku = erpPreviewSku(item);
+                if (!sku) return;
+                setErpPreview((current) => {
+                  if (!current) return current;
+                  const next = erpPreviewExcludedSet(current);
+                  if (next.has(sku)) next.delete(sku);
+                  else next.add(sku);
+                  return { ...current, excludedSkus: [...next] };
+                });
+              };
               return (
                 <>
                   {erpPreview.result.existingCart && (
@@ -1345,14 +1380,31 @@ export default function AdminOrders() {
                     {loaded.length === 0 ? (
                       <p className="ao-modal-text">Ninguno: la venta no se puede cargar completa.</p>
                     ) : (
-                      <ul className="ao-erp-preview-list">
-                        {loaded.map((item, index) => (
-                          <li key={`${item.productSku || item.sku}-${index}`}>
-                            <span>{item.productName || item.name || item.sku}</span>
-                            <span className="ao-erp-preview-meta">×{item.quantity} · {item.productSku || item.sku}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        <p className="ao-modal-text">
+                          Destildá los productos que <b>no</b> querés pasar al software (por ejemplo, si no tenés stock). Se cargarán <b>{pending}</b> de {loaded.length}.
+                        </p>
+                        <ul className="ao-erp-preview-list">
+                          {loaded.map((item, index) => {
+                            const sku = erpPreviewSku(item);
+                            const off = excludedSet.has(sku);
+                            return (
+                              <li key={`${sku}-${index}`} className={off ? "ao-erp-item--off" : ""}>
+                                <label className="ao-erp-item-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={!off}
+                                    onChange={() => toggleItem(item)}
+                                    aria-label={`Incluir ${item.productName || item.name || sku} en la carga`}
+                                  />
+                                  <span>{item.productName || item.name || item.sku}</span>
+                                </label>
+                                <span className="ao-erp-preview-meta">×{item.quantity} · {item.productSku || item.sku}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </>
                     )}
                   </div>
                   <div className="ao-erp-preview-block">

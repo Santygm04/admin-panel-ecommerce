@@ -231,6 +231,26 @@
   flex: 1 1 auto;
 }
 
+/* Selector de productos a enviar al software: los destildados quedan tachados */
+.ao-erp-item-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+.ao-erp-item-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--adm-brand);
+  cursor: pointer;
+}
+.ao-erp-preview-list li.ao-erp-item--off { opacity: 0.55; }
+.ao-erp-preview-list li.ao-erp-item--off .ao-erp-item-check span { text-decoration: line-through; }
+
 /* Avisos de órdenes como toast (arriba a la derecha), con título y detalle */
 .ao-toast {
   display: flex;

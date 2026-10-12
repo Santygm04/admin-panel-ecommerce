@@ -366,7 +366,7 @@ function eventStory(item) {
     case "order.confirm":
       return `Confirmó la orden ${orderRef(metadata)}.`;
     case "order.erp_cart": {
-      const unit = { "aesthetic-santiago": "Aesthetic Santiago", "pitukas-mayorista": "Pitukas Mayorista" }[metadata.unitSlug] || "el software";
+      const unit = { "aesthetic-santiago": "Aesthetic Santiago", "pitukas-mayorista": "Pitukas Mayorista", "pitukas-minorista": "Pitukas Minorista" }[metadata.unitSlug] || "el software";
       return item.success === false
         ? `Intentó cargar la orden ${orderRef(metadata)} en el carrito de ${unit} y falló${metadata.error ? `: ${metadata.error}` : ""}.`
         : `Cargó la orden ${orderRef(metadata)} en el carrito del Punto de Venta de ${unit}${metadata.cancelledOrders ? ` (quitó ${metadata.cancelledOrders} venta/s del día anterior)` : ""}.`;
