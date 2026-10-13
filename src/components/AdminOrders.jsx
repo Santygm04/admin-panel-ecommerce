@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { Badge, Button, Card, EmptyState, Input, Modal, Tabs } from "./ui";
 import {
   EyeIcon, CheckIcon, XIcon, TrashIcon, TruckIcon, RefreshIcon, SearchIcon,
-  CopyIcon, WhatsAppIcon, ShoppingBagIcon, InboxIcon,
+  CopyIcon, WhatsAppIcon, ShoppingBagIcon, InboxIcon, CheckCircleIcon,
 } from "./ui/icons";
 import "./AdminOrders.css";
 import { API_URL } from "../utils/api";
@@ -119,10 +119,21 @@ function PayBadge({ method }) {
 const TABS = [
   { v: "pending",   ico: <InboxIcon size={15} />,    lbl: "Pendientes" },
   { v: "paid",      ico: <CheckIcon size={15} />,   lbl: "Pagadas" },
+  { v: "charged",   ico: <CheckCircleIcon size={15} />, lbl: "Cobradas" },
   { v: "cancelled", ico: <XIcon size={15} />,       lbl: "Canceladas" },
   { v: "deleted",   ico: <TrashIcon size={15} />,   lbl: "Eliminadas" },
   { v: "",          ico: <ShoppingBagIcon size={15} />, lbl: "Todas" },
 ];
+
+// Texto del estado vacío según la bandeja activa.
+const EMPTY_COPY = {
+  pending: "Cuando lleguen pedidos nuevos los vas a ver acá.",
+  paid: "Acá aparecen las órdenes con pago confirmado, listas para pasar al Punto de Venta del software.",
+  charged: "Acá quedan las órdenes ya cobradas en el Punto de Venta del software.",
+  cancelled: "Acá aparecen las órdenes rechazadas o canceladas.",
+  deleted: "Acá aparecen las órdenes enviadas a eliminadas.",
+  "": "Acá vas a ver todas las órdenes del período.",
+};
 
 const waTxt = (o) => {
   const envio = o?.shipping?.method === "envio";
@@ -690,7 +701,17 @@ export default function AdminOrders() {
   };
 
   const rows = useMemo(() => {
-    let filtered = tab ? orders.filter(o => o.status === tab) : orders;
+    // "Cobradas" no es un status propio: son órdenes pagadas que el software
+    // ya marcó como cobradas en el Punto de Venta (erpSync.synced). "Pagadas"
+    // muestra solo las pendientes de cobro.
+    let filtered;
+    if (tab === "charged") {
+      filtered = orders.filter((o) => o.status === "paid" && o?.erpSync?.status === "synced");
+    } else if (tab === "paid") {
+      filtered = orders.filter((o) => o.status === "paid" && o?.erpSync?.status !== "synced");
+    } else {
+      filtered = tab ? orders.filter(o => o.status === tab) : orders;
+    }
     if (timeFilter !== "all") {
       let cutoff;
       if (timeFilter === "today") {
@@ -949,7 +970,7 @@ export default function AdminOrders() {
         <EmptyState
           icon={<InboxIcon size={24} />}
           title="No hay órdenes en esta sección"
-          description="Cuando lleguen pedidos nuevos los vas a ver acá."
+          description={EMPTY_COPY[tab] || "Cuando lleguen pedidos nuevos los vas a ver acá."}
         />
       ) : (
         <>
