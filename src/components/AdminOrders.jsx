@@ -45,7 +45,7 @@ const erpSyncNote = (erpSync) => {
   }
   if (erpSync.status === "synced") {
     return {
-      text: `Cobrada en el POS${erpSync.erpOrderNumber ? ` · venta #${erpSync.erpOrderNumber}` : ""}`,
+      text: `Cobrada en el software (POS/ERP)${erpSync.erpOrderNumber ? ` · venta #${erpSync.erpOrderNumber}` : ""}`,
       color: "var(--adm-success)",
     };
   }
@@ -129,7 +129,7 @@ const TABS = [
 const EMPTY_COPY = {
   pending: "Cuando lleguen pedidos nuevos los vas a ver acá.",
   paid: "Acá aparecen las órdenes con pago confirmado, listas para pasar al Punto de Venta del software.",
-  charged: "Acá quedan las órdenes ya cobradas en el Punto de Venta del software.",
+  charged: "Acá quedan las órdenes ya cobradas en el software (POS/ERP).",
   cancelled: "Acá aparecen las órdenes rechazadas o canceladas.",
   deleted: "Acá aparecen las órdenes enviadas a eliminadas.",
   "": "Acá vas a ver todas las órdenes del período.",
