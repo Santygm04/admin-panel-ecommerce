@@ -119,7 +119,7 @@ function PayBadge({ method }) {
 const TABS = [
   { v: "pending",   ico: <InboxIcon size={15} />,    lbl: "Pendientes" },
   { v: "paid",      ico: <CheckIcon size={15} />,   lbl: "Pagadas" },
-  { v: "charged",   ico: <CheckCircleIcon size={15} />, lbl: "Cobradas" },
+  { v: "charged",   ico: <CheckCircleIcon size={15} />, lbl: "Cobradas en el software (POS/ERP)" },
   { v: "cancelled", ico: <XIcon size={15} />,       lbl: "Canceladas" },
   { v: "deleted",   ico: <TrashIcon size={15} />,   lbl: "Eliminadas" },
   { v: "",          ico: <ShoppingBagIcon size={15} />, lbl: "Todas" },
