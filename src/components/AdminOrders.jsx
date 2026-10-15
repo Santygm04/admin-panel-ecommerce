@@ -105,7 +105,12 @@ const ST = {
   deleted:   { lbl: "Eliminada",  tone: "neutral" },
 };
 
-function StatusBadge({ s }) {
+function StatusBadge({ s, order }) {
+  // Cobrada en el Punto de Venta del software: se muestra el estado completo
+  // para que no parezca pendiente de pago.
+  if (order?.erpSync?.status === "synced") {
+    return <Badge tone="success" dot>Pagada · Cobrada en POS</Badge>;
+  }
   const d = ST[s] || { lbl: s, tone: "neutral" };
   return <Badge tone={d.tone} dot>{d.lbl}</Badge>;
 }
@@ -785,8 +790,10 @@ export default function AdminOrders() {
   const OrderActions = ({ o, compact = false }) => {
     const envio = o?.shipping?.method === "envio";
     const isRetiro = o?.shipping?.method === "retiro";
+    const cobradaEnPos = o?.erpSync?.status === "synced";
     const canShip   = o.status === "paid" && !o?.shipping?.shippedAt && envio;
-    const canRetiro = o.status === "paid" && !o?.shipping?.shippedAt && isRetiro;
+    // Una orden ya cobrada en el POS no necesita el aviso "listo para retirar".
+    const canRetiro = o.status === "paid" && !o?.shipping?.shippedAt && isRetiro && !cobradaEnPos;
     const canRetirado = o.status === "paid" && !!o?.shipping?.shippedAt && !o?.shipping?.deliveredAt && isRetiro;
     const canDeliv  = o.status === "paid" && !o?.shipping?.deliveredAt && envio && !!o?.shipping?.trackingNumber;
     return (
@@ -1003,7 +1010,7 @@ export default function AdminOrders() {
                       )}
                     </div>
                     <div className="ao-card-right">
-                      <StatusBadge s={o.status} />
+                      <StatusBadge s={o.status} order={o} />
                       <div className="ao-card-ts">{fd(d)} · {ft(d)}</div>
                     </div>
                   </div>
@@ -1095,7 +1102,7 @@ export default function AdminOrders() {
                       </td>
                       <td className="ao-cell-mono">{o?.buyer?.telefono || "—"}</td>
                       <td><PayBadge method={o.paymentMethod} /></td>
-                      <td><StatusBadge s={o.status} /></td>
+                      <td><StatusBadge s={o.status} order={o} /></td>
                       <td style={{ textAlign: "right" }}><span className="ao-cell-total">{$m(o.total)}</span></td>
                       <td>
                         <div className="ao-cell-main">{envio ? "Envío" : "Retiro"}</div>
@@ -1188,7 +1195,7 @@ export default function AdminOrders() {
         {detail && (
           <div className="ao-detail">
             <div className="ao-confirm-box">
-              <div><b>Estado:</b> <StatusBadge s={detail.status} /></div>
+              <div><b>Estado:</b> <StatusBadge s={detail.status} order={detail} /></div>
               <div><b>Total:</b> {$m(detail.total)}</div>
               <div><b>Método de pago:</b> <PayBadge method={detail.paymentMethod} /></div>
               <div>
@@ -1513,7 +1520,7 @@ export default function AdminOrders() {
         <div className="ao-confirm-box ao-confirm-box--danger">
           <div><b>Pedido:</b> {num(delM.order)}</div>
           <div><b>Cliente:</b> {delM.order?.buyer?.nombre || "—"}</div>
-          <div><b>Estado:</b> <StatusBadge s={delM.order?.status} /></div>
+          <div><b>Estado:</b> <StatusBadge s={delM.order?.status} order={delM.order} /></div>
           <div><b>Total:</b> {$m(delM.order?.total)}</div>
         </div>
       </Modal>
