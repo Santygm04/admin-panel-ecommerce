@@ -1058,11 +1058,27 @@ export default function EditProduct() {
               onConfigure={() => setScheduleModal("destacado")}
             />
             {!isVendedor && (
-              <label className="ui-check pf-box-toggle">
-                <input type="checkbox" name="publicarEnCajas" checked={!!producto.publicarEnCajas} onChange={handleChange} />
-                Publicar en <b className="pf-ni">Packs / Cajas</b>
-                <span className="pf-muted" style={{ fontWeight: 400 }}>(incluye cajas de tonos)</span>
-              </label>
+              <>
+                {Number(producto.unidadesPorCaja) > 1 && Number(producto.precioCaja) > 0 && !producto.publicarEnCajas && (
+                  <div className="ui-banner ui-banner--warning" role="alert">
+                    <span>
+                      Este producto tiene datos de caja cargados ({producto.unidadesPorCaja} unidades · {formatARS(Number(producto.precioCaja))}) pero la publicación está desactivada: la tienda no muestra caja completa ni media caja.
+                    </span>
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => setProducto((prev) => ({ ...prev, publicarEnCajas: true }))}
+                    >
+                      Publicar en cajas
+                    </Button>
+                  </div>
+                )}
+                <label className="ui-check pf-box-toggle">
+                  <input type="checkbox" name="publicarEnCajas" checked={!!producto.publicarEnCajas} onChange={handleChange} />
+                  Publicar en <b className="pf-ni">Packs / Cajas</b>
+                  <span className="pf-muted" style={{ fontWeight: 400 }}>(incluye cajas de tonos)</span>
+                </label>
+              </>
             )}
 
             <ProductScheduleSwitch

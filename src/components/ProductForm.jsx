@@ -891,6 +891,20 @@ export default function ProductForm({ onCreated }) {
               value={destacadoSchedule}
               onConfigure={() => setScheduleModal("destacado")}
             />
+            {Number(producto.unidadesPorCaja) > 1 && Number(producto.precioCaja) > 0 && !producto.publicarEnCajas && (
+              <div className="ui-banner ui-banner--warning" role="alert">
+                <span>
+                  Este producto tiene datos de caja cargados ({producto.unidadesPorCaja} unidades · {formatARS(Number(producto.precioCaja))}) pero la publicación está desactivada: la tienda no mostrará caja completa ni media caja.
+                </span>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setProducto((prev) => ({ ...prev, publicarEnCajas: true }))}
+                >
+                  Publicar en cajas
+                </Button>
+              </div>
+            )}
             <label className="ui-check pf-box-toggle">
               <input
                 type="checkbox"
