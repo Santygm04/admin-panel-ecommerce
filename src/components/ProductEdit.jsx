@@ -777,7 +777,7 @@ export default function EditProduct() {
                 </Field>
                 {Number(producto.unidadesPorCaja) > 1 && (
                   <Field label={<><span className="price-tag price-tag--brand">½</span> Precio por media caja</>}
-                    hint="Precio total de la mitad de unidades. Si queda vacío, usa la mitad del precio de caja.">
+                    hint="Precio total de la mitad de unidades. Si queda vacío, la tienda no ofrece media caja (solo caja completa).">
                     <Input name="precioMediaCaja" type="text" inputMode="decimal"
                       placeholder="Ej: 3000"
                       value={producto.precioMediaCaja ?? ""} onChange={handleChange}
@@ -850,7 +850,7 @@ export default function EditProduct() {
               <div className="ui-banner ui-banner--info pf-box-banner">
                 Esta publicación aparecerá en <b>Packs / Cajas</b>. En la tienda el cliente elige{" "}
                 <b>por unidad</b> (con x5 y mayorista según la escala), <b>caja completa</b> de {producto.unidadesPorCaja || "..."} unidades
-                {Number(producto.unidadesPorCaja) > 1 && Number(producto.unidadesPorCaja) % 2 === 0 ? <> o <b>media caja</b></> : null}.
+                 {Number(producto.unidadesPorCaja) > 1 && Number(producto.unidadesPorCaja) % 2 === 0 && Number(producto.precioMediaCaja) > 0 ? <> o <b>media caja</b></> : null}.
               </div>
             )}
           </div>
