@@ -7,7 +7,7 @@ import { PlusIcon, UploadIcon, XIcon, CopyIcon } from "./ui/icons";
 import ProductScheduleModal, { ProductScheduleSwitch } from "./ProductScheduleModal";
 import "./ProductForm.css";
 import { API_URL } from "../utils/api";
-import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
+import { imageUploadErrorMessage, uploadImage } from "../utils/media";
 import { notify } from "../utils/toast";
 import { formatARS, getLenceriaPricePreview, isLenceriaCategory, isMarroquineriaCategory, normalizeSlug, parseMoneyInput, parseOptionalIntegerInput, parseOptionalMoneyInput } from "../utils/pricing";
 import { syncNewArrivalTag, toIsoOrNull, validateScheduleRange } from "../utils/schedule";
@@ -133,11 +133,11 @@ export default function ProductForm({ onCreated }) {
 
   const uploadImages = async () => {
     if (!imagenFiles.length) return { urls: [], failed: 0 };
-    const results = await Promise.allSettled(imagenFiles.map(uploadCloudinaryImage));
+    const results = await Promise.allSettled(imagenFiles.map((file) => uploadImage(file)));
     const urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
     const failures = results
       .map((result, index) => result.status === "rejected"
-        ? { name: imagenFiles[index].name, message: cloudinaryErrorMessage(result.reason) }
+        ? { name: imagenFiles[index].name, message: imageUploadErrorMessage(result.reason) }
         : null)
       .filter(Boolean);
     return { urls, failed: failures.length, failures };

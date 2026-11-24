@@ -24,7 +24,7 @@ import {
 import ConfirmDialog from "./ConfirmDialog";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Skeleton } from "./ui";
 import { API_URL, authHeaders } from "../utils/api";
-import { cloudinaryErrorMessage, uploadCloudinaryImage } from "../utils/cloudinary";
+import { imageUploadErrorMessage, uploadImage } from "../utils/media";
 import { normalizeImageUrl } from "../utils/image";
 import { toDateTimeLocal, toIsoOrNull } from "../utils/schedule";
 import { notify } from "../utils/toast";
@@ -455,10 +455,10 @@ function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload
     setImageErrors((current) => ({ ...current, [slot]: "" }));
     setUploading(slot);
     try {
-      const url = await uploadCloudinaryImage(file, { folder: "banners" });
+      const url = await uploadImage(file, { folder: "banners" });
       setField(slot === "desktop" ? "imagenDesktop" : "imagenMobile", url);
     } catch (uploadError) {
-      setImageErrors((current) => ({ ...current, [slot]: cloudinaryErrorMessage(uploadError) }));
+      setImageErrors((current) => ({ ...current, [slot]: imageUploadErrorMessage(uploadError) }));
     } finally {
       setUploading(null);
     }
@@ -567,10 +567,10 @@ function BannerForm({ open, banner, defaultOrder = 0, onClose, onSaved, onReload
 
       let url;
       try {
-        url = await uploadCloudinaryImage(item.file, { folder: "banners" });
+        url = await uploadImage(item.file, { folder: "banners" });
       } catch (uploadError) {
         failed += 1;
-        updateBatchItem(item.id, { status: "error", error: cloudinaryErrorMessage(uploadError) });
+        updateBatchItem(item.id, { status: "error", error: imageUploadErrorMessage(uploadError) });
         continue;
       }
 
