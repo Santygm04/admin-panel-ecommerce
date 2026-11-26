@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button, Field, Input, Select, Textarea } from "./ui";
+import { useAuth } from "./AuthContext";
 import { PlusIcon, UploadIcon, XIcon, CopyIcon } from "./ui/icons";
 import ProductScheduleModal, { ProductScheduleSwitch } from "./ProductScheduleModal";
 import "./ProductForm.css";
@@ -34,6 +35,7 @@ const API = `${API_URL}/api`;
 const categorySlug = (category) => normalizeSlug(category?.slug || category?.nombre);
 
 export default function ProductForm({ onCreated }) {
+  const { user } = useAuth();
   const nav = useNavigate();
   const PRODUCTO_INICIAL = {
     nombre: "",
@@ -920,16 +922,18 @@ export default function ProductForm({ onCreated }) {
               value={nuevoSchedule}
               onConfigure={() => setScheduleModal("nuevo")}
             />
-            <label className="ui-check">
-              <input
-                type="checkbox"
-                name="syncToERP"
-                checked={!!producto.syncToERP}
-                onChange={(e) => setProducto({ ...producto, syncToERP: e.target.checked })}
-              />
-              Publicar en <b className="pf-ni">ERP</b>
-              <span className="pf-muted" style={{ fontWeight: 400 }}>(aparece en Santiago)</span>
-            </label>
+            {user?.role === "admin" && (
+              <label className="ui-check">
+                <input
+                  type="checkbox"
+                  name="syncToERP"
+                  checked={!!producto.syncToERP}
+                  onChange={(e) => setProducto({ ...producto, syncToERP: e.target.checked })}
+                />
+                Publicar en <b className="pf-ni">ERP</b>
+                <span className="pf-muted" style={{ fontWeight: 400 }}>(aparece en Santiago)</span>
+              </label>
+            )}
           </div>
         </div>
       </div>

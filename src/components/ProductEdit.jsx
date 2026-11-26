@@ -1087,13 +1087,15 @@ export default function EditProduct() {
               onConfigure={() => setScheduleModal("nuevo")}
             />
 
-            <label className="ui-check">
-              <input type="checkbox" name="syncToERP"
-                checked={!!producto.syncToERP}
-                onChange={(e) => setProducto({ ...producto, syncToERP: e.target.checked })} />
-              Publicar en <b className="pf-ni">ERP</b>
-              <span className="pf-muted" style={{ fontWeight: 400 }}>(aparece en Santiago)</span>
-            </label>
+            {user?.role === "admin" && (
+              <label className="ui-check">
+                <input type="checkbox" name="syncToERP"
+                  checked={!!producto.syncToERP}
+                  onChange={(e) => setProducto({ ...producto, syncToERP: e.target.checked })} />
+                Publicar en <b className="pf-ni">ERP</b>
+                <span className="pf-muted" style={{ fontWeight: 400 }}>(aparece en Santiago)</span>
+              </label>
+            )}
           </div>
         </div>
       </div>
